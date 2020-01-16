@@ -28,6 +28,11 @@ For the client software use the --help or -h option
  * btble : contains an optional client that has been tested on Ubuntu and Raspberry Pi
  * btble : tested on the orginal version from Sparkfun voor Apollo3 (1.0.23)
 
+### Version 1.0.1 / January 2020
+ * added batt_temp tested on the edge board but should work on any Apollo3
+ * batt_temp will read local battery level, temperature and set battery load resistor
+ * batt_temp is NOT using the standard analogRead(), but intializes the ADC module it self
+
 ## Author
  * Paul van Haastrecht (paulvha@hotmail.com)
 
