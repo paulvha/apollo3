@@ -37,10 +37,6 @@ enum RequestValue {
     TEMPFAHRENHEIT
 };
 
-/*! battery load generated with https://www.uuidgenerator.net/version4
-* fc8b661f-86d5-4e33-97a4-b3fef6772838 */
-#define  BATT_UUID_CHR_CONFIG_BASE     "fc8b661f-86d5-4e33-97a4-b3fef6772838"
-
 GIOChannel *gatt_connect(const char *src, const char *dst,
             const char *dst_type, const char *sec_level,
             int psm, int mtu, BtIOConnect connect_cb,

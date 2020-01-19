@@ -23,6 +23,9 @@
  *
  *  Version 1.0 / January 2020 / paulvha
  *  Based on the original nus_main.c but parts removed, added and updated.
+ *  
+ *  version 1.0.1 / January 2020 / paulvha
+ *  change update of values with AttsSetAttr
  */
 /*************************************************************************************************/
 
@@ -54,7 +57,7 @@
 #include "apollo3.h"                  // needed for battery load resistor
 extern uint16_t read_adc(uint8_t R);  // needed to read the analog
 
-#include "ble_debug.h" 
+#include "ble_debug.h"
 
 #ifdef BLE_Debug
 extern void debug_print(const char* f, const char* F, uint16_t L);
@@ -257,7 +260,7 @@ static uint16_t *pTagGattHdlList = &tagCb.hdlList[TAG_DISC_GATT_START];
 static uint16_t *pTagGapHdlList  = &tagCb.hdlList[TAG_DISC_GAP_START];
 
 /* sanity check:  make sure handle list length is <= app db handle list length */
-WSF_CT_ASSERT(TAG_DISC_HDL_LIST_LEN <= APP_DB_HDL_LIST_LEN);
+//WSF_CT_ASSERT(TAG_DISC_HDL_LIST_LEN <= APP_DB_HDL_LIST_LEN);
 
 /**************************************************************************************************
   ATT Client Data
@@ -280,7 +283,7 @@ static const attcDiscCfg_t tagDiscCfgList[] =
 #define TAG_DISC_CFG_LIST_LEN   (sizeof(tagDiscCfgList) / sizeof(attcDiscCfg_t))
 
 /* sanity check:  make sure configuration list length is <= handle list length */
-WSF_CT_ASSERT(TAG_DISC_CFG_LIST_LEN <= TAG_DISC_HDL_LIST_LEN);
+//WSF_CT_ASSERT(TAG_DISC_CFG_LIST_LEN <= TAG_DISC_HDL_LIST_LEN);
 
 /**************************************************************************************************
   ATT Server Data
@@ -1151,7 +1154,7 @@ void TagHandler(wsfEventMask_t event, wsfMsgHdr_t *pMsg)
 
 /*
  *  BatWriteCback : set or remove the Battery load resistor
- *  
+ *
  *  \brief Attribute group write callback
  *
  * This is the attribute server write callback.  It is executed on an
@@ -1176,28 +1179,31 @@ attsWriteCback_t BatWriteCback(dmConnId_t connId, uint16_t handle, uint8_t opera
   #ifdef BLE_Debug
     debug_print(__func__, __FILE__, __LINE__);
     // debug_printf("handle %x %d, operation %x %d, offset %x %d, len %x %d, pvalue %x %d\n", handle,handle,operation, operation,offset,offset, len,len,*pValue, *pValue);
-  #endif 
-  
+  #endif
+
+  uint8_t v;
   // if request for battery load
   if (handle == BATT_HANDLE_CONFIG)
   {
       if (*pValue == 0) {
         MCUCTRL->ADCBATTLOAD_b.BATTLOAD = 0;
-        SvcBattUpdateLevel(UPDATE_BATT_LOAD, 0 );
+        v = 0;
+        AttsSetAttr(handle, 1, &v);
         set_led_low();      // dim led on board
       }
       else {
         MCUCTRL->ADCBATTLOAD_b.BATTLOAD = 1;
-        SvcBattUpdateLevel(UPDATE_BATT_LOAD, 1);
+        v = 1;
+        AttsSetAttr(handle, 1, &v);       
         set_led_high();      // set led on board
       }
   }
-  
+
   return(ATT_SUCCESS);
 }
 /*************************************************************************************************/
 /*!
- *  \fn     BatReadCback 
+ *  \fn     BatReadCback
  *
  *  \brief  update battery with each call
 
@@ -1224,7 +1230,7 @@ attsReadCback_t BatReadCback(dmConnId_t connId, uint16_t handle, uint8_t operati
 {
   #ifdef BLE_Debug
     debug_print(__func__, __FILE__, __LINE__);
-    // debug_printf("handle %x %d, operation %x %d, offset %x %d, len %x %d, pvalue %x %d\n", handle,handle,operation, operation,offset,offset, len,len,*pValue, *pValue); 
+    // debug_printf("handle %x %d, operation %x %d, offset %x %d, len %x %d, pvalue %x %d\n", handle,handle,operation, operation,offset,offset, len,len,*pValue, *pValue);
   #endif
 
   // requesting 1 will read the battery status (define in BLE_example_func.cpp)
@@ -1232,11 +1238,11 @@ attsReadCback_t BatReadCback(dmConnId_t connId, uint16_t handle, uint8_t operati
 
   /* The power supply / battery level is provided as devided by 3, so the real voltage * 3.
    * the reference voltage is set as 2.0 internal.  (ap3_analog.cpp)
-   * ADC is set to 10 bit to keep compatible with Arduino (ap3_analog.cpp) 
+   * ADC is set to 10 bit to keep compatible with Arduino (ap3_analog.cpp)
    *
    * Assume battery voltage is 3V, DIV3 will provide 1V
    * reference voltage is (2V / 1024) : ADC reading will be around 512
-   * 
+   *
    * SO an ADC reading is 512 * 3 = 1536 * (2 / 1024) ~ 3V
    */
 
@@ -1244,24 +1250,25 @@ attsReadCback_t BatReadCback(dmConnId_t connId, uint16_t handle, uint8_t operati
 
   /* turn into percentage + 0.5f in case it is XX.6%*/
   uint8_t perc =  (uint8_t) (val*100 / 3.3f + 0.5f);
-  
+
   #ifdef BLE_Debug
     debug_printf("battadc %d, perc = %d\n",battadc, perc);
   #endif
-  
-  if(perc > 100) perc = 0;
 
-  SvcBattUpdateLevel(UPDATE_BATT_LVL, perc);
+  if(perc > 100) perc = 0;
+  
+  // update attribute
+  AttsSetAttr(BATT_LVL_HDL, 1, &perc);
 
   return(ATT_SUCCESS);
 }
 
 /*************************************************************************************************/
 /*!
- *  \fn     TempReadCback 
+ *  \fn     TempReadCback
  *
  *  \brief  update temperature with each call.
- *  
+ *
  *  calculation is based on the am_hal_adc_control() call
  *
  */
@@ -1295,12 +1302,12 @@ attsReadCback_t TempReadCback()
   // default calibration values. These default values should result
   // in worst-case temperature measurements of +-6 degress C. (SIX degrees Celsius!!!)
   //
-  // I have 2 edge modules and had them run for an hour in a loop before taking these values: 
+  // I have 2 edge modules and had them run for an hour in a loop before taking these values:
   // Measured with external temperature meter next tot the edge board it is around 20.5 C.
   // one module gives 16.5 C  - 17.5 C
   // the other gives  19.5 C - 20 C
   //
-  
+
   fCalibration_temp = AM_HAL_ADC_CALIB_TEMP_DEFAULT;
   fCalibration_voltage = AM_HAL_ADC_CALIB_AMBIENT_DEFAULT;
   fCalibration_offset  = AM_HAL_ADC_CALIB_ADC_OFFSET_DEFAULT;
@@ -1311,15 +1318,27 @@ attsReadCback_t TempReadCback()
   fTemp  = fCalibration_temp;                             // k
   fTemp /= (fCalibration_voltage - fCalibration_offset);  // k / v
   fTemp *= (fADCTempVolts - fCalibration_offset);         // k /v * v = k
-  
+
   #ifdef BLE_Debug
     debug_float (fTemp - 273.15f);
     debug_printf(" = temperature, Tempadc = %d\n", tempadc);
   #endif
-
-  // update the values in the service ( _svc_Temp.c)
-  SvcTempUpdate(fTemp - 273.15f);
   
+  // update the celsius attribute value
+  int16_t val = (int16_t) ((fTemp - 273.15f) * 10);
+  uint8_t tt[2];
+  tt[1] = val >> 8;         // MSB
+  tt[0] = val & 0xff;       // LSB
+
+  AttsSetAttr(TEMP_HANDLE_DATAC, 2, &tt);
+  
+  // update the Fahrenheit attribute value
+  val = (int16_t) 10 *  (((fTemp - 273.15f) * 180.0f / 100.0f) + 32.0f);
+  tt[1] = val >> 8;         // MSB
+  tt[0] = val & 0xff;       // LSB
+
+  AttsSetAttr(TEMP_HANDLE_DATAF, 2, &tt);
+
   return(ATT_SUCCESS);
 }
 

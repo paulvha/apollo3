@@ -20,6 +20,10 @@
  *
  *  Version 1.0 / January 2020 / paulvha
  *  Based on the original svc_batt.c but removed, added and updated.
+ *  
+ *  version 1.0.1 / January 2020 / paulvha
+ *  - change update of values with AttsSetAttr()
+ *  - set the battery load resistor UUID as 128 bits
  */
 /*************************************************************************************************/
 
@@ -136,7 +140,7 @@ static const attsAttr_t battList[] =
     (uint8_t *) batValConfig,
     (uint16_t *) &batLenConfig,
     sizeof(batValConfig),
-    ATTS_SET_WRITE_CBACK | ATTS_SET_READ_CBACK,
+    ATTS_SET_WRITE_CBACK | ATTS_SET_READ_CBACK |ATTS_SET_UUID_128,  // 128 bytes
     ATTS_PERMIT_READ | ATTS_PERMIT_WRITE
   },
   /* Characteristic user description. */
@@ -170,29 +174,6 @@ static attsGroup_t svcBattGroup =
   BATT_START_HDL,
   BATT_END_HDL
 };
-
-/*************************************************************************************************/
-/*!
- *  \fn     SvcBattUpdateLevel
- *
- *  \brief  Update battery percentage or battery load.
- *  \param  cmd   UPDATE_BATT_LOAD or UPDATE_BATT_LVL 
- *  \param  val   value to set
- *
- *  \return None.
- */
-/*************************************************************************************************/
-void SvcBattUpdateLevel(uint8_t cmd, uint8_t val)
-{
-    if (cmd == UPDATE_BATT_LVL) {
-      if (val > 100) val = 100;
-      battValLvl[0] = val;
-    }
-    else if (cmd == UPDATE_BATT_LOAD) {
-      if (val == 0) batValConfig[0] = 0;
-      else  batValConfig[0] = 1;
-    }
-}
 
 /*************************************************************************************************/
 /*!

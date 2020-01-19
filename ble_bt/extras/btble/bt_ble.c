@@ -7,6 +7,8 @@
  *
  *  This has been created and tested to work against Apollo3 running ble_bt.ino
  *
+ *  Version 1.0.1 / January 2020 / paulvha
+ *  - updated the battery resistor load UUID
  *
  * *******************************************************************
  *  BlueZ - Bluetooth protocol stack for Linux
@@ -58,16 +60,11 @@
 static char batt_prim[]="180f";                 // UUID primary service for battery
 static char batt_char[]="2a19";                 // UUID battery level
 
-/* while the UUID for battery load resistor is created at Bluetooth sig,
- * it is not what Bluez is recognising. The created UUID on the server is:
+/* The UUID for battery load resistor is created at Bluetooth sig,
+ * The created UUID on the server is:
  *   fc8b661f-86d5-4e33-97a4-b3fef6772838
- * nRfconn is recognizing this full UUID BUT Bluez is using the
- * last 4 digits (2838) only and then makes it
- *   00002838-0000-1000-8000-00805f9b34fb
- *
- * Hence defined as "2838"
  */
-static char battload_char[]= "2838";            // UUID battery load
+static char battload_char[]= "fc8b661f-86d5-4e33-97a4-b3fef6772838";    // UUID battery load resistor
 
 static char env_prim[]="181a";                  // UUID primary service for environment
 static char tempC_char[]="2a1f";                // UUID characteristic for Celsius temperature

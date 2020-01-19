@@ -1,7 +1,7 @@
 An example to read the battery value, set battery resistor load and
 read the internal temperature over Bluetooth
 
-paulvha / January 2020 / Version 1.0
+paulvha / January 2020 / Version 1.0.1
 
 # Arduino IDE/ Apollo3
 

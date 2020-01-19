@@ -66,7 +66,7 @@ enum
 void SvcTempAddGroup(void);
 void SvcTempRemoveGroup(void);
 void SvcTempCbackRegister(attsReadCback_t readCback, attsWriteCback_t writeCback);
-void SvcTempUpdate(float temp);
+
 
 #ifdef __cplusplus
 };

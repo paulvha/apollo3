@@ -67,13 +67,7 @@ enum
 void SvcBattAddGroup(void);
 void SvcBattRemoveGroup(void);
 void SvcBattCbackRegister(attsReadCback_t readCback, attsWriteCback_t writeCback);
-void SvcBattUpdateLevel(uint8_t cmd, uint8_t val);
 
-/*************************************************************************************************
-SvcBattUpdateLevel commands
-*************************************************************************************************/
-#define UPDATE_BATT_LOAD 1
-#define UPDATE_BATT_LVL  2
 
 #ifdef __cplusplus
 };

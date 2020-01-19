@@ -19,6 +19,10 @@ the extras folder, the btble directory.
  * btble : contains an optional client that has been tested on Ubuntu and Raspberry Pi
  * btble : tested on the orginal version from Sparkfun voor Apollo3 (1.0.23)
 
+### version 1.0.1 / January 2020
+ * changed update of service values
+ * changed UUID for battery load resistor to 128 bits
+
 ## Author
  * Paul van Haastrecht (paulvha@hotmail.com)
 

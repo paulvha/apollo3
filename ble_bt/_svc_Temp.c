@@ -20,6 +20,9 @@
  *  
  *  Version 1.0 / January 2020 / paulvha
  *  Based on the original svc_temp.c but removed, added and updated.
+ *  
+ *  version 1.0.1 / January 2020 / paulvha
+ *  change update of values with AttsSetAttr()
  */
 /*************************************************************************************************/
 
@@ -209,26 +212,4 @@ void SvcTempCbackRegister(attsReadCback_t readCback, attsWriteCback_t writeCback
 {
   tempGroup.writeCback = writeCback;
   tempGroup.readCback = readCback;
-}
-
-/*************************************************************************************************/
-/*!
- *  \fn     SvcTempUpdate
- *
- *  \brief  Update temperature values
- *
- *  \param  temp  Temperature in celsius
- *
- *  \return None.
- */
-/*************************************************************************************************/
-void SvcTempUpdate(float temp)
-{
-  int16_t val = (int16_t) (temp * 10);
-  tempValDataC[1] = val >> 8;         // MSB
-  tempValDataC[0] = val & 0xff;       // LSB
-  
-  val = (int16_t) 10 *  ((temp * 180.0f / 100.0f) + 32.0f);
-  tempValDataF[1] = val >> 8;         // MSB
-  tempValDataF[0] = val & 0xff;       // LSB
 }
