@@ -1,0 +1,71 @@
+***********************************************************************
+******************* 3.1.1 Apollo3 software ****************************
+***********************************************************************
+
+Make sure you have the latest Arduino library. Follow the steps on https://learn.sparkfun.com/tutorials/artemis-development-with-arduino?_ga=2.21301179.126288810.1581865370-203897739.1571077629
+
+Select the right board in the Arduino IDE.
+
+******************* 3.1.2 Apollo3 server software ********************
+
+open in the Arduino IDE the file BLE_amdts.ino in folder amdts
+!!!!!! this is the amdts folder, with a s of the server !!!!!!!!
+
+Now compile and load the software to the board.
+On the Edge board you will have to manually set it in bootloader :
+
+press and hold reset
+press and hold button 14
+release reset, while holding button 14
+
+Once it starts uploading you can release button 14.
+After upload it might be necessary to press reset to start the program.
+
+***********************************************************************
+********************** 3.2 Client software ****************************
+***********************************************************************
+3.2.1 Bluez Bluetooth stack
+
+1. In the latest version of bluez (check on http://www.bluez.org/) :
+
+    wget https://www.kernel.org/pub/linux/bluetooth/bluez-5.52.tar.xz
+
+2. Extract the source in a directory :
+
+    tar xvf bluez-5.52.tar.xz       (where 5.52 is the version)
+
+3. Make sure you have the supporting packages :
+
+    sudo apt-get install libglib2.0-dev libdbus-1-dev libusb-dev libudev-dev libical-dev systemd libreadline-dev
+
+4. enter the bluez-directory and type
+
+    .configure –enable-library
+
+5. now build the bluez stack
+
+    make -j8 && sudo make install
+
+Good support material for Bluez installation
+
+https://www.jaredwolff.com/get-started-with-bluetooth-low-energy/#!
+
+For Raspberry Pi there are extended instructions, but the one above should do
+https://learn.adafruit.com/install-bluez-on-the-raspberry-pi/installation
+
+*************** 3.2.2 Client Solution  ****************************
+
+cd bluez-5.52 (or what your version might be)
+
+copy the 'amdtc'-directory as a complete directory + sub directory in this bluez directory
+!!!!!! this is the amdtc folder, with a c of the client !!!!!!!!
+cd amdtc
+
+(optional ?) update permissions : chmod +x make_amdtc
+
+compile : ./make_amdtc
+
+./amdtc -b 66:77:88:23:BB:EF -I (with the correct destination address) for interactive
+./amdtc --help or ./amdtc --help-all for more options.
+
+P.s. to get an BLuetooth address run : sudo hcitool lescan

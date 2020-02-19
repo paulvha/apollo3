@@ -1,0 +1,63 @@
+#!/bin/bash
+#
+# compile script for AMD transfer protocol over bluetooth
+# paulvha / Februay 2020 / version 1.0
+#
+# installation :
+#
+#  cd bluez-5.52
+#
+# copy the directory 'amdtc' with the source files as directory in bluez-5.52
+#  cp -r PATH/amdtc .  # replace PATH with location
+#  cd amdtc
+#  ./make_amdtc
+#
+# After compile start : ./amdtc -b 56:77:88:23:AB:EF -v (with the correct destination address) for verbose)
+# or ./amdtc --help or ./amdtc -- help-all for more options / help information
+#
+# to get an Bluetooth address run : hcitool lescan
+#
+
+# VARIABLES
+
+INCLUDE="-I.. -I/usr/include/dbus-1.0 -I/usr/lib/x86_64-linux-gnu/dbus-1.0/include -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I.././lib"
+FILES="amdtc amdtc_UI att gatt gattrib utils amdtpcommon/amdtp_common amdtpcommon/crc32"
+LINK="../btio/btio.o ../lib/.libs/libbluetooth-internal.a ../src/.libs/libshared-glib.a"
+
+# check that supporting files exist
+for i in $LINK
+do
+    if [ ! -f $i ]
+    then
+        echo "$i was not found"
+        echo "First run a complete install for Bluez"
+        exit
+    fi
+done
+
+echo "compiling source files"
+
+for i in $FILES
+do
+   echo "  $i";
+   gcc -DHAVE_CONFIG_H  $INCLUDE -g -O2 -c -o $i.o  $i.c `pkg-config --cflags --libs glib-2.0`
+
+   if [ $? != 0 ]
+   then
+       exit
+   fi
+done
+
+echo "linking"
+
+gcc -g -O2 -o amdtc amdtc_UI.o amdtc.o att.o gatt.o gattrib.o utils.o amdtpcommon/amdtp_common.o amdtpcommon/crc32.o $LINK -lglib-2.0
+
+if [ $? != 0 ]
+then
+   exit
+fi
+
+echo "DONE : "
+echo "type './amdtc -b 66:77:88:23:BB:EF -I' (with the correct destination address) for interactive"
+echo "  or  ./amdtc --help or ./amdtc --help-all for more options. "
+
