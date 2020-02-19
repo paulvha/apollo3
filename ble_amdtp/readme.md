@@ -16,8 +16,8 @@ For detailed information about the solution, please read the amdtp.odt in the ex
 
 ## Prerequisites
 ### Server :
-If you plan to add an BME280  on the server
-<br> BME280   : Adafruit_BME280 and Adafruit_Sensor
+If you plan to add an BME280 on the server
+<br> BME280   : https://github.com/sparkfun/SparkFun_BME280_Arduino_Library
 
 ### Client
 Bluez Linux Bluetooth stack http://www.bluez.org/
