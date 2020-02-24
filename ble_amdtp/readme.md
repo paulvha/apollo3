@@ -9,8 +9,8 @@ software running on Linux (tested Raspberry PI or Ubuntu 18.04)
 As part of a project to better understand Bluetooth, I have worked
 connecting boards from Sparkfun based on Apollo3 over Bluetooth
 with Raspberry Pi and Ubuntu.
-The connection is using the lightweight, propriety AMD Transaction Protocol.
-See the extras folder for more information about this protocol
+The connection is using the lightweight, propriety AMD Transaction Protocol. (AMDTP)
+See the extras folder for more information about this protocol.
 
 For detailed information about the solution, please read the amdtp.odt in the extras folder.
 
@@ -36,6 +36,9 @@ start ./amdtc --help-all AND read the documentation (odt)
 
 ### version 1.0 / February 2020
  * Initial version
+
+### version 1.1 / February 2020
+ * updated timer handling to prevent deadloop
 
 ## Author
  * Paul van Haastrecht (paulvha@hotmail.com)

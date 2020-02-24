@@ -17,7 +17,7 @@
 
 // uncomment to enable debug messages, comment to disable
 // show function flow + sending and receiving data
-#define BLE_Debug 1
+//#define BLE_Debug 1
 
 // uncomment to show sending and receiving data only
 //#define BLE_SHOW_DATA 1
@@ -39,7 +39,9 @@
    Will perform a sent back to the client the same raw data is had received.
    Will count the total bytes or raw data received from a client and display the total result
    No acknowledgementsare sent
-  
+   
+  MEASURE_THROUGHPUT : DEVELOPER
+   will show the number of bytes exchanged.
 */
 
 // do read only
@@ -49,4 +51,4 @@
 //#define AMDTPS_RX2TX  1
 
 // measure the number of bytes exchanged
-#define MEASURE_THROUGHPUT 1
+//#define MEASURE_THROUGHPUT 1

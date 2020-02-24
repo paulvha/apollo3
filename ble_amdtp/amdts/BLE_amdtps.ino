@@ -6,13 +6,20 @@
   basically do whatever you want with this code.
   ***********************************************************************************
   paulvha/ February 2020 / version 1.0
+   *initial version
+   
+
+  paulvha/ February 2020 / version 1.1
+  * updated timer handling
+
+  ************************************************************************************
 
   Based on the original sample (see below) this example will allow data exchange between 
   Linux system running amdtp-service on Bluez. The client will take the initiative to 
   sent a request/command which this server will handle and respond back to the client.
 
   Optional support for BME280 connected to 'qwuic' interface. You have to UNCOMMENT
-  the line 71. 
+  the line 76. 
   The has been tested with an Adafruit BME280. Parts of the code below are coming from 
   Sparkfun BME280 library. The expected I2C address is 0x77.
 
@@ -27,7 +34,7 @@
   BLE_Debug : will show all the data and program flow
   BLE_SHOW_DATA : will only show the data received and sent
 
-  Make sure to installed the amdtc- client on linux system ( e.g. Raspberry Pi)
+  Make sure to installed the amdtc-client on linux system ( e.g. Raspberry Pi)
    
   *************** original heading ******************************
   This example demonstrates basic BLE server (peripheral) functionality for the Apollo3 boards.
@@ -50,16 +57,13 @@
         Use the upload button to write one of three values (0x00, 0x01, or 0x02)
     - When you send '0x00' (aka 'No alert') the LED will be set to off
     - When you send either '0x01' or '0x02' the LED will be set to on
-
-
-
-
 */
 
 #include "BLE_amdtp.h"
 #include "apollo3.h"                  // needed for battery load resistor
 
-#define BLE_PERIPHERAL_NAME "Artemis AMDTP BLE" // Up to 29 characters
+// Up to 29 characters
+#define BLE_PERIPHERAL_NAME "Artemis AMDTP BLE" 
 
 // maximum length of reply / data message
 #define MAXREPLY 100
@@ -102,8 +106,8 @@
 
 // buffer to reply to client
 uint8_t  val[MAXREPLY];
-uint8_t  *val_data = &val[2];   // start of data area
-uint8_t  *val_len  = &val[1];   // length of optional data
+uint8_t  *val_data = &val[2];   // start of optional data area
+uint8_t  *val_len  = &val[1];   // store length of optional data
 
 // for testdata
 uint16_t TestCounter = 0;
@@ -117,7 +121,7 @@ void setup() {
 #if defined BLE_SHOW_DATA
     SERIAL_PORT.begin(115200);
     delay(1000);
-    SERIAL_PORT.printf("Apollo3 Arduino BLE AMDTP protocol. Compiled: %s\n", __TIME__);
+    SERIAL_PORT.printf("Apollo3 BLE AMDTP protocol. Compiled: %s\n", __TIME__);
 #endif
 
   pinMode(LED_BUILTIN, OUTPUT);
@@ -172,11 +176,6 @@ void trigger_timers()
   //
   update_scheduler_timers();
   wsfOsDispatcher();            // start any handlers if event is pending on them
-
-  //
-  // Enable an interrupt to wake us up next time we have a scheduled event.
-  //
-  set_next_wakeup();
 }
 
 /* 
@@ -397,7 +396,7 @@ void UserRequestReceived(uint8_t * buf, uint16_t len)
         
           Read_BME280();
         }
-        else {  //(length is zero to be detected by client)
+        else {  //length is zero to be detected by client
           
           #if defined BLE_SHOW_DATA
             SERIAL_PORT.println("Read BME280: NOT DETECTED");

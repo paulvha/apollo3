@@ -42,7 +42,6 @@ static wsfBufPoolDesc_t g_psPoolDescriptors[WSF_BUF_POOLS] =
 //
 //*****************************************************************************
 uint32_t g_ui32LastTime = 0;
-extern "C" void radio_timer_handler(void);
 
 //*****************************************************************************
 //
@@ -116,41 +115,20 @@ void exactle_stack_init(void){
 
 //*****************************************************************************
 //
-// Set up a pair of timers to handle the WSF scheduler.
+// Set up a timer to handle the WSF scheduler.
 //
 //*****************************************************************************
 void
 scheduler_timer_init(void)
 {
-    //
-    // One of the timers will run in one-shot mode and provide interrupts for
-    // scheduled events.
-    //
-    am_hal_ctimer_clear(0, AM_HAL_CTIMER_TIMERA);
-    am_hal_ctimer_config_single(0, AM_HAL_CTIMER_TIMERA,
-                                (AM_HAL_CTIMER_INT_ENABLE |
-                                 AM_HAL_CTIMER_LFRC_512HZ |
-                                 AM_HAL_CTIMER_FN_ONCE));
 
     //
-    // The other timer will run continuously and provide a constant time-base.
+    // The timer will run continuously and provide a constant time-base.
     //
     am_hal_ctimer_clear(0, AM_HAL_CTIMER_TIMERB);
     am_hal_ctimer_config_single(0, AM_HAL_CTIMER_TIMERB,
                                  (AM_HAL_CTIMER_LFRC_512HZ |
                                  AM_HAL_CTIMER_FN_CONTINUOUS));
-
-    //
-    // Start the continuous timer.
-    //
-    am_hal_ctimer_start(0, AM_HAL_CTIMER_TIMERB);
-
-    //
-    // Enable the timer interrupt.
-    //
-    am_hal_ctimer_int_register(AM_HAL_CTIMER_INT_TIMERA0, radio_timer_handler);
-    am_hal_ctimer_int_enable(AM_HAL_CTIMER_INT_TIMERA0);
-    NVIC_EnableIRQ(CTIMER_IRQn);
 }
 
 //*****************************************************************************
@@ -185,64 +163,12 @@ update_scheduler_timers(void)
         //
         // Update the WSF timers and save the current time as our "last
         // update".
+        // if time expired it will set for "ready to handle"
         //
         WsfTimerUpdate(ui32ElapsedTime / CLK_TICKS_PER_WSF_TICKS);
 
         g_ui32LastTime = ui32CurrentTime;
     }
-}
-
-//*****************************************************************************
-//
-// Set a timer interrupt for the next upcoming scheduler event.
-//
-//*****************************************************************************
-void
-set_next_wakeup(void)
-{
-    bool_t bTimerRunning;
-    wsfTimerTicks_t xNextExpiration;
-
-    //
-    // Stop and clear the scheduling timer.
-    //
-    am_hal_ctimer_stop(0, AM_HAL_CTIMER_TIMERA);
-    am_hal_ctimer_clear(0, AM_HAL_CTIMER_TIMERA);
-
-    //
-    // Check to see when the next timer expiration should happen.
-    //
-    xNextExpiration = WsfTimerNextExpiration(&bTimerRunning);
-
-    //
-    // If there's a pending WSF timer event, set an interrupt to wake us up in
-    // time to service it. Otherwise, set an interrupt to wake us up in time to
-    // prevent a double-overflow of our continuous timer.
-    //
-    if ( xNextExpiration )
-    {
-        am_hal_ctimer_period_set(0, AM_HAL_CTIMER_TIMERA,
-                                 xNextExpiration * CLK_TICKS_PER_WSF_TICKS, 0);
-    }
-    else
-    {
-        am_hal_ctimer_period_set(0, AM_HAL_CTIMER_TIMERA, 0x8000, 0);
-    }
-
-    //
-    // Start the scheduling timer.
-    //
-    am_hal_ctimer_start(0, AM_HAL_CTIMER_TIMERA);
-}
-
-//*****************************************************************************
-//
-// Interrupt handler for the CTIMERs
-//
-//*****************************************************************************
-extern "C" void radio_timer_handler(void){
-    // Signal radio task to run
-    WsfTaskSetReady(0, 0);
 }
 
 //*****************************************************************************

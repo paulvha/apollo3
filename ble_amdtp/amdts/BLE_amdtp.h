@@ -36,7 +36,6 @@ extern "C"
 #include "am_util.h"
 
 #include "amdtp_api.h"
-//#include "app_ui.h"
 
 #include "wsf_msg.h"
 
@@ -94,7 +93,6 @@ typedef enum eAmdtpcmd
 void exactle_stack_init(void);
 void scheduler_timer_init(void);
 void update_scheduler_timers(void);
-void set_next_wakeup(void);
 void UserRequestReceived(uint8_t * buf, uint16_t len);
 void setAdvName(const char* str);
 
