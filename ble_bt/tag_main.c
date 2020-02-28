@@ -1330,14 +1330,14 @@ attsReadCback_t TempReadCback()
   tt[1] = val >> 8;         // MSB
   tt[0] = val & 0xff;       // LSB
 
-  AttsSetAttr(TEMP_HANDLE_DATAC, 2, &tt);
+  AttsSetAttr(TEMP_HANDLE_DATAC, 2, tt);
   
   // update the Fahrenheit attribute value
   val = (int16_t) 10 *  (((fTemp - 273.15f) * 180.0f / 100.0f) + 32.0f);
   tt[1] = val >> 8;         // MSB
   tt[0] = val & 0xff;       // LSB
 
-  AttsSetAttr(TEMP_HANDLE_DATAF, 2, &tt);
+  AttsSetAttr(TEMP_HANDLE_DATAF, 2, tt);
 
   return(ATT_SUCCESS);
 }

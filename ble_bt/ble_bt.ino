@@ -1,6 +1,9 @@
 /*
  * paulvha / January 2020 / version 1.0
  *
+ * paulvha/ February 2020 / version 1.0.1
+ * # update to timer handling
+ * 
  *  This is extended version of BLE_LED and it will read the battery level, 
  *  set the battery resistor and read temperature in celsius or Fahrenheit 
  *  to make this available over Bluetooth.
@@ -79,7 +82,8 @@ void setup() {
   //
   exactle_stack_init();
 
-  // init ADC reading (need to start with Temperature first as sometimes it does not provide the right information (WHY ???)
+  // init ADC reading (need to start with Temperature first as sometimes it does not provide the right information
+  // known issue in 1.0.29 requested to be fixed by Sparkfun development in later version
   read_adc(2);
   
   //
@@ -96,20 +100,4 @@ void loop() {
       //
       update_scheduler_timers();
       wsfOsDispatcher();
-
-      //
-      // Enable an interrupt to wake us up next time we have a scheduled event.
-      //
-      set_next_wakeup();
-
-      am_hal_interrupt_master_disable();
-
-      //
-      // Check to see if the WSF routines are ready to go to sleep.
-      //
-      if ( wsfOsReadyToSleep() )
-      {
-          am_hal_sysctrl_sleep(AM_HAL_SYSCTRL_SLEEP_DEEP);
-      }
-      am_hal_interrupt_master_enable();
 }

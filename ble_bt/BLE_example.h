@@ -1,3 +1,9 @@
+/*
+ * paulvha/ February 2020 / version 1.0.1
+ * # update to timer handling
+ */
+
+
 #ifndef _BLE_EXAMPLE_H_
 #define _BLE_EXAMPLE_H_
 
@@ -52,7 +58,6 @@ extern "C"
 void exactle_stack_init(void);
 void scheduler_timer_init(void);
 void update_scheduler_timers(void);
-void set_next_wakeup(void);
 void setAdvName(const char* str);
 
 #endif // _BLE_EXAMPLE_H_

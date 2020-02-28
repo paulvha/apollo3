@@ -23,6 +23,9 @@ the extras folder, the btble directory.
  * changed update of service values
  * changed UUID for battery load resistor to 128 bits
 
+### version 1.0.2. / february 2020
+ * change timer handling
+
 ## Author
  * Paul van Haastrecht (paulvha@hotmail.com)
 
