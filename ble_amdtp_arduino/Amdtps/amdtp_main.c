@@ -72,10 +72,13 @@
 #include <unistd.h>   // sleep
 #include "ble_debug.h"
 
+// does the driver support security
+#ifdef APP_DISC_READ_DATABASE_HASH
+#define SECURITYENABLED
+#endif
 
 #if (defined BLE_Debug) || (defined BLE_SHOW_DATA)
 extern void debug_print(const char* f, const char* F, uint16_t L);
-extern void debug_printf(char* fmt, ...);
 extern void debug_float (float f);
 #endif
 extern void debug_printf(char* fmt, ...);
@@ -86,8 +89,6 @@ extern void UserRequestRec(uint8_t * buf, uint16_t len);
 /**************************************************************************************************
   Macros
 **************************************************************************************************/
-// if defined it will show regular the about of bytes handled
-//#define MEASURE_THROUGHPUT
 
 /*! WSF message event starting value */
 #define AMDTP_MSG_START               0xA0
@@ -96,7 +97,7 @@ extern void UserRequestRec(uint8_t * buf, uint16_t len);
 enum
 {
   AMDTP_TIMER_IND = AMDTP_MSG_START,  /*! AMDTP tx timeout timer expired */
-#ifdef MEASURE_THROUGHPUT
+#ifdef MEASURE_THROUGHPUT   // see ble_debug.h
   AMDTP_MEAS_TP_TIMER_IND,
 #endif
 };
@@ -228,19 +229,6 @@ void set_adv_name( const char* str ){
   //debug_printf("adv data: %s\n", str);
 }
 
-/*! scan data, discoverable mode * /
-static const uint8_t amdtpScanDataDisc[] =
-{
-  //Device name
-  6,                                      // length 
-  DM_ADV_TYPE_LOCAL_NAME,                 // AD type 
-  'A',
-  'm',
-  'd',
-  't',
-  'p'
-};
-*/
 /**************************************************************************************************
   Client Characteristic Configuration Descriptors
 **************************************************************************************************/
@@ -321,16 +309,15 @@ static void amdtpAttCback(attEvt_t *pEvt)
   #endif
 
   attEvt_t *pMsg;
-    // allocate memory for event structure and (optional) data
+  
+  // allocate memory for event structure and (optional) data
   if ((pMsg = WsfMsgAlloc(sizeof(attEvt_t) + pEvt->valueLen)) != NULL)
   {
     memcpy(pMsg, pEvt, sizeof(attEvt_t));       // cp event
-
     pMsg->pValue = (uint8_t *) (pMsg + 1);      // set pValue pointer after pMsg
     memcpy(pMsg->pValue, pEvt->pValue, pEvt->valueLen);
     WsfMsgSend(amdtpHandlerId, pMsg);
   }
-
 }
 
 /*************************************************************************************************/
@@ -382,7 +369,6 @@ static void amdtpCccCback(attsCccEvt_t *pEvt)
 bool bPairingCompleted = false;
 static void amdtpProcCccState(amdtpMsg_t *pMsg)
 {
-
   #ifdef BLE_Debug
     debug_print(__func__, __FILE__, __LINE__);
     debug_printf("======>ccc state ind value:%d handle:%x idx:%d\n", pMsg->ccc.value, pMsg->ccc.handle, pMsg->ccc.idx);
@@ -409,7 +395,6 @@ static void amdtpProcCccState(amdtpMsg_t *pMsg)
 }
 
 #ifdef MEASURE_THROUGHPUT
-
 static bool measTpStarted = false;
 
 static void showThroughput(void)
@@ -428,8 +413,7 @@ static void showThroughput(void)
 
   gTotalDataBytesRecev = 0;
 }
-#endif
-
+#endif //MEASURE_THROUGHPUT
 
 /*************************************************************************************************/
 /*!
@@ -495,11 +479,9 @@ static void amdtpProcMsg(amdtpMsg_t *pMsg)
   uint8_t D = 0;
 
   #ifdef BLE_Debug
-   // debug_print(__func__, __FILE__, __LINE__);
     debug_printf("%s ",__func__);
     D = 1;
   #endif
-  uint8_t uiEvent = APP_UI_NONE;
 
   switch(pMsg->hdr.event)
   {
@@ -516,7 +498,6 @@ static void amdtpProcMsg(amdtpMsg_t *pMsg)
 #endif
 
     case ATTS_HANDLE_VALUE_CNF:     /*!< \brief Handle value confirmation */
-      //APP_TRACE_INFO1("ATTS_HANDLE_VALUE_CNF, status = %d", pMsg->att.hdr.status);
       if (D) debug_printf("ATTS_HANDLE_VALUE_CNF\n");
       amdtps_proc_msg(&pMsg->hdr);
       break;
@@ -527,65 +508,45 @@ static void amdtpProcMsg(amdtpMsg_t *pMsg)
       break;
 
     case ATT_MTU_UPDATE_IND:        /*!< \brief Negotiated MTU value */
-      if (D) debug_printf("ATT_MTU_UPDATE_IND\n");
-      APP_TRACE_INFO1("Negotiated MTU %d", ((attEvt_t *)pMsg)->mtu);
+      if (D) debug_printf("ATT_MTU_UPDATE_IND Negotiated MTU %d \n", ((attEvt_t *)pMsg)->mtu );
       break;
 
     case DM_CONN_DATA_LEN_CHANGE_IND: /*!< \brief Data length changed */
       if (D) debug_printf("DM_CONN_DATA_LEN_CHANGE_IND\n");
-      APP_TRACE_INFO2("DM_CONN_DATA_LEN_CHANGE_IND, Tx=%d, Rx=%d", ((hciLeDataLenChangeEvt_t*)pMsg)->maxTxOctets, ((hciLeDataLenChangeEvt_t*)pMsg)->maxRxOctets);
-      //AttcMtuReq((dmConnId_t)(pMsg->hdr.param), 480);//ATT_MAX_MTU);//83); //fixme
       break;
 
     case DM_RESET_CMPL_IND:         /*! Reset complete */
       if (D) debug_printf("DM_RESET_CMPL_IND\n");
+#ifdef SECURITYENABLED
+      AttsCalculateDbHash();
+#endif
       DmSecGenerateEccKeyReq();
-      uiEvent = APP_UI_RESET_CMPL;
+      amdtpSetup(pMsg);
       break;
 
     case DM_ADV_START_IND:          /*! Advertising started */
       if (D) debug_printf("DM_ADV_START_IND\n");
-      uiEvent = APP_UI_ADV_START;
       break;
 
     case DM_ADV_STOP_IND:           /*! Advertising stopped */
       if (D) debug_printf("DM_ADV_STOP_IND\n");
-      uiEvent = APP_UI_ADV_STOP;
       break;
 
     case DM_CONN_OPEN_IND:          /*! Connection opened */
       if (D) debug_printf("DM_CONN_OPEN_IND\n");
       amdtps_proc_msg(&pMsg->hdr);
-//      AttcMtuReq((dmConnId_t)(pMsg->hdr.param), ATT_MAX_MTU);//83); //fixme
-
-//        hciConnSpec_t connSpec;
-//        connSpec.connIntervalMin = (7.5/1.25);
-//        connSpec.connIntervalMax = (15/1.25);
-//        connSpec.connLatency = 0;
-//        connSpec.supTimeout = 200;
-//        connSpec.minCeLen = 4;//0;
-//        connSpec.maxCeLen = 8;//0xffff; //fixme
-//        DmConnUpdate(1, &connSpec);
 
       // PDU length, TX interval (0x148 ~ 0x848)
-      //DmConnSetDataLen(1, 27, 0x148);
       //  \param  connId      Connection identifier. 1
       //  \param  txOctets    Maximum number of payload octets for a Data PDU. 251 (= bytes)
       //  \param  txTime      Maximum number of microseconds for a Data PDU. 0X848
       DmConnSetDataLen(1, 251, 0x848);
-
-//      AppSlaveSecurityReq(1);
-      uiEvent = APP_UI_CONN_OPEN;
       break;
 
     case DM_CONN_CLOSE_IND:             /*! Connection closed */
       if (D) debug_printf("DM_CONN_CLOSE_IND\n");
       amdtpClose(pMsg); // nothing happens here
       amdtps_proc_msg(&pMsg->hdr);
-
-      APP_TRACE_INFO1("DM_CONN_CLOSE_IND, reason = 0x%x", pMsg->dm.connClose.reason);
-
-      uiEvent = APP_UI_CONN_CLOSE;
       break;
 
     case DM_CONN_UPDATE_IND:               /*! Connection update complete */
@@ -594,30 +555,23 @@ static void amdtpProcMsg(amdtpMsg_t *pMsg)
       break;
 
     case DM_SEC_PAIR_CMPL_IND:              /*! Pairing completed successfully */
-
+      DmSecGenerateEccKeyReq();
       if (D) debug_printf("DM_SEC_PAIR_CMPL_IND\n");
-      uiEvent = APP_UI_SEC_PAIR_CMPL;
-
       bPairingCompleted = true;
-
       break;
 
     case DM_SEC_PAIR_FAIL_IND:              /*! Pairing failed or other security failure */
+      DmSecGenerateEccKeyReq();
       if (D) debug_printf("DM_SEC_PAIR_FAIL_IND\n");
-      APP_TRACE_INFO1("DM_SEC_PAIR_FAIL_IND, status = 0x%x", pMsg->dm.pairCmpl.hdr.status);
       bPairingCompleted = false;
-
-      uiEvent = APP_UI_SEC_PAIR_FAIL;
       break;
 
     case DM_SEC_ENCRYPT_IND:                /*! Connection encrypted */
       if (D) debug_printf("DM_SEC_ENCRYPT_IND\n");
-      uiEvent = APP_UI_SEC_ENCRYPT;
       break;
 
     case DM_SEC_ENCRYPT_FAIL_IND:           /*! Encryption failed */
       if (D) debug_printf("DM_SEC_ENCRYPT_FAIL_IND\n");
-      uiEvent = APP_UI_SEC_ENCRYPT_FAIL;
       break;
 
     case DM_SEC_AUTH_REQ_IND:               /*! PIN or OOB data requested for pairing */
@@ -655,7 +609,7 @@ static void amdtpProcMsg(amdtpMsg_t *pMsg)
 
               BSTREAM_TO_UINT32(read_value, param_ptr);
 
-              APP_TRACE_INFO3("VSC 0x%0x complete status %x param %x",
+              //debug_printf("VSC 0x%0x complete status %x param %x",
                 pMsg->dm.vendorSpecCmdCmpl.opcode,
                 pMsg->hdr.status,
                 read_value);
@@ -663,7 +617,7 @@ static void amdtpProcMsg(amdtpMsg_t *pMsg)
 
             break;
             default:
-                APP_TRACE_INFO2("VSC 0x%0x complete status %x",
+                //debug_printf("VSC 0x%0x complete status %x",
                     pMsg->dm.vendorSpecCmdCmpl.opcode,
                     pMsg->hdr.status);
             break;
@@ -677,11 +631,6 @@ static void amdtpProcMsg(amdtpMsg_t *pMsg)
       if (D) debug_printf("DEFAULT event: 0x%x, dec %d\n", pMsg->hdr.event, pMsg->hdr.event);
       break;
   }
-
-  if (uiEvent != APP_UI_NONE)
-  {
-    AppUiAction(uiEvent);
-  }
 }
 
 
@@ -692,7 +641,7 @@ void amdtpDtpRecvCback(uint8_t * buf, uint16_t len)
    // debug_print(__func__, __FILE__, __LINE__);
 #endif
 
-#if BLE_SHOW_DATA
+#ifdef BLE_SHOW_DATA
     debug_printf("-----------AMDTP Received data--------------\n");
     debug_printf("len = %d\n", len);
     for (uint16_t i = 0; i < len; i++) debug_printf("buf [%d] : 0x%02X ", i, buf[i]);
@@ -720,14 +669,10 @@ void amdtpDtpTransCback(eAmdtpStatus_t status)
      debug_print(__func__, __FILE__, __LINE__);
     #endif
 
-    // APP_TRACE_INFO1("amdtpDtpTransCback status = %d\n", status);
-    // if sendDataContinuously is set, call to sent again
-    /* // removed PVH
-    if (status == AMDTP_STATUS_SUCCESS && sendDataContinuously)
+    if (status == AMDTP_STATUS_SUCCESS )
     {
-        AmdtpsSendTestData();
+        // ..
     }
-    */
 }
 
 /*************************************************************************************************/
@@ -743,7 +688,6 @@ void amdtpDtpTransCback(eAmdtpStatus_t status)
 /*************************************************************************************************/
 void AmdtpHandlerInit(wsfHandlerId_t handlerId)
 {
-
   #ifdef BLE_Debug
     debug_print(__func__, __FILE__, __LINE__);
   #endif
@@ -791,7 +735,6 @@ void AmdtpHandler(wsfEventMask_t event, wsfMsgHdr_t *pMsg)
 
   if (pMsg != NULL)
   {
-    // APP_TRACE_INFO1("Amdtp got evt %d", pMsg->event);
 
     if (pMsg->event >= DM_CBACK_START && pMsg->event <= DM_CBACK_END)
     {
@@ -829,9 +772,6 @@ void AmdtpStart(void)
   AttRegister(amdtpAttCback);
   AttConnRegister(AppServerConnCback);
   AttsCccRegister(AMDTP_NUM_CCC_IDX, (attsCccSet_t *) amdtpCccSet, amdtpCccCback);
-
-  /* Register for app framework callbacks */
-  //AppUiBtnRegister(amdtpBtnCback);
 
   /* Initialize attribute server database */
   SvcCoreAddGroup();

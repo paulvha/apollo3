@@ -17,15 +17,19 @@
 
 // uncomment to enable debug messages, comment to disable
 // show function flow + sending and receiving data
-//#define BLE_Debug 1
+//#define BLE_Debug 
 
 // uncomment to show sending and receiving data only
-//#define BLE_SHOW_DATA 1
+#define BLE_SHOW_DATA 
 
+// enable debug messages from driver (if any defined)??
+// requires also change in am_util_debug.h !!
+// add #define AM_DEBUG_PRINTF in top (or NOT)
+//#define AM_DEBUG_PRINTF
 
 /* ENABLE DATA with DEBUG */
 #if defined BLE_Debug
-#define BLE_SHOW_DATA 1
+#define BLE_SHOW_DATA 
 #endif
 
 /* DEVELOPER DRIVER TESTS (UNDOCUMENTED): 

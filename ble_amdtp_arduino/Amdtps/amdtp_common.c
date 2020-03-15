@@ -141,7 +141,7 @@ AmdtpReceivePkt(amdtpCb_t *amdtpCb, amdtpPacket_t *pkt, uint16_t len, uint8_t *p
     }
 
     // make sure we have enough space for new data
-    if (pkt->offset + len - dataIdx > AMDTP_PACKET_SIZE)    // make sure it fits in 2048 + 4 +4 (max length defined amdtp_common.h:  2048)
+    if (pkt->offset + len - dataIdx > AMDTP_PACKET_SIZE)    // make sure it fits in 512 + 4 +4 (max length defined amdtp_common.h:  512)
     {
 #ifdef BLE_Debug
           debug_printf("not enough buffer size!!!\n");
@@ -174,8 +174,7 @@ AmdtpReceivePkt(amdtpCb_t *amdtpCb, amdtpPacket_t *pkt, uint16_t len, uint8_t *p
         if (peerCrc != calDataCrc)
         {
 #ifdef BLE_Debug
-            debug_printf("crc error :");
-            debug_printf("calDataCrc = 0x%x ", calDataCrc);
+            debug_printf("crc error :\ncalDataCrc = 0x%x ", calDataCrc);
             debug_printf("peerCrc = 0x%x\n", peerCrc);
 #endif
             if (pkt->header.pktType == AMDTP_PKT_TYPE_DATA)
@@ -235,11 +234,7 @@ AmdtpPacketHandler(amdtpCb_t *amdtpCb, eAmdtpPktType_t type, uint16_t len, uint8
             // stop tx timeout timer
             WsfTimerStop(&amdtpCb->timeoutTimer);
 
-            if (amdtpCb->txState != AMDTP_STATE_TX_IDLE)    // why check , just do it !!
-            {
-                // APP_TRACE_INFO1("set txState back to idle, state = %d\n", amdtpCb->txState);
-                amdtpCb->txState = AMDTP_STATE_TX_IDLE;
-            }
+            amdtpCb->txState = AMDTP_STATE_TX_IDLE;
 
             if (status == AMDTP_STATUS_CRC_ERROR || status == AMDTP_STATUS_RESEND_REPLY)
             {
@@ -278,7 +273,6 @@ AmdtpPacketHandler(amdtpCb_t *amdtpCb, eAmdtpPktType_t type, uint16_t len, uint8
             uint8_t resendPktSn = buf[1];
             if (control == AMDTP_CONTROL_RESEND_REQ)
             {
-                APP_TRACE_INFO2("resendPktSn = %d, lastRxPktSn = %d", resendPktSn, amdtpCb->lastRxPktSn);
                 amdtpCb->rxState = AMDTP_STATE_RX_IDLE;
                 resetPkt(&amdtpCb->rxPkt);
                 if (resendPktSn > amdtpCb->lastRxPktSn)
@@ -291,12 +285,16 @@ AmdtpPacketHandler(amdtpCb_t *amdtpCb, eAmdtpPktType_t type, uint16_t len, uint8
                 }
                 else
                 {
-                    APP_TRACE_WARN2("resendPktSn = %d, lastRxPktSn = %d", resendPktSn, amdtpCb->lastRxPktSn);
+                #ifdef BLE_Debug
+                   debug_print("resendPktSn = %d, lastRxPktSn = %d", resendPktSn, amdtpCb->lastRxPktSn);
+                #endif
                 }
             }
             else
             {
-                APP_TRACE_WARN1("unexpected contrl = %d\n", control);
+                #ifdef BLE_Debug
+                   debug_print("unexpected contrl = %d\n", control);
+                #endif
             }
             resetPkt(&amdtpCb->ackPkt);
         }
@@ -343,7 +341,7 @@ AmdtpBuildPkt(amdtpCb_t *amdtpCb, eAmdtpPktType_t type, bool_t encrypted, bool_t
     }
     if (enableACK)
     {
-        header = header | (1 << PACKET_ACK_BIT_OFFSET);             // set ackknowledgement bit
+        header = header | (1 << PACKET_ACK_BIT_OFFSET);             // set acknowledgement bit
     }
     pkt->data[2] = (header & 0xff);                                 // set header
     pkt->data[3] = (header >> 8);
@@ -358,7 +356,7 @@ AmdtpBuildPkt(amdtpCb_t *amdtpCb, eAmdtpPktType_t type, bool_t encrypted, bool_t
     pkt->data[AMDTP_PREFIX_SIZE_IN_PKT + len + 2] = ((calDataCrc >> 16) & 0xff);
     pkt->data[AMDTP_PREFIX_SIZE_IN_PKT + len + 3] = ((calDataCrc >> 24) & 0xff);
 
-#if defined BLE_SHOW_DATA
+#ifdef BLE_SHOW_DATA
     debug_printf("============== Prepared for sending ========================\n");
     for (uint16_t i =0; i < pkt->len; i++) debug_printf("0x%02X ", pkt->data[i]);
     debug_printf("\n");
@@ -380,7 +378,9 @@ bool AmdtpSendData(uint8_t *buf, uint16_t len)
 
     if (st != AMDTP_STATUS_SUCCESS)
     {
-        APP_TRACE_WARN1("AmdtpSendData status = %d\n", st);
+#ifdef BLE_Debug
+        debug_printf("AmdtpSendData failedstatus = %d\n", st);
+#endif
         return false;
     }
 
@@ -416,10 +416,11 @@ AmdtpSendReply(amdtpCb_t *amdtpCb, eAmdtpStatus_t status, uint8_t *data, uint16_
 
     if (st != AMDTP_STATUS_SUCCESS)
     {
-        APP_TRACE_WARN1("AmdtpSendReply status = %d\n", st);        // st ????
+#ifdef BLE_Debug
+          debug_printf1("AmdtpSendReply failed status = %d\n", st);
+#endif
     }
 }
-
 
 //*****************************************************************************
 //
@@ -446,7 +447,9 @@ AmdtpSendControl(amdtpCb_t *amdtpCb, eAmdtpControl_t control, uint8_t *data, uin
     st = amdtpCb->ack_sender_func(AMDTP_PKT_TYPE_CONTROL, false, false, buf, len + 1);
     if (st != AMDTP_STATUS_SUCCESS)
     {
-        APP_TRACE_WARN1("AmdtpSendControl status = %d\n", st);
+   #ifdef BLE_Debug
+        debug_print("AmdtpSendControl failed status = %d\n", st);
+   #endif
     }
 }
 

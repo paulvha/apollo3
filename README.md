@@ -9,7 +9,7 @@ In the different folders are different programs with a small readme file
 
 ## Prerequisites
 Some examples have an optional Bluetooth client that requires
-Bluez bleutooth stack : http://www.bluez.org/download/
+Bluez bluetooth stack : http://www.bluez.org/download/
 
 ## Software installation
 Obtain the zip and install like any other for the Arduino
@@ -32,6 +32,10 @@ For the client software use the --help or -h option
  * added batt_temp tested on the edge board but should work on any Apollo3
  * batt_temp will read local battery level, temperature and set battery load resistor
  * batt_temp is NOT using the standard analogRead(), but intializes the ADC module it self
+
+### March 2020
+ * updated the BLE-amdtp between Apollo3 board and Linux
+ * added BLE-amdtp between 2 Apollo3 boards
 
 ## Author
  * Paul van Haastrecht (paulvha@hotmail.com)

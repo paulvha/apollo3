@@ -40,6 +40,9 @@ start ./amdtc --help-all AND read the documentation (odt)
 ### version 1.1 / February 2020
  * updated timer handling to prevent deadloop
 
+### version 2.0 / March 2020
+ * updated to handle hash
+
 ## Author
  * Paul van Haastrecht (paulvha@hotmail.com)
 

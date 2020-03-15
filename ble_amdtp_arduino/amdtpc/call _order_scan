@@ -1,0 +1,73 @@
+
+************** start scan command *********************
+handleGAPSlection()     ble_menu.c
+AmdtpcScanStart(void)   amtp_main.c
+AppScanStart()          app_master_leg.c
+  first calls DmScanSetInterval()
+  then calls  DmScanStart(), which queues task wsf
+
+WSF de-queue and calls:
+
+DmHandler()             dm_main.c
+dmScanMsgHandler()      dm_adv_leg.c
+dmScanActStart()        dm_adv_leg.c
+HciLeSetAdvEnableCmd()  hci_cmd.c
+hciCmdSend()            hci_cmd.c
+hciTrSendCmd()          hci_tr.c
+hciDrvWrite()           hci_drv_apollo3.c
+   it is now added to the write queue (max 8 slots)
+   WSF will be set to call the handler
+
+WSF will de-queue calls
+HciDrvHandler()         hci_drv_apollo3.c
+am_hal_ble_blocking_hci_write() finally it is written to BLUE chip
+
+ **** getting conformation of scan started ****
+
+HciDrvIntService(void)  hci_drv_apollo3.c (call from am_ble_isr())
+hciEvtProcessMsg()      hci_evt.c
+hciEvtProcessCmdCmpl()  hci_evt.c
+dmScanHciHandler        dm_adv_leg.c
+amdtpcProcMsg 36
+amdtpcScanStart(msg)    amtp_main.c
+
+************** confirmed that scan started ********************
+************** waiting on scan results *****************************
+
+HciDrvIntService(void)  hci_drv_apollo3.c (call from am_ble_isr())
+hciEvtProcessMsg()      hci_evt.c
+hciEvtProcessLeAdvReport() hci_evt.c (name is copied here from chip response)
+dmHciEvtCback()         dm_scan_leg.c
+dmScanHciHandler()      dm_scan_leg.c
+dmScanActHciReport()    dm_scan_leg.c
+AppMasterProcDmMsg()    app_master.c
+appMasterScanReport()   app_master.c
+appScanResultAdd()      app_master.c (here we loose the name !!)
+amdtpcProcMsg()         amtp_main.c
+amdtpcScanReport()      amtp_main.c
+
+******** the above is repeated for each scan result *************
+**************** scan termination ******************
+TIMEOUT HAPPEND
+handling DmHandler 2
+dmScanMsgHandler
+dmScanActTimeout
+dmScanActStop
+HciEvtProcessCmdCmpl 52
+dmScanHciHandler
+dmEmptyHandler
+amdtpcProcMsg 37 amdtp_main.c amdtpcProcMsg: Got scan stop
+**************** scan finished ******************
+
+
+open
+
+AmdtpcConnOpen()    amtp_main.c
+AppConnOpen()       app_master_leg.c
+appConnOpen         app_master.c
+DmConnOpen          dm_conn_master.c
+dmConnOpenAccept    dm_conn.c
+
+dmhandler()
+dmConnMsgHandler()  dm_conn.c
+dmConnSmExecute()   dm_conn_sm.c

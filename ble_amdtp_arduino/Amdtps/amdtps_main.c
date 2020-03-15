@@ -76,8 +76,8 @@ extern void debug_printf(char* fmt, ...);
 extern void debug_float (float f);
 #endif
 
-#if (defined BLE_Debug)
-#define AMDTP_DEBUG_ON 1
+#ifdef BLE_Debug
+#define AMDTPS_DEBUG_ON 
 #endif
 //*****************************************************************************
 //
@@ -118,21 +118,21 @@ amdtpsCb;
 static void
 amdtps_conn_open(dmEvt_t *pMsg)
 {
-    #ifdef BLE_Debug
+    #ifdef AMDTPS_DEBUG_ON
         debug_print(__func__, __FILE__, __LINE__);
-    #endif
 
     hciLeConnCmplEvt_t *evt = (hciLeConnCmplEvt_t*) pMsg;
 
-    APP_TRACE_INFO0("connection opened\n");
-    APP_TRACE_INFO1("handle = 0x%x\n", evt->handle);
-    APP_TRACE_INFO1("role = 0x%x\n", evt->role);
-    APP_TRACE_INFO3("addrMSB = %02x%02x%02x%02x%02x%02x\n", evt->peerAddr[0], evt->peerAddr[1], evt->peerAddr[2]);
-    APP_TRACE_INFO3("addrLSB = %02x%02x%02x%02x%02x%02x\n", evt->peerAddr[3], evt->peerAddr[4], evt->peerAddr[5]);
-    APP_TRACE_INFO1("connInterval = 0x%x\n", evt->connInterval);
-    APP_TRACE_INFO1("connLatency = 0x%x\n", evt->connLatency);
-    APP_TRACE_INFO1("supTimeout = 0x%x\n", evt->supTimeout);
-    //KHE
+    debug_printf("connection opened\n");
+    debug_printf("handle = 0x%X\n", evt->handle);
+    debug_printf("role = 0x%X\n", evt->role);
+    debug_printf("addrMSB = %02X:%02X:%02X:%02X:%02X:%02X\n", evt->peerAddr[0], evt->peerAddr[1], evt->peerAddr[2]);
+    debug_printf("addrLSB = %02X%02X%02x%02X%02X%02X\n", evt->peerAddr[3], evt->peerAddr[4], evt->peerAddr[5]);
+    debug_printf("connInterval = 0x%X\n", evt->connInterval);
+    debug_printf("connLatency = 0x%X\n", evt->connLatency);
+    debug_printf("supTimeout = 0x%X\n", evt->supTimeout);
+
+    #endif
 }
 
 //*****************************************************************************
@@ -143,22 +143,23 @@ amdtps_conn_open(dmEvt_t *pMsg)
 static void
 amdtps_conn_update(dmEvt_t *pMsg)
 {
-    #ifdef BLE_Debug
+    #ifdef AMDTPS_DEBUG_ON
         debug_print(__func__, __FILE__, __LINE__);
-    #endif
 
     hciLeConnUpdateCmplEvt_t *evt = (hciLeConnUpdateCmplEvt_t*) pMsg;
 
-    APP_TRACE_INFO1("connection update status = 0x%x", evt->status);
-    APP_TRACE_INFO1("handle = 0x%x", evt->handle);
-    APP_TRACE_INFO1("connInterval = 0x%x", evt->connInterval);
-    APP_TRACE_INFO1("connLatency = 0x%x", evt->connLatency);
-    APP_TRACE_INFO1("supTimeout = 0x%x", evt->supTimeout);
+    debug_printf("connection update status = 0x%X", evt->status);
+    debug_printf("handle = 0x%X", evt->handle);
+    debug_printf("connInterval = 0x%X", evt->connInterval);
+    debug_printf("connLatency = 0x%X", evt->connLatency);
+    debug_printf("supTimeout = 0x%X", evt->supTimeout);
+
+    #endif
 }
 
 static void amdtpsSetupToSend(void)
 {
-    #ifdef BLE_Debug
+    #ifdef AMDTPS_DEBUG_ON
     //    debug_print(__func__, __FILE__, __LINE__);
     #endif
 
@@ -169,7 +170,7 @@ static void amdtpsSetupToSend(void)
     {
         if (pConn->connId != DM_CONN_ID_NONE)
         {
-            pConn->amdtpToSend = TRUE;      // indicate ready to be send on this channel
+            pConn->amdtpToSend = true;      // indicate ready to be send on this channel
         }
     }
 }
@@ -182,7 +183,7 @@ static void amdtpsSetupToSend(void)
 static amdtpsConn_t*
 amdtps_find_next2send(void)
 {
-    #ifdef BLE_Debug
+    #ifdef AMDTPS_DEBUG_ON
     //    debug_print(__func__, __FILE__, __LINE__);
     #endif
 
@@ -199,7 +200,7 @@ amdtps_find_next2send(void)
 static void
 amdtpsSendData(uint8_t *buf, uint16_t len)
 {
-    #ifdef BLE_Debug
+    #ifdef AMDTPS_DEBUG_ON
         debug_print(__func__, __FILE__, __LINE__);
     #endif
 
@@ -209,7 +210,7 @@ amdtpsSendData(uint8_t *buf, uint16_t len)
     if (pConn)
     {
 #ifdef AMDTP_DEBUG_ON
-        APP_TRACE_INFO1("amdtpsSendData(), Send to connId = %d\n", pConn->connId);
+        debug_printf("amdtpsSendData(), Send to connId = %d\n", pConn->connId);
 #endif
         AttsHandleValueNtf(pConn->connId, AMDTPS_TX_HDL, len, buf);
 
@@ -218,7 +219,9 @@ amdtpsSendData(uint8_t *buf, uint16_t len)
     }
     else
     {
-        APP_TRACE_WARN1("Invalid Conn = %d\n", pConn->connId);
+#ifdef AMDTP_DEBUG_ON
+        debug_printf("Invalid Conn = %d\n", pConn->connId);
+#endif
     }
 }
 
@@ -233,14 +236,14 @@ amdtpsSendData(uint8_t *buf, uint16_t len)
 static eAmdtpStatus_t
 amdtpsSendAck(eAmdtpPktType_t type, bool_t encrypted, bool_t enableACK, uint8_t *buf, uint16_t len)
 {
-    #ifdef BLE_Debug
+    #ifdef AMDTP_DEBUG_ON
         debug_print(__func__, __FILE__, __LINE__);
     #endif
 
     /* Check still connected */
     if (AppConnIsOpen() == DM_CONN_ID_NONE)
     {
-        #ifdef BLE_Debug
+        #ifdef AMDTP_DEBUG_ON
           debug_printf(" not connected\n");
         #endif
         return AMDTP_STATUS_TX_NOT_READY;
@@ -257,7 +260,7 @@ amdtpsSendAck(eAmdtpPktType_t type, bool_t encrypted, bool_t enableACK, uint8_t 
     if (pConn)
     {
 #ifdef AMDTP_DEBUG_ON
-        APP_TRACE_INFO1("amdtpsSendAck(), Send to connId = %d\n", pConn->connId);
+        debug_printf("amdtpsSendAck(), Send to connId = %d\n", pConn->connId);
 #endif
         AttsHandleValueNtf(pConn->connId, AMDTPS_ACK_HDL, amdtpsCb.core.ackPkt.len, amdtpsCb.core.ackPkt.data);
 
@@ -282,7 +285,7 @@ amdtpsSendAck(eAmdtpPktType_t type, bool_t encrypted, bool_t enableACK, uint8_t 
 static void
 amdtps_timeout_timer_expired(wsfMsgHdr_t *pMsg)
 {
-    #ifdef BLE_Debug
+    #ifdef AMDTP_DEBUG_ON
         debug_print(__func__, __FILE__, __LINE__);
     #endif
 
@@ -290,14 +293,16 @@ amdtps_timeout_timer_expired(wsfMsgHdr_t *pMsg)
     if (AppConnIsOpen() == DM_CONN_ID_NONE)
     {
 #ifdef AMDTP_DEBUG_ON
-        debug_printf(" not connected\n");
+        debug_printf("not connected\n");
+        debug_printf("amdtps tx timeout, txPktSn = %d", amdtpsCb.core.txPktSn);
 #endif
         return;
     }
     uint8_t data[1];
     data[0] = amdtpsCb.core.txPktSn;    // include serial number of time out
-    APP_TRACE_INFO1("amdtps tx timeout, txPktSn = %d", amdtpsCb.core.txPktSn);
+    
     AmdtpSendControl(&amdtpsCb.core, AMDTP_CONTROL_RESEND_REQ, data, 1); // let the client reset
+    
     // fire a timer for receiving an AMDTP_STATUS_RESEND_REPLY ACK
     WsfTimerStartMs(&amdtpsCb.core.timeoutTimer, amdtpsCb.core.txTimeoutMs);
 }
@@ -316,11 +321,11 @@ amdtps_timeout_timer_expired(wsfMsgHdr_t *pMsg)
 static void
 amdtpsHandleValueCnf(attEvt_t *pMsg)
 {
-    #ifdef BLE_Debug
+    #ifdef AMDTP_DEBUG_ON
         debug_print(__func__, __FILE__, __LINE__);
     #endif
 
-    //APP_TRACE_INFO2("Cnf status = %d, handle = 0x%x\n", pMsg->hdr.status, pMsg->handle);
+    //debug_printf("Cnf status = %d, handle = 0x%x\n", pMsg->hdr.status, pMsg->handle);
     if (pMsg->hdr.status == ATT_SUCCESS)
     {
 #if !defined(AMDTPS_RXONLY) && !defined(AMDTPS_RX2TX)
@@ -344,29 +349,9 @@ amdtpsHandleValueCnf(attEvt_t *pMsg)
     }
     else
     {
-#if 0 //def AMDTPS_TXTEST
-        // workround for ATT timeout issue
-        /* Connection control block */
-        typedef struct
-        {
-
-          wsfQueue_t        prepWriteQueue;     /* prepare write queue */
-          wsfTimer_t        idleTimer;          /* service discovery idle timer */
-          uint16_t          handle;             /* connection handle */
-          uint16_t          mtu;                /* connection mtu */
-          dmConnId_t        connId;             /* DM connection ID */
-          bool_t            mtuSent;            /* MTU req or rsp sent */
-          bool_t            flowDisabled;       /* Data flow disabled */
-          bool_t            transTimedOut;      /* ATT transaction timed out */
-        } attCcb_t;
-        extern attCcb_t *attCcbByConnId(dmConnId_t connId);
-        if (pMsg->hdr.status == 0x71)
-        {
-            attCcb_t *ccb = attCcbByConnId(1);
-            ccb->transTimedOut = FALSE;
-        }
+#ifdef AMDTP_DEBUG_ON      
+        debug_printf("cnf failure  status = %d, hdl = 0x%x\n", pMsg->hdr.status, pMsg->handle);
 #endif
-        APP_TRACE_WARN2("cnf status = %d, hdl = 0x%x\n", pMsg->hdr.status, pMsg->handle);
     }
 }
 
@@ -383,7 +368,7 @@ amdtpsHandleValueCnf(attEvt_t *pMsg)
 void
 amdtps_init(wsfHandlerId_t handlerId, AmdtpsCfg_t *pCfg, amdtpRecvCback_t recvCback, amdtpTransCback_t transCback)
 {
-    #ifdef BLE_Debug
+    #ifdef AMDTP_DEBUG_ON
         debug_print(__func__, __FILE__, __LINE__);
     #endif
 
@@ -422,7 +407,7 @@ amdtps_init(wsfHandlerId_t handlerId, AmdtpsCfg_t *pCfg, amdtpRecvCback_t recvCb
 static void
 amdtps_conn_close(dmEvt_t *pMsg)
 {
-    #ifdef BLE_Debug
+    #ifdef AMDTP_DEBUG_ON
         debug_print(__func__, __FILE__, __LINE__);
     #endif
 
@@ -442,11 +427,12 @@ amdtps_conn_close(dmEvt_t *pMsg)
     resetPkt(&amdtpsCb.core.ackPkt);
 
 #if defined(AMDTPS_RXONLY) || defined(AMDTPS_RX2TX)
-    APP_TRACE_INFO1("*** RECEIVED TOTAL %d ***", totalLen);
+    #ifdef AMDTP_DEBUG_ON
+     debug_printf("*** RECEIVED TOTAL %d ***", totalLen);
+    #endif
     totalLen = 0;
 #endif
-    //am_hal_gpio_output_clear(19);  //KHE
-    //am_hal_gpio_output_clear(37);  //KHE
+
 }
 /* call back for amdtps write back
  * so when something is written to this device
@@ -455,14 +441,14 @@ uint8_t
 amdtps_write_cback(dmConnId_t connId, uint16_t handle, uint8_t operation,
                    uint16_t offset, uint16_t len, uint8_t *pValue, attsAttr_t *pAttr)
 {
-    #ifdef BLE_Debug
+    #ifdef AMDTP_DEBUG_ON
         debug_print(__func__, __FILE__, __LINE__);
     #endif
 
     eAmdtpStatus_t status = AMDTP_STATUS_UNKNOWN_ERROR;
     amdtpPacket_t *pkt = NULL;
 
-#if BLE_SHOW_DATA       // debug info
+#ifdef BLE_SHOW_DATA       // debug info
     debug_printf("============= data arrived start ===============\n");
     for (uint16_t i = 0; i < len; i++) debug_printf("0x%x ", pValue[i]);
     debug_printf("\n============= data arrived end ===============\n");
@@ -477,7 +463,9 @@ amdtps_write_cback(dmConnId_t connId, uint16_t handle, uint8_t operation,
 
 #if defined(AMDTPS_RXONLY) || defined(AMDTPS_RX2TX)         // only count totals
         totalLen += len;
-        debug_printf("received data len %d, total %d", len, totalLen);
+         #ifdef AMDTP_DEBUG_ON
+             debug_print("received data len %d, total %d", len, totalLen);
+         #endif
         return ATT_SUCCESS;
 #else // RXONLY && RX2TX                                    // do something with the received packet
         status = AmdtpReceivePkt(&amdtpsCb.core, &amdtpsCb.core.rxPkt, len, pValue);
@@ -508,7 +496,7 @@ amdtps_write_cback(dmConnId_t connId, uint16_t handle, uint8_t operation,
 void
 amdtps_start(dmConnId_t connId, uint8_t timerEvt, uint8_t amdtpCccIdx)
 {
-    #ifdef BLE_Debug
+    #ifdef AMDTP_DEBUG_ON
         debug_print(__func__, __FILE__, __LINE__);
     #endif
     //
@@ -522,13 +510,15 @@ amdtps_start(dmConnId_t connId, uint8_t timerEvt, uint8_t amdtpCccIdx)
     amdtpsCb.txReady = true;
 
     amdtpsCb.core.attMtuSize = AttGetMtu(connId);
-    APP_TRACE_INFO1("MTU size = %d bytes", amdtpsCb.core.attMtuSize);
+#ifdef AMDTP_DEBUG_ON 
+    debug_printf("MTU size = %d bytes", amdtpsCb.core.attMtuSize);
+#endif
 }
 
 void
 amdtps_stop(dmConnId_t connId)
 {
-    #ifdef BLE_Debug
+    #ifdef AMDTP_DEBUG_ON
         debug_print(__func__, __FILE__, __LINE__);
     #endif
     //
@@ -541,13 +531,12 @@ amdtps_stop(dmConnId_t connId)
     amdtpsCb.txReady = false;
 }
 
-
 void
 amdtps_proc_msg(wsfMsgHdr_t *pMsg)
 {
-    #ifdef BLE_Debug
-        debug_print(__func__, __FILE__, __LINE__);
-    #endif
+#ifdef AMDTP_DEBUG_ON
+    debug_print(__func__, __FILE__, __LINE__);
+#endif
     if (pMsg->event == DM_CONN_OPEN_IND)            /*! Connection opened */
     {
         amdtps_conn_open((dmEvt_t *) pMsg); // info only
@@ -586,16 +575,18 @@ amdtps_proc_msg(wsfMsgHdr_t *pMsg)
 eAmdtpStatus_t
 AmdtpsSendPacket(eAmdtpPktType_t type, bool_t encrypted, bool_t enableACK, uint8_t *buf, uint16_t len)
 {
-   #ifdef BLE_Debug
+#ifdef AMDTP_DEBUG_ON
     debug_print(__func__, __FILE__, __LINE__);
-   #endif
+#endif
     //
     // Check if ready to send notification
     //
     if ( !amdtpsCb.txReady )
     {
         // set in callback amdtpsHandleValueCnf
-        APP_TRACE_INFO1("data sending failed, not ready for notification.", NULL);
+#ifdef AMDTP_DEBUG_ON
+    debug_print("data sending failed, not ready for notification.", NULL);
+#endif
         return AMDTP_STATUS_TX_NOT_READY;
     }
 
@@ -604,7 +595,9 @@ AmdtpsSendPacket(eAmdtpPktType_t type, bool_t encrypted, bool_t enableACK, uint8
     //
     if ( amdtpsCb.core.txState != AMDTP_STATE_TX_IDLE )
     {
-        APP_TRACE_INFO1("data sending failed, tx state = %d", amdtpsCb.core.txState);
+#ifdef AMDTP_DEBUG_ON
+        debug_printf("data sending failed, tx state = %d", amdtpsCb.core.txState);
+#endif
         return AMDTP_STATUS_BUSY;
     }
 
@@ -613,7 +606,9 @@ AmdtpsSendPacket(eAmdtpPktType_t type, bool_t encrypted, bool_t enableACK, uint8
     //
     if ( len > AMDTP_MAX_PAYLOAD_SIZE )
     {
-        APP_TRACE_INFO1("data sending failed, exceed maximum payload, len = %d.", len);
+#ifdef AMDTP_DEBUG_ON
+        debug_printf("data sending failed, exceed maximum payload, len = %d.", len);
+#endif
         return AMDTP_STATUS_INVALID_PKT_LENGTH;
     }
 
