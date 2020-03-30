@@ -2,10 +2,10 @@
 
 ## ===========================================================
 
-Different examples for the Apollo3 / Artemis processor.
+Different examples for the Apollo3  processor.
 
 ## Getting Started
-In the different folders are different programs with a small readme file
+In the different folders are different programs with a readme file
 
 ## Prerequisites
 Some examples have an optional Bluetooth client that requires
@@ -18,7 +18,7 @@ CHeck the extras directory for client software information
 ## Program usage
 ### Program options
 Please see the description in the top of the sketch
-For the client software use the --help or -h option
+For the Linux client software use the --help or -h option
 
 ## Versioning
 
@@ -33,9 +33,11 @@ For the client software use the --help or -h option
  * batt_temp will read local battery level, temperature and set battery load resistor
  * batt_temp is NOT using the standard analogRead(), but intializes the ADC module it self
 
-### March 2020
+### Version 2.0 / March 2020
  * updated the BLE-amdtp between Apollo3 board and Linux
  * added BLE-amdtp between 2 Apollo3 boards
+ * updated amdtps, amdtpc Apollo3 and amdtpc Linux
+ * tested on Apollo3 version 1.0.30
 
 ## Author
  * Paul van Haastrecht (paulvha@hotmail.com)

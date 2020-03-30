@@ -690,11 +690,7 @@ int main(int argc, char *argv[])
 
     // check for ADC channel
     if (opt_adc_ch) {
-
-        if (validate_adc(opt_adc_ch))
-            opt_adc = TRUE;
-        else
-            opt_adc_ch = 0;
+        opt_adc = TRUE;
     }
 
     // validate read pin

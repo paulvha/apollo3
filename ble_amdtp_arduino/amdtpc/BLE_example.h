@@ -3,9 +3,7 @@
 
 #include "Arduino.h"
 
-#define DEBUG
 #define SERIAL_PORT Serial
-#define BLE_MENU
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>

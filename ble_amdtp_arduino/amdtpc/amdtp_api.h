@@ -50,7 +50,6 @@
 #ifndef AMDTP_API_H
 #define AMDTP_API_H
 
-
 #include "wsf_os.h"
 #include "ble_menu.h"
 #include "bstream.h"
@@ -89,7 +88,6 @@ void AmdtpcStart(void);
 /*************************************************************************************************/
 void AmdtpcHandlerInit(wsfHandlerId_t handlerId);
 
-
 /*************************************************************************************************/
 /*!
  *  \fn     AmdtpcHandler
@@ -108,11 +106,8 @@ void AmdtpcScanStart(void);
 void AmdtpcScanStop(void);
 void AmdtpcConnOpen(uint8_t idx);
 void AmdtpcConnClose();
-void AmdtpcSendTestData(void);
-void AmdtpcSendTestDataStop(void);
-void AmdtpcRequestServerSend(void);
-void AmdtpcRequestServerSendStop(void);
 void get_friendly_name(bdAddr_t addr, char * friendly, uint8_t len);
+
 #ifdef __cplusplus
 };
 #endif

@@ -59,10 +59,15 @@
 #include <stdbool.h>
 #include <stdarg.h>
 
-// enable debug messages for this (extended) sketch
-// In case  there are messages in the "kernel" driver, also make a  change in am_util_debug.h !!
-// add #define AM_DEBUG_PRINTF in top or NOT
+// version number
+#define MAJOR_CLIENTVERSION 2 //new features
+#define MINOR_CLIENTVERSION 0 // bug fixes, better calculation/ layout
 
+/* enable debug messages for this (extended) sketch
+ *  
+ * In case  there are messages in the "kernel" driver, also make a  change in am_util_debug.h !!
+ * add #define AM_DEBUG_PRINTF in top or NOT
+ */
 //#define AM_DEBUG_PRINTF
 
 
@@ -72,7 +77,6 @@
 
 // maximum data from keyboard input
 #define RXDATALEN 50
-
 
 #ifdef __cplusplus
 extern "C"

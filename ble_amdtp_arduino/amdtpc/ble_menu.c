@@ -94,6 +94,7 @@ char amdtpMenuContent[AMDTP_MENU_MAX_ENTRIES][64] = {
     "13. Request digital pin level",
     "14. Set digital pin High",
     "15. Set digital pin Low",
+    "30. Request server version number",
     ""
 };
 
@@ -296,6 +297,7 @@ void handleNotification()
   {
     case NOT_CONN_OPENED:
       am_menu_printf("Connection opened\r\n");
+      AmdtpcSendCmd(AMDTP_CMD_VERSION, NULL, 0);  //request and display versionnumber
       bleMenuCb.menuId = BLE_MENU_ID_MAIN;
       BleMenuShowMenu();
       break;

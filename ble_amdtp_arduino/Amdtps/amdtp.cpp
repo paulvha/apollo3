@@ -1,4 +1,4 @@
-#include "BLE_amdtp.h"
+#include "amdtp.h"
 
 extern "C" void set_adv_name( const char* str );
 void setAdvName(const char* str){
@@ -90,7 +90,7 @@ void exactle_stack_init(void){
     handlerId = WsfOsSetNextHandler(L2cSlaveHandler);
     L2cSlaveHandlerInit(handlerId);
     L2cInit();
-    //L2cSlaveInit(); needed ???????????????????????????????//
+    L2cSlaveInit();
 
     handlerId = WsfOsSetNextHandler(AttHandler);
     AttHandlerInit(handlerId);
@@ -178,8 +178,7 @@ update_scheduler_timers(void)
     //
     ui32ElapsedTime = (ui32CurrentTime >= g_ui32LastTime ?
                        (ui32CurrentTime - g_ui32LastTime) :
-                       CLK_TICKS_PER_WSF_TICKS + 1 );   // pvh
-                      // (0x10000 + ui32CurrentTime - g_ui32LastTime));
+                       CLK_TICKS_PER_WSF_TICKS + 1 ); 
 
     //
     // Check to see if any WSF ticks need to happen.
@@ -242,7 +241,7 @@ set_next_wakeup(void)
 //*****************************************************************************
 //
 // Interrupt handler for the CTIMERs
-// This is a safety guard only in case the loop() in the sketch is not serviced 
+// This is a safety guard only in case the loop() in the sketch is not serviced
 // for a longer time and as such the timer is running out.
 //*****************************************************************************
 extern "C" void radio_timer_handler(void){

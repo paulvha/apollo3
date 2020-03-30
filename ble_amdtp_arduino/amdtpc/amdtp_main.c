@@ -81,19 +81,18 @@
 Macros
 **************************************************************************************************/
 
-
 // enable debug for this file
 #ifdef AM_DEBUG_PRINTF
-#define AMDTP_MAIN_DEBUG_ON
+#define AMDTP_MAIN_DEBUG
 #endif
 
 // does the driver support security ?
-#ifdef APP_DISC_READ_DATABASE_HASH
+#ifdef ATT_UUID_DATABASE_HASH
 #define SECURITYENABLED
 #endif
 
 /*! WSF message event starting value */
-#define AMDTP_MSG_START               0xA0
+#define AMDTP_MSG_START       0xA0
 
 /*! WSF message event enumeration */
 enum
@@ -131,7 +130,6 @@ typedef struct
 
 amdtpcConnInfo_t amdtpcConnInfo;
 
-
 // store names scan discovered devices
 #define DEVICENAMELEN 30
 #define MAXDEVICEINFO 5
@@ -143,7 +141,6 @@ struct
 
 // keep track of entries
 int infocnt = 0;
-
 
 /**************************************************************************************************
   Configurable Parameters
@@ -289,12 +286,10 @@ static const attcDiscCfg_t amdtpcDiscCfgList[] =
 /* sanity check:  make sure configuration list length is <= handle list length */
 //WSF_ASSERT(AMDTPC_DISC_CFG_LIST_LEN <= AMDTPC_DISC_HDL_LIST_LEN);
 
-// for Throughput
+// for Throughput mesaurement (can be enable or disabled by client)
 wsfTimer_t measTpTimer;
 int gTotalDataBytesRecev = 0;
 bool measTpStarted = false;
-
-
 
 /*************************************************************************************************/
 /*!
@@ -315,8 +310,13 @@ static void amdtpcDmCback(dmEvt_t *pDmEvt)
 
   if (pDmEvt->hdr.event == DM_SEC_ECC_KEY_IND)
   {
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
     am_menu_printf("%s  DM_SEC_ECC_KEY_IND\r\n",__func__);
+    am_util_debug_printf("%s end\n",__func__);
+am_util_debug_printf("%s end1\n",__func__);
+am_util_debug_printf("%s end2\n",__func__);
+am_util_debug_printf("%s end3\n",__func__);
+am_util_debug_printf("%s end4\n",__func__);
 #endif
     DmSecSetEccKey(&pDmEvt->eccMsg.data.key);
 
@@ -329,7 +329,7 @@ static void amdtpcDmCback(dmEvt_t *pDmEvt)
   }
   else if (pDmEvt->hdr.event == DM_SEC_CALC_OOB_IND)
   {
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
     am_menu_printf("%s  DM_SEC_CALC_OOB_IND\r\n",__func__);
 #endif
     if (amdtpcOobCfg == NULL)
@@ -349,14 +349,14 @@ static void amdtpcDmCback(dmEvt_t *pDmEvt)
 
     if (pDmEvt->hdr.event == DM_SCAN_REPORT_IND)
     {
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
       am_menu_printf("%s DM_SCAN_REPORT_IND\r\n",__func__);
 #endif
       reportLen = pDmEvt->scanReport.len;
     }
     else
     {
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
       am_menu_printf("%s OTHER REASON\r\n",__func__);
 #endif
       reportLen = 0;
@@ -397,8 +397,8 @@ static void amdtpcAttCback(attEvt_t *pEvt)
     memcpy(pMsg->pValue, pEvt->pValue, pEvt->valueLen);
     WsfMsgSend(amdtpcCb.handlerId, pMsg);
 
-#ifdef AMDTP_MAIN_DEBUG_ON
-    am_menu_printf("%s call back to amptchandler\r\n",__func__);
+#ifdef AMDTP_MAIN_DEBUG
+    am_menu_printf("%s call back to AmdtpcHandler\r\n",__func__);
 #endif
   }
 }
@@ -417,7 +417,7 @@ static void amdtpcAttCback(attEvt_t *pEvt)
 static void amdtpcScanStart(dmEvt_t *pMsg)
 {
 
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
   am_menu_printf("%s: call back started \r\n", __func__);
 #endif
 
@@ -484,11 +484,14 @@ static void amdtpcScanReport(dmEvt_t *pMsg)
   uint8_t *pData, i, j;
   appDbHdl_t dbHdl;
   bool_t  connect = FALSE;
+  char unk[] = "UNKNOWN";
 
-  // set offset to friendly name
+  // set offset to friendly, name indicator and length name
   char *friendly = 30 + (char *) pMsg;
+  uint8_t name_ind = *(29 + (char *) pMsg);
+  uint8_t max_length = *(28 + (char *) pMsg);
 
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
   am_menu_printf("%s %d %s\r\n", __func__, infocnt, friendly);
 #endif
 
@@ -498,12 +501,20 @@ static void amdtpcScanReport(dmEvt_t *pMsg)
   for (j = 0; j < infocnt; j++) {
     if (BdaCmp(scaninfo[j].addr, pMsg->scanReport.addr)) break;
   }
-
+  // copy bluetooth address
   memcpy(scaninfo[j].addr, pMsg->scanReport.addr, sizeof(bdAddr_t));
 
-  for (i = 0; i< DEVICENAMELEN ;i++) {
+  // check for valid name indicator
+  if (name_ind != DM_ADV_TYPE_LOCAL_NAME && name_ind != DM_ADV_TYPE_SHORT_NAME)
+  {
+    friendly = unk;           // set unknown
+    max_length = sizeof(unk);
+  }
+
+  // copy name
+  for (i = 0; i < DEVICENAMELEN && i < max_length ; i++) {
     scaninfo[j].dname[i] = *(friendly + i);
-    if (scaninfo[j].dname[i] == 0x0) break;
+    if (scaninfo[j].dname[i] < 0x20) break;
     //am_menu_printf("%d add %c \r\n", j, scaninfo[j].dname[i]);
   }
 
@@ -517,6 +528,7 @@ static void amdtpcScanReport(dmEvt_t *pMsg)
     if (infocnt < MAXDEVICEINFO ) infocnt++;
   }
 
+  
   /* disregard if not scanning or autoconnecting */
   if (!amdtpcCb.scanning || !amdtpcCb.autoConnect)
   {
@@ -620,13 +632,7 @@ void get_friendly_name(bdAddr_t addr, char * friendly, uint8_t len)
 /*************************************************************************************************/
 static void amdtpcOpen(dmEvt_t *pMsg)
 {
-
-#ifdef BLE_MENU
-    // let menu structure know
-    menuRxDataLen = 0;
-    add_menu_input(NOT_CONN_OPENED);
-    add_menu_input('\r');
-#endif
+    // action moved amdtpc_start AFTER MTU has been agreed.
 }
 
 /*************************************************************************************************/
@@ -697,30 +703,37 @@ void AmdtpcConnOpen(uint8_t idx)
     }
     else
     {
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
         am_menu_printf("AmdtpcConnOpen() devInfo = NULL\r\n");
 #endif 
     }
 }
 
-// close open connection //PVH
+// close open connection
 void AmdtpcConnClose()
 {
     dmConnId_t connId;
 
     if ((connId = AppConnIsOpen()) != DM_CONN_ID_NONE)
     {
+#ifdef AMDTP_MAIN_DEBUG
+    am_menu_printf("%s calling AppConnClose\r\n",__func__);
+#endif
         AppConnClose(connId);
     }
     else
-    {   // perform reset anyway
+    {
+#ifdef AMDTP_MAIN_DEBUG
+    am_menu_printf("%s calling amdtpc_conn_close\r\n",__func__);
+#endif
+        // perform reset anyway
         amdtpc_conn_close(NULL);
     }
 }
 
 void amdtpDtpTransCback(eAmdtpStatus_t status)
 {
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
     am_menu_printf("amdtpDtpTransCback status = %d\r\n", status);
 #endif
     if (status == AMDTP_STATUS_SUCCESS)
@@ -732,7 +745,7 @@ void amdtpDtpTransCback(eAmdtpStatus_t status)
 // call back for received data 
 void amdtpDtpRecvCback(uint8_t * buf, uint16_t len)
 {
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
     am_menu_printf("%s\r\n", __func__);
     am_menu_printf("-----------AMDTP Received data--------------\r\n");
     am_menu_printf("len = %d, buf[0] = %d, buf[1] = %d\r\n", len, buf[0], buf[1]);
@@ -776,7 +789,7 @@ static void amdtpcDiscCback(dmConnId_t connId, uint8_t status)
   switch(status)
   {
     case APP_DISC_INIT:
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
       am_menu_printf("%s APP_DISC_INIT\r\n", __func__);
 #endif
       /* set handle list when initialization requested */
@@ -796,7 +809,7 @@ static void amdtpcDiscCback(dmConnId_t connId, uint8_t status)
 #endif
 
     case APP_DISC_START:
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
       am_menu_printf("################### %s APP_DISC_START\r\n", __func__);
 #endif
       /* initialize discovery state */
@@ -812,7 +825,7 @@ static void amdtpcDiscCback(dmConnId_t connId, uint8_t status)
         /* if discovery failed for proprietary data service then disconnect */
         if (amdtpcCb.discState == AMDTPC_DISC_AMDTP_SVC)
         {
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
           am_menu_printf("%s APP_DISC_FAILED\r\n", __func__);
 #endif
           AppConnClose(connId);
@@ -826,12 +839,12 @@ static void amdtpcDiscCback(dmConnId_t connId, uint8_t status)
       /* next discovery state */
       amdtpcCb.discState++;
       
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
       am_menu_printf("%s discovery complete for phase %d\r\n", __func__, amdtpcCb.discState);
 #endif
       if (amdtpcCb.discState == AMDTPC_DISC_GAP_SVC)
       {
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
         am_menu_printf("################### %s discovery AMDTPC_DISC_GAP_SVC\r\n", __func__);
 #endif
         /* discover GAP service */
@@ -839,7 +852,7 @@ static void amdtpcDiscCback(dmConnId_t connId, uint8_t status)
       }
       else if (amdtpcCb.discState == AMDTPC_DISC_AMDTP_SVC)
       {
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
       am_menu_printf("####################### %s discovery AMDTPC_DISC_AMDTP_SVC\r\n", __func__);
 #endif
         /* discover proprietary data service */
@@ -847,7 +860,7 @@ static void amdtpcDiscCback(dmConnId_t connId, uint8_t status)
       }
       else
       {
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
         am_menu_printf("##################### %s discovery complete\r\n", __func__);
 #endif
         /* discovery complete */
@@ -909,42 +922,42 @@ static void showThroughput(void)
 static void amdtpcProcMsg(dmEvt_t *pMsg)
 {
 
-#ifdef AMDTP_MAIN_DEBUG_ON
-      am_menu_printf("%s ",__func__);
+#ifdef AMDTP_MAIN_DEBUG
+      am_menu_printf("%s event %d ",__func__, pMsg->hdr.event);
 #endif
 
   switch(pMsg->hdr.event)
   {
     case AMDTP_TIMER_IND:
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
       am_menu_printf("AMDTP_TIMER_IND\r\n");
 #endif
       amdtpc_proc_msg(&pMsg->hdr);
       break;
 
     case AMDTP_MEAS_TP_TIMER_IND:
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
       am_menu_printf("AMDTP_MEAS_TP_TIMER_IND\r\n");
 #endif
       if (MEASURE_THROUGHPUT) showThroughput();
       break;
 
     case ATTC_HANDLE_VALUE_NTF:
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
       am_menu_printf("ATTC_HANDLE_VALUE_NTF\r\n");
 #endif
       amdtpc_proc_msg(&pMsg->hdr);
       break;
 
     case ATTC_WRITE_CMD_RSP:
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
       am_menu_printf("ATTC_WRITE_CMD_RSP\r\n");
 #endif
       amdtpc_proc_msg(&pMsg->hdr);
       break;
 
     case DM_RESET_CMPL_IND:
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
       am_menu_printf("DM_RESET_CMPL_IND\r\n");
 #endif
 
@@ -957,66 +970,66 @@ static void amdtpcProcMsg(dmEvt_t *pMsg)
       break;
 
     case DM_SCAN_START_IND:
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
       am_menu_printf("scanning started\r\n");
 #endif
       amdtpcScanStart(pMsg);
       break;
 
     case DM_SCAN_STOP_IND:
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
       am_menu_printf("scanning stop\r\n");
 #endif
       amdtpcScanStop(pMsg);
       break;
 
     case DM_SCAN_REPORT_IND:
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
       am_menu_printf("DM_SCAN_REPORT_IND\r\n");
 #endif
       amdtpcScanReport(pMsg);
       break;
 
     case DM_CONN_OPEN_IND:
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
       am_menu_printf("DM_CONN_OPEN_IND\r\n");
 #endif
       amdtpcOpen(pMsg);
       break;
 
     case DM_CONN_CLOSE_IND:
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
       am_menu_printf("DM_CONN_CLOSE_IND\r\n");
 #endif
       amdtpc_proc_msg(&pMsg->hdr);
       break;
 
     case DM_SEC_PAIR_CMPL_IND:
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
       am_menu_printf("DM_SEC_PAIR_CMPL_IND\r\n");
 #endif
       break;
 
     case DM_SEC_PAIR_FAIL_IND:
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
       am_menu_printf("DM_SEC_PAIR_FAIL_IND\r\n");
 #endif
       break;
 
     case DM_SEC_ENCRYPT_IND:
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
       am_menu_printf("DM_SEC_ENCRYPT_IND\r\n");
 #endif
       break;
 
     case DM_SEC_ENCRYPT_FAIL_IND:
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
       am_menu_printf("DM_SEC_ENCRYPT_FAIL_IND\r\n");
 #endif
       break;
 
     case DM_SEC_AUTH_REQ_IND:
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
       am_menu_printf("DM_SEC_AUTH_REQ_IND\r\n");
 #endif
       if (pMsg->authReq.oob)
@@ -1040,20 +1053,20 @@ static void amdtpcProcMsg(dmEvt_t *pMsg)
       break;
 
     case DM_SEC_COMPARE_IND:
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
       am_menu_printf("DM_SEC_COMPARE_IND\r\n");
 #endif
       AppHandleNumericComparison(&pMsg->cnfInd);
       break;
 
     case DM_ADV_NEW_ADDR_IND:
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
       am_menu_printf("DM_ADV_NEW_ADDR_IND\r\n");
 #endif
       break;
 
     case DM_VENDOR_SPEC_CMD_CMPL_IND:
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
       am_menu_printf("DM_VENDOR_SPEC_CMD_CMPL_IND\r\n");
 #endif
       {
@@ -1087,7 +1100,7 @@ static void amdtpcProcMsg(dmEvt_t *pMsg)
       break;
 
     default:
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
       am_menu_printf(" default\r\n");
 #endif
       break;
@@ -1107,7 +1120,7 @@ static void amdtpcProcMsg(dmEvt_t *pMsg)
 /*************************************************************************************************/
 void AmdtpcHandlerInit(wsfHandlerId_t handlerId)
 {
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
   am_menu_printf("AmdtpcHandlerInit");
 #endif
   /* store handler ID */
@@ -1151,14 +1164,14 @@ void AmdtpcHandler(wsfEventMask_t event, wsfMsgHdr_t *pMsg)
 {
   if (pMsg != NULL)
   {
-#ifdef AMDTP_MAIN_DEBUG_ON
-    am_menu_printf("%s got event %d ",__func__, pMsg->event);
+#ifdef AMDTP_MAIN_DEBUG
+  am_menu_printf("%s got event %d ",__func__, pMsg->event);
 #endif
 
     /* process ATT messages */
     if (pMsg->event <= ATT_CBACK_END)
     {
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
      am_menu_printf("process discovery-related ATT messages \r\n");
 #endif
       /* process discovery-related ATT messages */
@@ -1167,26 +1180,26 @@ void AmdtpcHandler(wsfEventMask_t event, wsfMsgHdr_t *pMsg)
     /* process DM messages */
     else if (pMsg->event <= DM_CBACK_END)
     {
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
     am_menu_printf("process advertising and connection-related messages \r\n");
 #endif
       /* process advertising and connection-related messages */
       AppMasterProcDmMsg((dmEvt_t *) pMsg);
 
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
       am_menu_printf("process security-related messages\r\n");
 #endif
       /* process security-related messages */
       AppMasterSecProcDmMsg((dmEvt_t *) pMsg);
 
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
       am_menu_printf("process discovery-related message (DM)\r\n");
 #endif
       /* process discovery-related messages */
       AppDiscProcDmMsg((dmEvt_t *) pMsg);
     }
 
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
     am_menu_printf("perform profile and user interface-related operations\r\n");
 #endif
     /* perform profile and user interface-related operations */
@@ -1205,7 +1218,7 @@ void AmdtpcHandler(wsfEventMask_t event, wsfMsgHdr_t *pMsg)
 /*************************************************************************************************/
 void AmdtpcStart(void)
 {
-#ifdef AMDTP_MAIN_DEBUG_ON
+#ifdef AMDTP_MAIN_DEBUG
    am_menu_printf("%s: Register Stack Callbacks...\r\n", __func__);
 #endif
   /* Register for stack callbacks */

@@ -62,7 +62,7 @@
 
 // enable debug for this file
 #ifdef AM_DEBUG_PRINTF
-#define AMDTP_COMMON_ON 
+#define AMDTP_COMMON_DEBUG 
 #endif 
 
 void
@@ -72,7 +72,11 @@ resetPkt(amdtpPacket_t *pkt)
     pkt->header.pktType = AMDTP_PKT_TYPE_UNKNOWN;
     pkt->len = 0;
 }
-
+//*****************************************************************************
+//
+// Receive a complete packet
+//
+//*****************************************************************************
 eAmdtpStatus_t
 AmdtpReceivePkt(amdtpCb_t *amdtpCb, amdtpPacket_t *pkt, uint16_t len, uint8_t *pValue)
 {
@@ -82,7 +86,7 @@ AmdtpReceivePkt(amdtpCb_t *amdtpCb, amdtpPacket_t *pkt, uint16_t len, uint8_t *p
 
   if (pkt->offset == 0 && len < AMDTP_PREFIX_SIZE_IN_PKT)
   {
-#ifdef AMDTP_COMMON_ON 
+#ifdef AMDTP_COMMON_DEBUG 
       am_menu_printf("Invalid packet!!!");
 #endif
       AmdtpSendReply(amdtpCb, AMDTP_STATUS_INVALID_PKT_LENGTH, NULL, 0);
@@ -103,7 +107,7 @@ AmdtpReceivePkt(amdtpCb_t *amdtpCb, amdtpPacket_t *pkt, uint16_t len, uint8_t *p
       {
           amdtpCb->rxState = AMDTP_STATE_GETTING_DATA;
       }
-#ifdef AMDTP_COMMON_ON
+#ifdef AMDTP_COMMON_DEBUG
       am_menu_printf("pkt len = 0x%x ", pkt->len);
       am_menu_printf("pkt header = 0x%x", header);
 
@@ -115,7 +119,7 @@ AmdtpReceivePkt(amdtpCb_t *amdtpCb, amdtpPacket_t *pkt, uint16_t len, uint8_t *p
   // make sure we have enough space for new data
   if (pkt->offset + len - dataIdx > AMDTP_PACKET_SIZE)
   {
-#ifdef AMDTP_COMMON_ON
+#ifdef AMDTP_COMMON_DEBUG
       am_menu_printf("not enough buffer size!!!\n");
 #endif
       if (pkt->header.pktType == AMDTP_PKT_TYPE_DATA)
@@ -145,7 +149,7 @@ AmdtpReceivePkt(amdtpCb_t *amdtpCb, amdtpPacket_t *pkt, uint16_t len, uint8_t *p
 
       if (peerCrc != calDataCrc)
       {
-#ifdef AMDTP_COMMON_ON
+#ifdef AMDTP_COMMON_DEBUG
           am_menu_printf("crc error\n");
           am_menu_printf("calDataCrc: 0x%X, peerCrc: 0x%X, len: %d", calDataCrc, peerCrc, pkt->len);
 #endif
@@ -169,7 +173,7 @@ AmdtpReceivePkt(amdtpCb_t *amdtpCb, amdtpPacket_t *pkt, uint16_t len, uint8_t *p
 
 //*****************************************************************************
 //
-// AMDTP packet handler
+// AMDTP received packet handler. Interprete the complete received packet
 //
 //*****************************************************************************
 void
@@ -239,7 +243,7 @@ AmdtpPacketHandler(amdtpCb_t *amdtpCb, eAmdtpPktType_t type, uint16_t len, uint8
       uint8_t resendPktSn = buf[1];
       if (control == AMDTP_CONTROL_RESEND_REQ)
       {
-#ifdef AMDTP_COMMON_ON        
+#ifdef AMDTP_COMMON_DEBUG        
         am_menu_printf("Control packet : resendPktSn = %d, lastRxPktSn = %d", resendPktSn, amdtpCb->lastRxPktSn);
 #endif       
         amdtpCb->rxState = AMDTP_STATE_RX_IDLE;
@@ -255,7 +259,7 @@ AmdtpPacketHandler(amdtpCb_t *amdtpCb, eAmdtpPktType_t type, uint16_t len, uint8
      }
      else
      {
-#ifdef AMDTP_COMMON_ON 
+#ifdef AMDTP_COMMON_DEBUG 
         am_menu_printf("unexpected contrl request = %d\n", control);
 #endif
      }
@@ -268,6 +272,11 @@ AmdtpPacketHandler(amdtpCb_t *amdtpCb, eAmdtpPktType_t type, uint16_t len, uint8
   }
 }
 
+//*****************************************************************************
+//
+// Build packet to sent
+//
+//*****************************************************************************
 void
 AmdtpBuildPkt(amdtpCb_t *amdtpCb, eAmdtpPktType_t type, bool_t encrypted, bool_t enableACK, uint8_t *buf, uint16_t len)
 {
@@ -338,7 +347,7 @@ AmdtpSendReply(amdtpCb_t *amdtpCb, eAmdtpStatus_t status, uint8_t *data, uint16_
   st = amdtpCb->ack_sender_func(AMDTP_PKT_TYPE_ACK, false, false, buf, len + 1);
   if (st != AMDTP_STATUS_SUCCESS)
   {
-#ifdef AMDTP_COMMON_ON 
+#ifdef AMDTP_COMMON_DEBUG 
         am_menu_printf("AmdtpSendReply status = %d\n", st);
 #endif
   }
@@ -365,12 +374,16 @@ AmdtpSendControl(amdtpCb_t *amdtpCb, eAmdtpControl_t control, uint8_t *data, uin
   st = amdtpCb->ack_sender_func(AMDTP_PKT_TYPE_CONTROL, false, false, buf, len + 1);
   if (st != AMDTP_STATUS_SUCCESS)
   {
-#ifdef AMDTP_COMMON_ON 
+#ifdef AMDTP_COMMON_DEBUG 
     am_menu_printf("AmdtpSendControl status = %d\n", st);
 #endif
   }
 }
-
+//*****************************************************************************
+//
+// Send packet to client
+//
+//*****************************************************************************
 void
 AmdtpSendPacketHandler(amdtpCb_t *amdtpCb)
 {

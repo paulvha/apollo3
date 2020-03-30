@@ -7,37 +7,56 @@
   ***********************************************************************************
   paulvha/ February 2020 / version 1.0
    *initial version
- 
+
   paulvha / February 2020 / version 1.1
   * updated timer handling
 
-  paulvha / March 2020 / version 1.2
+  paulvha / March 2020 / version 2.1
   * updated to handle security / hashing (auto detect)
+  * added major/minor version number request/response
+  * update to sent float number for temperature values and battery level
+  * changed names of some files
+  * changed the internal temperature calculation
+  * change ADC pin request handling
+  * 
   ************************************************************************************
 
-  Based on the original sample (see below) this example will allow data exchange between 
-  Linux system running amdtp-service on Bluez. The client will take the initiative to 
+  Based on the original sample (see below) this example will allow data exchange between
+  Linux system running amdtp-service on Bluez. The client will take the initiative to
   sent a request/command which this server will handle and respond back to the client.
 
   Optional support for BME280 connected to 'qwuic' interface. You have to UNCOMMENT
-  the line 76. 
-  The has been tested with an Adafruit BME280. Parts of the code below are coming from 
-  Sparkfun BME280 library. The expected I2C address is 0x77.
+  the line 103 !!!!!!!!!!!!!!!!!!!!.
+  This has been tested with an Adafruit BME280. Parts of the code below are coming from
+  Sparkfun BME280 library: https://github.com/sparkfun/SparkFun_BME280_Arduino_Library
+  The expected I2C address is 0x77.
 
-    BMW280      QWUIC
+    BME280      QWUIC
     GND         GND
     VCC         3V3
     SCK         SCL
     SDI         SDA
 
   There are different DEBUG levels that can be set in ble_debug.h
-  
+
   BLE_Debug : will show all the data and program flow
   BLE_SHOW_DATA : will only show the data received and sent
 
-  Make sure to installed the amdtc-client on linux system ( e.g. Raspberry Pi) or use the
+  Make sure to installed the amdtpc-client on linux system ( e.g. Raspberry Pi) or use the
   Artemis client amdtpc
-   
+
+  // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  // IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+  // ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+  // LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+  // CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+  // SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+  // INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+  // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+  // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+  // POSSIBILITY OF SUCH DAMAGE.
+
   *************** original heading ******************************
   This example demonstrates basic BLE server (peripheral) functionality for the Apollo3 boards.
   How to use this example:
@@ -61,46 +80,49 @@
     - When you send either '0x01' or '0x02' the LED will be set to on
 */
 
-#include "BLE_amdtp.h"
+#include "amdtp.h"
 #include "apollo3.h"                  // needed for battery load resistor
 
 // Up to 29 characters
-#define BLE_PERIPHERAL_NAME "Artemis AMDTP BLE" 
+#define BLE_PERIPHERAL_NAME "Artemis AMDTP BLE"
+
+// Server version
+#define MAJOR_SERVERVERSION 2         // new features implemented that require update to client
+#define MINOR_SERVERVERSION 0         // bug fixes, better calculation / layout
 
 // maximum length of reply / data message
 #define MAXREPLY 100
 
+// temperature offset correction (see odt document for information)
+// SET TO ZERO TO DISABLE !!!
+#define TempOffset 0.0
+
 /////////////////////////////////////////////////////////////////////////////
 // include BME280 as option, REMOVE the comments to include
 ////////////////////////////////////////////////////////////////////////////
-#define INCLUDE_BME280 
+//#define INCLUDE_BME280
 
 #ifdef INCLUDE_BME280
 
-  // sent Altitude in meters (true) or feet (false)
+  // sent altitude in meters (true) or feet (false)
   bool ALTM = true;
 
   // sent temperature in Celsius (true) or Fahrenheit (false)
   bool TEMPC = true;
+  
 /////////////////////////////////////////////////////////////////////
 //
 //  NO NEED FOR CHANGES AFTER THIS POINT
 //
 ////////////////////////////////////////////////////////////////////
-  
+
   #include <Wire.h>
   #include "SparkFunBME280.h"
   BME280 mySensor;
 
-  /* needed for conversion float IEE754 */
-  typedef union {
-      byte array[4];
-      float value;
-  } ByteToFloat;
-
-  // indicator BME280 detected 
+  // indicator BME280 detected
   bool BmeDetected = false;
-  
+
 #endif // INCLUDE_BME280
 
 // buffer to reply to client
@@ -114,22 +136,27 @@ uint16_t TestCounter = 0;
 // for chat
 bool opt_chat = false;
 
+// trim values (see chapter 6 in amdtps_arduino.odt in extras folder!)
+bool  bMeasured;
+float fCalibrationTemperature;
+float fCalibrationVoltage;
+float fCalibrationOffset; 
 /***********************************************************************/
 void setup() {
 
 #ifdef BLE_SHOW_DATA
-    SERIAL_PORT.begin(115200);
-    delay(1000);
-    SERIAL_PORT.printf("Apollo3 BLE AMDTP protocol. Compiled: %s\n", __TIME__);
+  SERIAL_PORT.begin(115200);
+  delay(1000);
+  SERIAL_PORT.printf("Apollo3 BLE AMDTP protocol. Compiled: %s\n", __TIME__);
 #endif
 
 #ifdef AM_DEBUG_PRINTF
- //
+  //
   // Enable printing to the console.
   //
   enable_print_interface();
 #endif
-  
+
 #ifdef INCLUDE_BME280
   Wire.begin();
 
@@ -146,11 +173,24 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   set_led_low();
 
+  // get ADC information
+  if (! GetAdc() ){
+#ifdef BLE_SHOW_DATA
+    Serial.println("Could not initialize ADC. on Hold");
+#endif
+    while(1){
+      set_led_high();
+      delay(1000);
+      set_led_low();
+      delay(1000);
+    }
+  }
+
   //
   // Configure the peripheral's advertised name:
   //
   setAdvName(BLE_PERIPHERAL_NAME);
-  
+
   //
   // Boot the radio.
   //
@@ -172,10 +212,10 @@ void loop() {
   // if in chat mode
   //
   if (opt_chat) chat();
-  
+
   trigger_timers();
 
-    am_hal_interrupt_master_disable();
+  am_hal_interrupt_master_disable();
 
   //
   // Check to see if the WSF routines are ready to go to sleep.
@@ -188,7 +228,7 @@ void loop() {
   am_hal_interrupt_master_enable();
 }
 
-/* 
+/*
  * This routine wl update the WSF timers on a regular base
  */
 
@@ -207,35 +247,37 @@ void trigger_timers()
   set_next_wakeup();
 }
 
-/* 
+/*
  * This routine is called when data / cmd has been received from the client
- * 
+ *
  * The case-values (like AMDTP_CMD_HELLO) needs to stay in sync with
  * the eAmdtpPktcmd_t definitions in BLE_amdtp.h
  */
 
 void UserRequestReceived(uint8_t * buf, uint16_t len)
 {
-    #ifdef BLE_SHOW_DATA
+#ifdef BLE_SHOW_DATA
       SERIAL_PORT.printf("received command with length %d : ", len);
       for (uint16_t i = 0 ; i< len ; i++) SERIAL_PORT.printf("0x%X ", buf[i]);
       SERIAL_PORT.println();
-    #endif
-    
+#endif
+
     uint16_t value;
+    int16_t ival;
+    float fval;
     val[0] = buf[0];    // echo requested command
     *val_len = 0;       // set for zero optional data
     val_data = &val[2]; // set start of optional data
-    
+
     trigger_timers();
-    
+
     switch (buf[0]) {
 
       case AMDTP_CMD_START_TEST_DATA:
         #ifdef BLE_SHOW_DATA
             SERIAL_PORT.println("Send test data");
         #endif
-        
+
         send_test_data();
         break;
 
@@ -243,10 +285,10 @@ void UserRequestReceived(uint8_t * buf, uint16_t len)
         #ifdef BLE_SHOW_DATA
             SERIAL_PORT.println("Stop test data");
         #endif
-        
+
         rest_test_data();
         break;
-        
+
       case AMDTP_CMD_HELLO:
 
         #ifdef BLE_SHOW_DATA
@@ -279,67 +321,67 @@ void UserRequestReceived(uint8_t * buf, uint16_t len)
         #endif
 
         // read battery percentage
-        *val_data = read_battery_perc();
-        *val_len = 1;
+        fval = read_battery_perc();
+        float_to_byte(fval, val_data);
+        *val_len = 4;
+
         break;
-        
+
       case AMDTP_CMD_REQ_BATTERYLOAD_ON:
-        
+
         #ifdef BLE_SHOW_DATA
             SERIAL_PORT.println("set Batteryload");
         #endif
-        
-        MCUCTRL->ADCBATTLOAD_b.BATTLOAD = 1;              
+
+        MCUCTRL->ADCBATTLOAD_b.BATTLOAD = 1;
         break;
-        
+
       case AMDTP_CMD_REQ_BATTERYLOAD_OFF:
-        
+
         #ifdef BLE_SHOW_DATA
             SERIAL_PORT.println("remove Batteryload");
-        #endif  
-        
-        MCUCTRL->ADCBATTLOAD_b.BATTLOAD = 0;      
+        #endif
+
+        MCUCTRL->ADCBATTLOAD_b.BATTLOAD = 0;
         break;
-        
+
       case AMDTP_CMD_REQ_INTERNAL_TEMP_FRH:
 
         #ifdef BLE_SHOW_DATA
             SERIAL_PORT.println("Read internal temperature in Fahrenheit");
         #endif
-        
-        // read internal temperature
-        value = read_Internal_temp(1);
-        *val_data++ = value >> 8;    // MSB
-        *val_data = value & 0xff;  // LSB
 
-        *val_len = 2;
+        // read internal temperature
+        fval = read_Internal_temp(1);
+        float_to_byte(fval, val_data);
+        *val_len = 4;
         break;
 
       case AMDTP_CMD_REQ_INTERNAL_TEMP_CEL:
-        
+
         #ifdef BLE_SHOW_DATA
             SERIAL_PORT.println("Read internal temperature in Celsius");
         #endif
 
         // read internal temp
-        value = read_Internal_temp(2);
-        *val_data++ = value >> 8;    // MSB
-        *val_data = value & 0xff;  // LSB
+        fval = read_Internal_temp(2);
+        float_to_byte(fval, val_data);
+        *val_len = 4;
 
-        *val_len = 2;
         break;
 
       case AMDTP_CMD_ADC:
-         
+
         #ifdef BLE_SHOW_DATA
-            SERIAL_PORT.print("Read ADC channel :");
+            SERIAL_PORT.print("Read ADC pin :");
             SERIAL_PORT.println(buf[1]);
         #endif
 
-        value = analogRead(buf[1]);
+        ival = read_analog_value(buf[1]);
         *val_data++ = buf[1];       // ADC channel read
-        *val_data++ = value >> 8;   // MSB
-        *val_data = value & 0xff;   // LSB   
+        *val_data++ = ival >> 8;   // MSB
+        *val_data = ival & 0xff;   // LSB   
+        *val_len = 3;
 
         *val_len = 3;
         break;
@@ -349,14 +391,14 @@ void UserRequestReceived(uint8_t * buf, uint16_t len)
         #ifdef BLE_SHOW_DATA
             SERIAL_PORT.print("Chat");
         #endif
-        
+
         // if not started already, do it now
         SERIAL_PORT.begin(115200);
-        
+
         // display received message
         Serial.print("\n<<<<< ");
         Serial.println((char *) &buf[1]);
-        
+
         // if received BYE stop chat and echo back
         // else chat a new line.
         if (len == 5) {
@@ -378,82 +420,93 @@ void UserRequestReceived(uint8_t * buf, uint16_t len)
             SERIAL_PORT.print("Digital read pin: ");
             SERIAL_PORT.println(buf[1]);
         #endif
-        
+
         *val_data++ = buf[1];     // pin read
         *val_data++ = digitalRead(buf[1]);
 
         *val_len = 2;
         break;
-      
+
       case AMDTP_CMD_PIN_HIGH:
-         
+
         #ifdef BLE_SHOW_DATA
             SERIAL_PORT.print("Set HIGH digital pin: ");
             SERIAL_PORT.println(buf[1]);
         #endif
 
-        *val_data++ = buf[1];     // pin 
+        *val_data++ = buf[1];     // pin
         *val_len = 1;
-        
+
         pinMode(buf[1], OUTPUT);
         digitalWrite(buf[1], HIGH);
         break;
 
       case AMDTP_CMD_PIN_LOW:
-         
+
         #ifdef BLE_SHOW_DATA
             SERIAL_PORT.print("Set LOW digital pin: ");
             SERIAL_PORT.println(buf[1]);
         #endif
 
-        *val_data++ = buf[1];     // pin 
+        *val_data++ = buf[1];     // pin
         *val_len = 1;
-        
+
         pinMode(buf[1], OUTPUT);
         digitalWrite(buf[1], LOW);
         break;
 
       case AMDTP_CMD_BME280:
-     
+
 #ifdef INCLUDE_BME280
 
-        // if detected 
+        // if detected
         if (BmeDetected) {
-        
+
           #ifdef BLE_SHOW_DATA
             SERIAL_PORT.println("Read BME280");
           #endif
-        
+
           Read_BME280();
         }
         else {  //length is zero to be detected by client
-          
+
           #ifdef BLE_SHOW_DATA
             SERIAL_PORT.println("Read BME280: NOT DETECTED");
-          #endif         
+          #endif
         }
 #else
-        #ifdef BLE_SHOW_DATA
+        #ifdef BLE_SHOW_DATA  //length is zero to be detected by client
             SERIAL_PORT.println("Read BME280: NOT ENABLED");
-        #endif      
- 
+        #endif
+
 #endif //INCLUDE_BME280
+        break;
+
+     case AMDTP_CMD_VERSION:
+        
+        #ifdef BLE_SHOW_DATA
+            SERIAL_PORT.println("Request Server Version");
+        #endif
+
+        *val_data++ = MAJOR_SERVERVERSION;
+        *val_data++ = MINOR_SERVERVERSION;
+
+        *val_len = 2;
         break;
         
      case AMDTP_CMD_CUSTOM1:      // repeat for other options
-         
+
         #ifdef BLE_SHOW_DATA
             SERIAL_PORT.println("AMDTP_CMD_CUSTOM1");
         #endif
 
         // Do something here....
         break;
-        
+
      default:
         #ifdef BLE_SHOW_DATA
-            SERIAL_PORT.print("Unknown request : 0x");
-            SERIAL_PORT.println(buf[0], HEX);
-        #endif  
+            SERIAL_PORT.printf("Unknown request : 0x%x", buf[0] );
+        #endif
         val[0] = 0;             // indicate no defined action for this request
         break;
     }
@@ -461,20 +514,56 @@ void UserRequestReceived(uint8_t * buf, uint16_t len)
     SendReplyClient();
 }
 
+
+/**
+ * perform a read on analog pin
+ *
+ * Tested on 1.0.30 software for the Apollo. There is an issue in
+ * analogRead when providing a pin number that is not supporting analog.
+ * This has been raised as issue (& solution )143 on github
+ * Pending resolution in the final code a valid check on the pin is
+ * performed here to prevent a deadlock.
+ *
+ * Return : -1 in case of invalid ADC PIN for this server baord else analog value
+ *
+ */
+
+int16_t read_analog_value(uint8_t pinNumber)
+{
+    if (pinNumber > 49) return -1;
+    
+    // validate for correct analog pin
+    uint8_t padNumber = ap3_gpio_pin2pad(pinNumber);
+    
+#ifdef BLE_SHOW_DATA
+  SERIAL_PORT.printf("pinnumber: %d, padnumber: %d\r\n", pinNumber, padNumber);
+#endif
+    uint8_t indi;
+    for ( indi = 0;indi < AP3_ANALOG_CHANNELS ; indi++)
+    {
+        if (ap3_analog_configure_map[indi].pad == padNumber){
+             return (int16_t) analogRead(pinNumber);
+        }
+    }
+
+    // error
+    return -1;
+}
+
 /**
  * perform a simple chat
- * 
+ *
  * Will capture a line of data and terminate with 0x0 on CR of NL.
  * Typing:  BYE will cause end of chat
- * 
+ *
  */
 void chat()
 {
   if (Serial.available()) {
- 
+
     *val_data = Serial.read();
     *val_len += 1;
-    
+
     if (*val_data == 0x0d || *val_data == 0x0a){
         *val_data = 0x0;
         Serial.println((char *) &val[2]); // display on local screen
@@ -507,7 +596,7 @@ void send_test_data()
  *val_data = TestCounter;        // LSB
 
  *val_len = 8;
- 
+
  TestCounter++;
 }
 
@@ -516,7 +605,6 @@ void rest_test_data()
   TestCounter = 0;
 }
 
-#ifdef INCLUDE_BME280
 /**
  * @brief : translate float IEEE754 to val[x]
  * @param value : float value to add
@@ -530,6 +618,9 @@ void float_to_byte(float value, uint8_t *p)
   conv.value = value;
   for (byte i = 0; i < 4; i++) *p++ = conv.array[3-i];
 }
+
+
+#ifdef INCLUDE_BME280
 
 /**
  * Read the BME280 values into the buffer
@@ -549,26 +640,22 @@ void Read_BME280()
     symbol = 'F';
   }
   *val_data++ = symbol;
-  
+
   float_to_byte(ret, val_data);
   val_data += 4;
   *val_len += 5;
-  
-#ifdef BLE_SHOW_DATA     
-  Serial.print(" Temp: ");
-  Serial.print(ret,2);
-  Serial.print(" ");
-  Serial.print((char) symbol);
-#endif 
+
+#ifdef BLE_SHOW_DATA
+  Serial.printf(" Temp: %2.2f%c ", ret, symbol);
+#endif
 
   //****************** HUMIDITY *****************
   ret = mySensor.readFloatHumidity();
   float_to_byte(ret, val_data);
   val_data += 4;
   *val_len += 4;
-#ifdef BLE_SHOW_DATA     
-  Serial.print(", Humidity: ");
-  Serial.print(ret);
+#ifdef BLE_SHOW_DATA
+  Serial.printf(", Humidity: %2.2f",ret);
 #endif
 
   //****************** PRESSURE *****************
@@ -576,9 +663,8 @@ void Read_BME280()
   float_to_byte(ret, val_data);
   val_data += 4;
   *val_len += 4;
-#ifdef BLE_SHOW_DATA     
-  Serial.print(" ,Pressure: ");
-  Serial.print(ret);
+#ifdef BLE_SHOW_DATA
+  Serial.printf(" ,Pressure: %2.2f",ret);
 #endif
 
   //****************** ALTITUDE *****************
@@ -591,15 +677,12 @@ void Read_BME280()
     symbol = 'F';
   }
   *val_data++ = symbol;
-  
+
   float_to_byte(ret, val_data);
   val_data += 4;
   *val_len += 5;
-#ifdef BLE_SHOW_DATA     
-  Serial.print(" ,Alt: ");
-  Serial.print(ret);
-  Serial.print(" ");
-  Serial.println((char) symbol);
+#ifdef BLE_SHOW_DATA
+   Serial.printf(" ,Alt: %2.2f%c ", ret, symbol);
 #endif
 
 }
@@ -610,62 +693,58 @@ void Read_BME280()
  * @param v =
  *  1 = Fahrenheit
  *  2 = Celsius
+ *  
+ *  return temperature or zero in case of error
+ *  
+ *  See chapter 6 in amdtps_arduino.odt in extras folder !
  */
 
-uint16_t read_Internal_temp(uint8_t v)
+float read_Internal_temp(uint8_t v)
 {
-  uint16_t tempadc = analogRead(ADC_INTERNAL_TEMP);
-  float fADCTempVolts;
-  float fTemp, fCalibration_temp, fCalibration_voltage, fCalibration_offset;
+  float fVT[3], itt;
+  
+  analogReadResolution(14);                      // 14 bits ADC reading
+  float tempadc = analogRead(ADC_INTERNAL_TEMP); // get ADC temperature ADC reading
+  analogReadResolution(10);                      // back to default
 
-  if (tempadc == 0) return(0);
+  if (tempadc == 0) return 0;
+  
   //
   // Convert and scale the temperature.
   // Temperatures are in Fahrenheit range -40 to 225 degrees.
   // Voltage range is 0.825V to 1.283V
-  // First get the ADC voltage corresponding to temperature.
-  //
-  fADCTempVolts = (float) tempadc * 2.0 / 1024.0f;
+  //  
+  float fADCTempVolts = ((float) tempadc)  * 2.0F / 16384.0F;  // to internal voltage measured
 
-  //
-  // Get temperature from trimmed values & convert to degrees K.
-  //
-  // Trim can be really measured/obtained for this chip or default values.
-  //
-  // It seems that default values is what normally is the case and then the results might be off.
-  // According to the source: Since the device has not been calibrated on the tester, we'll load
-  // default calibration values. These default values should result
-  // in worst-case temperature measurements of +-6 degress C. (SIX degrees Celsius!!!)
-  //
-  // I have 2 edge modules and had them run for an hour in a loop before taking these values:
-  // Measured with external temperature meter next tot the edge board it is around 20.5 C.
-  // one module gives 16.5 C  - 17.5 C
-  // the other gives  19.5 C - 20 C
-  //
-
-  fCalibration_temp = AM_HAL_ADC_CALIB_TEMP_DEFAULT;
-  fCalibration_voltage = AM_HAL_ADC_CALIB_AMBIENT_DEFAULT;
-  fCalibration_offset  = AM_HAL_ADC_CALIB_ADC_OFFSET_DEFAULT;
-
-  //
-  // Compute the temperature.
-  //
-  fTemp  = fCalibration_temp;                             // k
-  fTemp /= (fCalibration_voltage - fCalibration_offset);  // k / v
-  fTemp *= (fADCTempVolts - fCalibration_offset);         // k /v * v = k
-
+  // use the original method (either the Apollo3 was calibrated or it was instructed to use the defaults)
+  if (bMeasured || TempOffset == 0.0)
+  {
+    //
+    // Compute the temperature.
+    //
+    itt  = fCalibrationTemperature;
+    itt /= (fCalibrationVoltage - fCalibrationOffset);
+    itt *= (fADCTempVolts - fCalibrationOffset);
+  }
+  else
+  {
+    // based on work described in the odt document part of this package apply alternative approach
+    // MAKE SURE THE TEMPOFFSET IS UPDATED !!!
+    itt = (fADCTempVolts - TempOffset) / 3.8 * 1000;  // 3.8mV/degree kelvin  
+  }
+   
   if (v == 1)   // if Fahrenheit
-    return( (int16_t) 10 *  (((fTemp - 273.15f) * 180.0f / 100.0f) + 32.0f));
+    return( ((itt -273.15f)* 180.0f / 100.0f) + 32.0f );
 
   else          // celsius
-    return ((int16_t) ((fTemp - 273.15f) * 10));
+    return (itt -273.15f);
 }
 
 /**
  * read the Battery ADC level provide the percentage
  */
 
-uint8_t read_battery_perc()
+float read_battery_perc()
 {
     uint16_t battadc = analogRead(ADC_INTERNAL_VCC_DIV3);
 
@@ -681,15 +760,13 @@ uint8_t read_battery_perc()
 
   float val = (float) (battadc * 3.0f * 2.0 / 1024.0f);
 
-  /* turn into percentage + 0.4f in case it is XX.6%*/
-  uint8_t perc =  (uint8_t) (val*100 / 3.3f + 0.5f);
-  
-  return (perc);
+  /* turn into percentage */
+  return (float) val *100 / 3.3f;
 }
 
 /**
  *  sent a data message to the client
- *  
+ *
  * Format received data :
  * buf [0] = request that was sent
  * buf [1] = length of additional data
@@ -703,4 +780,62 @@ void SendReplyClient()
       SERIAL_PORT.printf("Failed to sent data for client\n");
     #endif
   }
+}
+
+
+// get adc information
+bool GetAdc()
+{
+  float fTrims[4];
+  void *ADCHandle;
+  
+  // There can only be 1 handle (as there is only one ADC unit) active at the same time.
+  // When performing readAnalog(), the library will take ownership and will 
+  // not let go the ADC unit. So first obtain the information
+  
+  //
+  // Initialize the ADC, the TRIM and get the handle.
+  //
+  if ( AM_HAL_STATUS_SUCCESS != am_hal_adc_initialize(0, &ADCHandle) )
+  {
+    Serial.printf("Error - reservation of the ADC instance failed.\n");
+    return(false);
+  }
+  
+  //
+  // Get the temperature trim values as recorded.
+  // Trim is a correction on ADC misreadings. This can either be set to default error-correction
+  // or real performed calibration. 
+  //
+  fTrims[0] = fTrims[1] = fTrims[2] = 0.0F;
+  fTrims[3] = -123.456f; // MUST be set to trigger info
+  if (AM_HAL_STATUS_SUCCESS != am_hal_adc_control(ADCHandle,AM_HAL_ADC_REQ_TEMP_TRIMS_GET, fTrims))
+  { 
+    Serial.printf("Error - Could not read trim.\n");
+    return(false);
+  }  
+
+  //
+  // release the ADC unit
+  //
+  if ( AM_HAL_STATUS_SUCCESS != am_hal_adc_deinitialize(ADCHandle) )
+  {
+    Serial.printf("Error - release of the ADC instance failed.\n");
+    return(false);
+  }
+  
+  fCalibrationTemperature = fTrims[0];
+  fCalibrationVoltage    = fTrims[1];
+  fCalibrationOffset   = fTrims[2];
+  bMeasured = fTrims[3] ? true : false;
+
+#if (defined BLE_Debug) 
+  Serial.printf("\n");
+  Serial.printf("TRIMMED TEMP    = %.3f\r\n", fTrims[0],6);
+  Serial.printf("TRIMMED VOLTAGE = %.3f\r\n", fTrims[1],6);
+  Serial.printf("TRIMMED Offset  = %.3f\r\n", fTrims[2],6);
+  Serial.printf("Note - these trim values are '%s' values.\r\n\n",
+                       bMeasured ? "calibrated" : "uncalibrated default");
+#endif 
+  return(true);
 }

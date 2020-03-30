@@ -68,7 +68,7 @@
 #include "am_bsp.h"
 #include "am_util.h"
 
-#include "ble_debug.h"
+#include "debug.h"
 
 #if (defined BLE_Debug) || (defined BLE_SHOW_DATA)
 extern void debug_print(const char* f, const char* F, uint16_t L);
@@ -77,7 +77,7 @@ extern void debug_float (float f);
 #endif
 
 #ifdef BLE_Debug
-#define AMDTPS_DEBUG_ON 
+#define AMDTPS_DEBUG_ON
 #endif
 //*****************************************************************************
 //
@@ -300,9 +300,9 @@ amdtps_timeout_timer_expired(wsfMsgHdr_t *pMsg)
     }
     uint8_t data[1];
     data[0] = amdtpsCb.core.txPktSn;    // include serial number of time out
-    
+
     AmdtpSendControl(&amdtpsCb.core, AMDTP_CONTROL_RESEND_REQ, data, 1); // let the client reset
-    
+
     // fire a timer for receiving an AMDTP_STATUS_RESEND_REPLY ACK
     WsfTimerStartMs(&amdtpsCb.core.timeoutTimer, amdtpsCb.core.txTimeoutMs);
 }
@@ -349,7 +349,7 @@ amdtpsHandleValueCnf(attEvt_t *pMsg)
     }
     else
     {
-#ifdef AMDTP_DEBUG_ON      
+#ifdef AMDTP_DEBUG_ON
         debug_printf("cnf failure  status = %d, hdl = 0x%x\n", pMsg->hdr.status, pMsg->handle);
 #endif
     }
@@ -510,7 +510,7 @@ amdtps_start(dmConnId_t connId, uint8_t timerEvt, uint8_t amdtpCccIdx)
     amdtpsCb.txReady = true;
 
     amdtpsCb.core.attMtuSize = AttGetMtu(connId);
-#ifdef AMDTP_DEBUG_ON 
+#ifdef AMDTP_DEBUG_ON
     debug_printf("MTU size = %d bytes", amdtpsCb.core.attMtuSize);
 #endif
 }

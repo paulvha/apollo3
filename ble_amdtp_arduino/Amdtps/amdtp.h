@@ -2,7 +2,7 @@
 #define _BLE_AMDTP_H_
 
 #include "Arduino.h"
-#include "ble_debug.h"
+#include "debug.h"
 
 #define SERIAL_PORT Serial
 
@@ -65,6 +65,7 @@ typedef enum eAmdtpcmd
     AMDTP_CMD_READ_PIN,
     AMDTP_CMD_PIN_HIGH,
     AMDTP_CMD_PIN_LOW,
+    AMDTP_CMD_VERSION,
     AMDTP_CMD_CUSTOM1,
     AMDTP_CMD_CUSTOM2,
     AMDTP_CMD_CUSTOM3,
@@ -73,17 +74,12 @@ typedef enum eAmdtpcmd
     AMDTP_CMD_MAX
 }eAmdtpPktcmd_t;
 
-// ****************************************************************************
-//
-//  Default coefficients (used when calibratied trims not provided):
-//  TEMP_DEFAULT    = Temperature in deg K (e.g. 299.5 - 273.15 = 26.35)
-//  AMBIENT_DEFAULT = Voltage measurement at default temperature.
-//  OFFSET_DEFAULT  = Default ADC offset at 1v.
-//
-// ****************************************************************************
-#define AM_HAL_ADC_CALIB_TEMP_DEFAULT       (299.5F)
-#define AM_HAL_ADC_CALIB_AMBIENT_DEFAULT    (1.02809F)
-#define AM_HAL_ADC_CALIB_ADC_OFFSET_DEFAULT (-0.004281F)
+
+/* needed for conversion float IEE754 */
+typedef union {
+    byte array[4];
+    float value;
+} ByteToFloat;
 
 //*****************************************************************************
 //

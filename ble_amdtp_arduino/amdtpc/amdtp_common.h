@@ -152,7 +152,7 @@ amdtpPktHeader_t;
 typedef struct
 {
     uint16_t            offset;
-    uint16_t            len;                        // data plus checksum
+    uint16_t            len;               // data plus checksum
     amdtpPktHeader_t    header;
     uint8_t             *data;
 }

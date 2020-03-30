@@ -286,7 +286,12 @@ amdtpc_conn_close(dmEvt_t *pMsg)
     resetPkt(&amdtpcCb.core.rxPkt);
     resetPkt(&amdtpcCb.core.txPkt);
     resetPkt(&amdtpcCb.core.ackPkt);
-
+am_menu_printf("amdtpc_conn_close() no connection\r\n");
+am_menu_printf("amdtpc_conn_close() no connection\r\n");
+am_menu_printf("amdtpc_conn_close() no connection\r\n");
+am_menu_printf("amdtpc_conn_close() no connection\r\n");
+am_menu_printf("amdtpc_conn_close() no connection\r\n");
+am_menu_printf("amdtpc_conn_close() no connection\r\n");
 #ifdef BLE_MENU
     // let menu structure know
     menuRxDataLen = 0;
@@ -326,6 +331,13 @@ amdtpc_start(uint16_t txHdl, uint16_t rxHdl, uint16_t ackHdl, uint8_t timerEvt)
     amdtpcCb.core.attMtuSize = AttGetMtu(connId);
 #ifdef AMDTPC_MAIN_DEBUG_ON 
     am_menu_printf("MTU size = %d bytes\r\n", amdtpcCb.core.attMtuSize);
+#endif
+
+#ifdef BLE_MENU
+    // let menu structure know
+    menuRxDataLen = 0;
+    add_menu_input(NOT_CONN_OPENED);
+    add_menu_input('\r');
 #endif
 }
 

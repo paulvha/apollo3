@@ -1,16 +1,4 @@
 #include "BLE_example.h"
-#include "string.h"
-
-//*****************************************************************************
-//
-// Arduino Variables
-//
-//*****************************************************************************
-//*****************************************************************************
-//
-// Arduino BLE Core Functions
-//
-//*****************************************************************************
 
 //*****************************************************************************
 //
@@ -106,6 +94,7 @@ void exactle_stack_init(void){
     L2cSlaveHandlerInit(handlerId);
     L2cInit();
     L2cSlaveInit();
+    L2cMasterInit();
 
     handlerId = WsfOsSetNextHandler(AttHandler);//3
     AttHandlerInit(handlerId);
@@ -115,9 +104,12 @@ void exactle_stack_init(void){
     AttcInit();
 
     handlerId = WsfOsSetNextHandler(SmpHandler);//4
-    (handlerId);
-    SmprInit();
-    SmprScInit();
+    SmpHandlerInit(handlerId);
+    SmprInit();               // set responder role (slave)
+    SmprScInit();             // SMP responder role (slave)
+    SmpiInit();               // set initiator role (master)added
+    SmpiScInit();             // set initiator role (master)added
+    
     HciSetMaxRxAclLen(251);
 
     handlerId = WsfOsSetNextHandler(AppHandler);//5

@@ -70,10 +70,10 @@
 
 #include "am_util.h"
 #include <unistd.h>   // sleep
-#include "ble_debug.h"
+#include "debug.h"
 
 // does the driver support security
-#ifdef APP_DISC_READ_DATABASE_HASH
+#ifdef ATT_UUID_DATABASE_HASH 
 #define SECURITYENABLED
 #endif
 
@@ -309,7 +309,7 @@ static void amdtpAttCback(attEvt_t *pEvt)
   #endif
 
   attEvt_t *pMsg;
-  
+
   // allocate memory for event structure and (optional) data
   if ((pMsg = WsfMsgAlloc(sizeof(attEvt_t) + pEvt->valueLen)) != NULL)
   {
@@ -402,7 +402,7 @@ static void showThroughput(void)
   #ifdef BLE_Debug
     debug_print(__func__, __FILE__, __LINE__);
   #endif
-  
+
 #if BLE_SHOW_DATA
   debug_printf("throughput : %d Bytes/s\n", gTotalDataBytesRecev);
 #endif
@@ -516,9 +516,10 @@ static void amdtpProcMsg(amdtpMsg_t *pMsg)
       break;
 
     case DM_RESET_CMPL_IND:         /*! Reset complete */
-      if (D) debug_printf("DM_RESET_CMPL_IND\n");
+      if (D) debug_printf("DM_RESET_CMPL_IND \n");
 #ifdef SECURITYENABLED
       AttsCalculateDbHash();
+      if (D) debug_printf("hashing started\n");
 #endif
       DmSecGenerateEccKeyReq();
       amdtpSetup(pMsg);

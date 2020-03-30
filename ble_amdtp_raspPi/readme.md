@@ -16,6 +16,9 @@ For detailed information about the solution, please read the amdtp.odt in the ex
 
 ## Prerequisites
 ### Server :
+The server software for the Apollo3 is available on https://github.com/paulvha/apollo3/tree/master/ble_amdtp_arduino
+Also read the odt in that extras directory
+
 If you plan to add an BME280 on the server
 <br> BME280   : https://github.com/sparkfun/SparkFun_BME280_Arduino_Library
 
@@ -42,6 +45,9 @@ start ./amdtc --help-all AND read the documentation (odt)
 
 ### version 2.0 / March 2020
  * updated to handle hash
+ * updated float values batterylevel and temperature
+ * added client and server version number
+ * updated documentation
 
 ## Author
  * Paul van Haastrecht (paulvha@hotmail.com)

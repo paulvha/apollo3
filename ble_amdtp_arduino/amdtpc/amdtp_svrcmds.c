@@ -49,11 +49,10 @@
 
 #include "amdtp_svrcmds.h"
 
-
 // enable debug for this file
 // AM_DEBUG_PRINTF is defined in ble_menu.h
 #ifdef AM_DEBUG_PRINTF
-#define SRVCMD_DEBUG_ON
+#define AMDTP_SRVCMD_DEBUG
 #endif
 
 // stages for measurering with load resistor
@@ -64,32 +63,6 @@ eAmdtpPktcmd_t PendingCmdInput = AMDTP_CMD_NONE;
 
 // continued testdata
 bool ContTestData = false;
-//*****************************************************************************
-//
-// check for valid ADC channel
-// Return : TRUE for OK else FALSE
-//
-//*****************************************************************************
-bool validate_adc(int ch)
-{
-    switch (ch) {
-        case 11:
-        case 12:
-        case 13:
-        case 16:
-        case 29:
-        case 31:
-        case 32:
-        case 33:
-        case 34:
-        case 35:
-            return TRUE;
-            break;
-        default:
-            return FALSE;
-            break;
-    }
-}
 
 //*****************************************************************************
 //
@@ -108,8 +81,8 @@ bool validate_pin(int pin)
 
 //*****************************************************************************
 //
-// Waited for additional input for server
-// 
+// handle waited for additional input for server
+//
 //*****************************************************************************
 void CmdInput()
 {
@@ -133,13 +106,13 @@ void CmdInput()
 
 //*****************************************************************************
 //
-// Handle keyboard input
+// Handle keyboard command input
 //
 //*****************************************************************************
 void handleAMDTPSlection(void)
 {
-  eAmdtpPktcmd_t id;
-  id = (eAmdtpPktcmd_t)atoi((char *) menuRxData);
+  uint8_t id;
+  id = (uint8_t)atoi((char *) menuRxData);
 
   switch (id)
   {
@@ -205,6 +178,12 @@ void handleAMDTPSlection(void)
         am_menu_printf("Set digital pin Low\r\n");
         AmdtpAskPinInput(AMDTP_CMD_PIN_LOW);
         break;
+   
+    case 30:
+        am_menu_printf("Request server version\r\n");
+        AmdtpcSendCmd(AMDTP_CMD_VERSION, NULL, 0);
+        break;
+
     default:
         am_menu_printf("Unknown request, %d\r\n", id);
         break;
@@ -243,10 +222,10 @@ void AmdtpReqBatLd()
 void AmdtpAskPinInput(uint8_t cmd)
 {
   if (cmd == AMDTP_CMD_ADC)
-    am_menu_printf("Enter ADC channel (0 = cancel)\r\n");
+    am_menu_printf("Enter ADC PIN (0 = cancel)\r\n");
   else
-    am_menu_printf("Enter Digital pin (0 = cancel)\r\n");
-  
+    am_menu_printf("Enter Digital PIN (0 = cancel)\r\n");
+
   // set for waiting command input
   PendingCmdInput = cmd;
 }
@@ -258,21 +237,22 @@ void AmdtpAskPinInput(uint8_t cmd)
 //*****************************************************************************
 void SendReqPin()
 {
-  bool correct;
+  bool correct = TRUE;
   uint8_t pin = (uint8_t) atoi(menuRxData);
-  
+
   if (pin == 0) {
     am_menu_printf("Cancel selected\r\n");
     return;
   }
 
-  if (PendingCmdInput == AMDTP_CMD_ADC)
-    correct = validate_adc(pin);
-  else
+  // ADC pin will be validated on server given
+  // different pad to pin mapping on different boards
+  if (PendingCmdInput != AMDTP_CMD_ADC)
     correct = validate_pin(pin);
 
-  if (correct)
+  if (correct) {
     AmdtpcSendCmd(PendingCmdInput, &pin, 1);
+  }
   else {
     am_menu_printf("Invalid pin %d\r\n", pin);
     BleMenuShowMenu();
@@ -291,7 +271,7 @@ void SendReqPin()
 
 void SendChat()
 {
-  am_menu_printf("%s\r\n", menuRxData); 
+  am_menu_printf("%s\r\n", menuRxData);
 
   // check for stopping chat
   if (menuRxDataLen == 3) {
@@ -300,9 +280,9 @@ void SendChat()
       return;
     }
   }
-  
+
   // sent to server
-  AmdtpcSendCmd(AMDTP_CMD_CHAT, (uint8_t *) menuRxData, menuRxDataLen+1);   
+  AmdtpcSendCmd(AMDTP_CMD_CHAT, (uint8_t *) menuRxData, menuRxDataLen+1);
 }
 
 //*****************************************************************************
@@ -328,14 +308,14 @@ eAmdtpStatus_t AmdtpcSendCmd(uint8_t cmd, uint8_t *buf, uint8_t len)
     memcpy(data + 1, buf, len);
   }
 
-#ifdef SRVCMD_DEBUG_ON
+#ifdef AMDTP_SRVCMD_DEBUG
     am_menu_printf("%s calling AmdtpcSendPacket... \r\n",__func__);
 #endif
 
   //                          data packet,   encrypted, enableACK, data, length of data
   status = AmdtpcSendPacket(AMDTP_PKT_TYPE_DATA, false, true, data, len + 1);
 
-#ifdef SRVCMD_DEBUG_ON
+#ifdef AMDTP_SRVCMD_DEBUG
     am_menu_printf("AmdtpcSendPacket = %d, Opcode Sent = %d\r\n", status, data[0]);
 #endif
 
@@ -355,9 +335,10 @@ eAmdtpStatus_t AmdtpcSendCmd(uint8_t cmd, uint8_t *buf, uint8_t len)
 void HandeServerResp(uint8_t * buf, uint16_t len)
 {
   uint16_t val;
+  int16_t ival;
   bool showmenu = false;
 
-#ifdef SRVCMD_DEBUG_ON
+#ifdef AMDTP_SRVCMD_DEBUG
   uint16_t i;
   am_menu_printf("%d bytes data received : ", len);
   for (i = 0; i < len; i++)  am_menu_printf("0x%X ", buf[i]);
@@ -370,86 +351,90 @@ void HandeServerResp(uint8_t * buf, uint16_t len)
         am_menu_printf("\r\nReceived HELLO responds\r\n");
         showmenu = true;
         break;
-  
+
     case AMDTP_CMD_TURN_LED_ON:
         am_menu_printf("\r\nTurned server Led on\r\n");
         showmenu = true;
         break;
-  
+
     case AMDTP_CMD_TURN_LED_OFF:
         am_menu_printf("\r\nTurned server Led off\r\n");
         showmenu = true;
         break;
-  
+
     case AMDTP_CMD_REQ_BATTERYLOAD_ON:
         am_menu_printf("\r\nTurned load resistor ON\r\n");
         if (b_load == 2) AmdtpReqBatLd();
         else showmenu = true;
         break;
-  
+
     case AMDTP_CMD_REQ_BATTERYLOAD_OFF:
         am_menu_printf("\r\nTurned load resistor OFF\r\n");
         showmenu = true;
         break;
-  
+
     case AMDTP_CMD_REQ_BATTERY_LEVEL:
-  
-        am_menu_printf("\r\nInternal Battery level is at %d %%\r\n", buf[2]);
-  
+        am_menu_printf("\r\nInternal Battery level is at %2.2f %%\r\n", byte_to_float(buf, 2));
+
         // measurement with resistor load
         if (b_load == 3) AmdtpReqBatLd();
         else showmenu = true;
         break;
-  
+
     case AMDTP_CMD_REQ_INTERNAL_TEMP_FRH:
-  
-        val = buf[2] << 8 | buf[3];
-        am_menu_printf("\r\nInternal temperature is %2.1f %% F\r\n", (float) val/10);
+
+        am_menu_printf("\r\nInternal temperature is %2.2f F\r\n", byte_to_float(buf, 2));
         showmenu = true;
         break;
-  
+
     case AMDTP_CMD_REQ_INTERNAL_TEMP_CEL:
-  
+
         val = buf[2] << 8 | buf[3];
-        am_menu_printf("\r\nInternal temperature is %2.1f %% C\r\n", (float) val/10);
+        am_menu_printf("\r\nInternal temperature is %2.2f C\r\n", byte_to_float(buf, 2));
         showmenu = true;
         break;
-  
+
     case AMDTP_CMD_BME280:
         am_menu_printf("\r\nRead BME280\r\n");
         display_BME280(buf, len);
         showmenu = true;
         break;
-  
+
     case AMDTP_CMD_START_TEST_DATA:
-  
+
         val = buf[len-2] << 8 | buf[len - 1];
         am_menu_printf("Test data : %s %d\r\n", &buf[2], val);
-  
-        if (ContTestData) 
+
+        if (ContTestData)
           AmdtpcSendCmd(AMDTP_CMD_START_TEST_DATA, NULL, 0);
-        else 
+        else
           AmdtpcSendCmd(AMDTP_CMD_STOP_TEST_DATA, NULL, 0);
         break;
-  
+
     case AMDTP_CMD_STOP_TEST_DATA:
-        
+
         am_menu_printf("\r\nStopped test data\r\n");
         PendingCmdInput = AMDTP_CMD_NONE;
         showmenu = true;
         break;
-  
+
     case AMDTP_CMD_ADC:
-  
-        val = buf[3] << 8 | buf[4];
-        am_menu_printf("\r\nADC value channel %d is %2.1f or %2.1f volt\r\n", buf[2], (float) val, (float)((float)val * 3.3 / 1023));
+
+        ival = buf[3] << 8 | buf[4];
+
+        if(ival == -1){
+            am_menu_printf("%d : INCORRECT analogPin\n", buf[2]);
+        }
+        else {
+            am_menu_printf("\r\nADC value channel %d is %d or %2.1f volt\r\n", buf[2], ival, (float) ((float)ival * 3.3F / 1023));
+        }
         showmenu = true;
         break;
-  
+
     case AMDTP_CMD_CHAT:
-  
+
         am_menu_printf("<<<<< %s\r\n", &buf[2]);
-  
+
         // if receiving BYE stop chatting
         if (len == 6){
           if (strcmp((char *) &buf[2],"BYE") == 0) PendingCmdInput = AMDTP_CMD_NONE;
@@ -458,35 +443,47 @@ void HandeServerResp(uint8_t * buf, uint16_t len)
         else
           am_menu_printf(">>>>> ");
         break;
-  
+
     case AMDTP_CMD_READ_PIN:
-  
+
         am_menu_printf("\r\nDigital pin %d is reading %s\r\n", buf[2], buf[3]?"HIGH":"LOW");
         showmenu = true;
         break;
-  
+
     case AMDTP_CMD_PIN_HIGH:
-  
-        am_menu_printf("\r\nDigital pin %d is set high", buf[2]);
+
+        am_menu_printf("\r\nDigital pin %d is set high\r\n", buf[2]);
         showmenu = true;
         break;
-  
+
     case AMDTP_CMD_PIN_LOW:
-  
-        am_menu_printf("\r\nDigital pin %d is set low", buf[2]);
+
+        am_menu_printf("\r\nDigital pin %d is set low\r\n", buf[2]);
         showmenu = true;
         break;
-  
+
+    case AMDTP_CMD_VERSION:     // request server version
+        if (buf[2] != MAJOR_CLIENTVERSION){
+           am_menu_printf("*****************************************\r\n");
+           am_menu_printf("** WARNING MAJOR VERSIONS DO NOT MATCH **\r\n");
+           am_menu_printf("**    not all features supported !!    **\r\n");
+           am_menu_printf("*****************************************\r\n");
+        }
+        am_menu_printf("\r\nServer version: %d.%d", buf[2], buf[3]);
+        am_menu_printf("\r\nClient version: %d.%d\r\n",MAJOR_CLIENTVERSION, MINOR_CLIENTVERSION);
+        showmenu = true;
+        break;
+        
     case AMDTP_CMD_CUSTOM1:      // repeat for other options
         am_menu_printf("\r\nAMDTP_CMD_CUSTOM1\r\n");
-        
+
         showmenu = true;
         // Do something here....
         break;
-  
+
     default:
-  
-        am_menu_printf("\r\nUNKNOWN request/ answer returned : 0x%X\r\n",buf[0]);
+
+        am_menu_printf("\r\nUNKNOWN request / answer returned : 0x%X\r\n",buf[0]);
         showmenu = true;
         break;
   }

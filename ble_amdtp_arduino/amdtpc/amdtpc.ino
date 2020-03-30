@@ -1,13 +1,12 @@
 /*
-  BLE <-> Arduino client server comm.  CLIENT VERSION derived from ble_freertos_amdtpc SDK app.
+  BLE <-> Arduino client server comm.  CLIENT version derived from ble_freertos_amdtpc SDK app.
 
   This example demonstrates basic BLE server (peripheral) functionality for the Apollo3 boards.
 
   How to use this example:
 
   Make sure to load on another Apollo3 board the BLE_amdtps sketch.
-  
-  
+    
   Start the server
   Start the client
   Select GAPP menu  (1 <enter>)
@@ -24,6 +23,15 @@
   select main menu ( h <enter>)
   select gapp menu ( 1 <enter>)
   select close     ( 5 <enter>)
+
+  Version 2.0 / March 2020
+  * updated some typos
+  * SmpHandlerInit() update
+  * changed ADC pin validation to server
+  * added major / minor number
+  * added requesting server version numbers
+  * update to capture friendly name
+  * 
  
 */
 /********************************************************************************************************************
@@ -31,24 +39,6 @@
 #include "Arduino.h"
 #include "BLE_example.h"
 #include "ble_menu.h"
-//*****************************************************************************
-//
-// Required built-ins.
-//
-//*****************************************************************************
-#include <stdint.h>
-#include <stdbool.h>
-#include <string.h>
-#include <stdlib.h>
-
-//*****************************************************************************
-//
-// Standard AmbiqSuite includes.
-//
-//*****************************************************************************
-#include "am_mcu_apollo.h"
-#include "am_bsp.h"
-#include "am_util.h"
 
 #if (defined BLE_MENU) || (defined AM_DEBUG_PRINTF)
 
@@ -86,16 +76,16 @@ am_menu_printf(const char *pcFmt, ...)
 void setup() {
 
   Serial.begin(115200);
+  Serial.printf("Arduino AMDTP client. Version : %d.%d\r\n",MAJOR_CLIENTVERSION, MINOR_CLIENTVERSION);
 
-  Serial.println("Arduino AMDTP Example");
-
+  
 #ifdef AM_DEBUG_PRINTF
   //
-  // Enable printing to the console. *defined in bleu_menu.h
+  // Enable printing to the console.  defined in ble_menu.h
   //
   enable_print_interface();
 
-  am_util_debug_printf("\n AMDTP Example Print Debug\n");
+  am_util_debug_printf("\n AMDTP Print Debug enablement\n");
 #endif
   /********************************************************************************************************************
                    Boot the radio
@@ -105,7 +95,7 @@ void setup() {
   HciDrvRadioBoot(0);
 
 #ifdef AM_DEBUG_PRINTF
-  am_util_debug_printf("Calling exactle_stack_init...\n");
+  Serial.printf("Calling exactle_stack_init...\n");
 #endif
 
   /************************************************************************************************
@@ -126,7 +116,7 @@ void setup() {
   exactle_stack_init();
 
 #ifdef AM_DEBUG_PRINTF
-  am_util_debug_printf("Finished exactle_stack_init...\n");
+  Serial.printf("Finished exactle_stack_init...\n");
 #endif
 
   /*************************************************************************************************
@@ -144,7 +134,7 @@ void setup() {
 
    ************************************************************************************************/
 #ifdef AM_DEBUG_PRINTF
-  am_util_debug_printf("calling AmdtpcStart.....\n");
+  Serial.printf("calling AmdtpcStart.....\n");
 #endif
 
   AmdtpcStart();
@@ -164,6 +154,10 @@ void loop() {
       // the software timers in the WSF scheduler.
       //
       update_scheduler_timers();
+
+      //
+      // handle any actions that are ready to execute
+      //
       wsfOsDispatcher();
 
       //

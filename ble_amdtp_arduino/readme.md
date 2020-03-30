@@ -1,4 +1,4 @@
-# Exchange data over BLE between two Artemis/Apollo3  boards
+# Exchange data over BLE between two Artemis/Apollo3 boards
 
 ## ===========================================================
 
@@ -18,13 +18,13 @@ For detailed information about the solution, please read the amdtp-arduino.odt i
 ### Server :
 If you plan to add an BME280 on the server
 <br> BME280   : https://github.com/sparkfun/SparkFun_BME280_Arduino_Library
-Make sure to have at least version 1.0.30 for the Apollo3 Arduino software
+Make sure to have at least version 1.0.30 or higher for the Apollo3 Arduino software
 
 ### Client
-Make sure to have at least version 1.0.30 for the Apollo3 Arduino software
+Make sure to have at least version 1.0.30 or higher for the Apollo3 Arduino software
 
 ## Software installation
-please read the amdtp-arduino.odt in the extras folder.
+Please read the amdtp-arduino.odt in the extras folder.
 
 ## Program usage
 ### Server Program options
@@ -37,6 +37,14 @@ Please see the description in the top of the sketch and read the documentation (
 
 ### version 1.0 / March 2020
  * Initial version
+
+### version 2.0 / March 2020
+  * updated some typos
+  * SmpHandlerInit() update
+  * changed ADC pin validation to server
+  * added major / minor number
+  * added requesting server version numbers
+  * update to capture friendly name
 
 ## Author
  * Paul van Haastrecht (paulvha@hotmail.com)

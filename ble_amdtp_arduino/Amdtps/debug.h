@@ -20,7 +20,7 @@
 //#define BLE_Debug 
 
 // uncomment to show sending and receiving data only
-#define BLE_SHOW_DATA 
+//#define BLE_SHOW_DATA 
 
 // enable debug messages from driver (if any defined)??
 // requires also change in am_util_debug.h !!

@@ -59,6 +59,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+
 //*****************************************************************************
 //
 // Server commands
@@ -83,6 +85,7 @@ typedef enum eAmdtpcmd
     AMDTP_CMD_READ_PIN,
     AMDTP_CMD_PIN_HIGH,
     AMDTP_CMD_PIN_LOW,
+    AMDTP_CMD_VERSION,
     AMDTP_CMD_CUSTOM1,
     AMDTP_CMD_CUSTOM2,
     AMDTP_CMD_CUSTOM3,

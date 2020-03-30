@@ -60,7 +60,7 @@
 #include "crc32.h"
 #include "am_util.h"
 
-#include "ble_debug.h"
+#include "debug.h"
 
 #if (defined BLE_Debug) || (defined BLE_SHOW_DATA)
 extern void debug_print(const char* f, const char* F, uint16_t L);
@@ -204,7 +204,7 @@ AmdtpReceivePkt(amdtpCb_t *amdtpCb, amdtpPacket_t *pkt, uint16_t len, uint8_t *p
 void
 AmdtpPacketHandler(amdtpCb_t *amdtpCb, eAmdtpPktType_t type, uint16_t len, uint8_t *buf)
 {
-    // APP_TRACE_INFO2("received packet type = %d, len = %d\n", type, len);
+
    #ifdef BLE_Debug
     debug_print(__func__, __FILE__, __LINE__);
    #endif
@@ -286,14 +286,14 @@ AmdtpPacketHandler(amdtpCb_t *amdtpCb, eAmdtpPktType_t type, uint16_t len, uint8
                 else
                 {
                 #ifdef BLE_Debug
-                   debug_print("resendPktSn = %d, lastRxPktSn = %d", resendPktSn, amdtpCb->lastRxPktSn);
+                   debug_printf("resendPktSn = %d, lastRxPktSn = %d", resendPktSn, amdtpCb->lastRxPktSn);
                 #endif
                 }
             }
             else
             {
                 #ifdef BLE_Debug
-                   debug_print("unexpected contrl = %d\n", control);
+                   debug_printf("unexpected contrl = %d\n", control);
                 #endif
             }
             resetPkt(&amdtpCb->ackPkt);
@@ -304,6 +304,7 @@ AmdtpPacketHandler(amdtpCb_t *amdtpCb, eAmdtpPktType_t type, uint16_t len, uint8
         break;
     }
 }
+
 /* create packet to send */
 void
 AmdtpBuildPkt(amdtpCb_t *amdtpCb, eAmdtpPktType_t type, bool_t encrypted, bool_t enableACK, uint8_t *buf, uint16_t len)
@@ -351,7 +352,7 @@ AmdtpBuildPkt(amdtpCb_t *amdtpCb, eAmdtpPktType_t type, bool_t encrypted, bool_t
     calDataCrc = CalcCrc32(0xFFFFFFFFU, len, buf);                  // calculate the CRC
 
     // add checksum
-    pkt->data[AMDTP_PREFIX_SIZE_IN_PKT + len] = (calDataCrc & 0xff);    // add the 32 bit CRC
+    pkt->data[AMDTP_PREFIX_SIZE_IN_PKT + len] = (calDataCrc & 0xff); // add the 32 bit CRC
     pkt->data[AMDTP_PREFIX_SIZE_IN_PKT + len + 1] = ((calDataCrc >> 8) & 0xff);
     pkt->data[AMDTP_PREFIX_SIZE_IN_PKT + len + 2] = ((calDataCrc >> 16) & 0xff);
     pkt->data[AMDTP_PREFIX_SIZE_IN_PKT + len + 3] = ((calDataCrc >> 24) & 0xff);
@@ -417,7 +418,7 @@ AmdtpSendReply(amdtpCb_t *amdtpCb, eAmdtpStatus_t status, uint8_t *data, uint16_
     if (st != AMDTP_STATUS_SUCCESS)
     {
 #ifdef BLE_Debug
-          debug_printf1("AmdtpSendReply failed status = %d\n", st);
+          debug_printf("AmdtpSendReply failed status = %d\n", st);
 #endif
     }
 }
@@ -448,7 +449,7 @@ AmdtpSendControl(amdtpCb_t *amdtpCb, eAmdtpControl_t control, uint8_t *data, uin
     if (st != AMDTP_STATUS_SUCCESS)
     {
    #ifdef BLE_Debug
-        debug_print("AmdtpSendControl failed status = %d\n", st);
+        debug_printf("AmdtpSendControl failed status = %d\n", st);
    #endif
     }
 }
