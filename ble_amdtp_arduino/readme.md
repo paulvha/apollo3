@@ -1,9 +1,9 @@
-# Exchange data over BLE between two Artemis/Apollo3 boards
+# Exchange data over BLE between two Artemis / Apollo3 boards
 
 ## ===========================================================
 
 A solution with server software running on an Apollo3 board and client
-another Apollo3 board. Tested with arduino IDE 1.8.12
+another Apollo3 board. Tested with Arduino IDE 1.8.12
 
 ## Getting Started
 As part of a project to better understand Bluetooth, I have worked
@@ -46,10 +46,13 @@ Please see the description in the top of the sketch and read the documentation (
   * added requesting server version numbers
   * update to capture friendly name
 
+### version 2.0.1 / April 2020
+  * fixed issue with friendly name beyond 5 BLE devices
+
 ## Author
  * Paul van Haastrecht (paulvha@hotmail.com)
 
 ## License
 This project is licensed under the GNU GENERAL PUBLIC LICENSE 3.0
 
-## Acknowledgements
+## Acknowledgments

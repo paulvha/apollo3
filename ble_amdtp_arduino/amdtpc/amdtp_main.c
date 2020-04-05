@@ -523,11 +523,11 @@ static void amdtpcScanReport(dmEvt_t *pMsg)
 
   // entry was added to list
   if (j == infocnt) {
-
-    // if more discovered than buffer,  overwrite last entry
-    if (infocnt < MAXDEVICEINFO ) infocnt++;
+    infocnt++
+    
+    // if more discovered than buffer, overwrite last entry (fix Version 2.0.1)
+    if (infocnt == MAXDEVICEINFO ) infocnt--;
   }
-
   
   /* disregard if not scanning or autoconnecting */
   if (!amdtpcCb.scanning || !amdtpcCb.autoConnect)
