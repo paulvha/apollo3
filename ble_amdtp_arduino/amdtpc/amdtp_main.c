@@ -523,7 +523,7 @@ static void amdtpcScanReport(dmEvt_t *pMsg)
 
   // entry was added to list
   if (j == infocnt) {
-    infocnt++
+    infocnt++;
     
     // if more discovered than buffer, overwrite last entry (fix Version 2.0.1)
     if (infocnt == MAXDEVICEINFO ) infocnt--;
