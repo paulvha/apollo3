@@ -49,6 +49,9 @@ Please see the description in the top of the sketch and read the documentation (
 ### version 2.0.1 / April 2020
   * fixed issue with friendly name beyond 5 BLE devices
 
+### version 2.0.2 / April 2020
+  * fixed issue with look-up friendly name (provided by Randy Lewis)
+
 ## Author
  * Paul van Haastrecht (paulvha@hotmail.com)
 

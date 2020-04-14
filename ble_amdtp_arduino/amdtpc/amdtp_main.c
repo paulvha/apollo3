@@ -131,8 +131,8 @@ typedef struct
 amdtpcConnInfo_t amdtpcConnInfo;
 
 // store names scan discovered devices
-#define DEVICENAMELEN 30
-#define MAXDEVICEINFO 5
+#define DEVICENAMELEN 35
+#define MAXDEVICEINFO 10
 struct
 {
   bdAddr_t            addr;                         /*! Address of device to connect to */
@@ -312,11 +312,6 @@ static void amdtpcDmCback(dmEvt_t *pDmEvt)
   {
 #ifdef AMDTP_MAIN_DEBUG
     am_menu_printf("%s  DM_SEC_ECC_KEY_IND\r\n",__func__);
-    am_util_debug_printf("%s end\n",__func__);
-am_util_debug_printf("%s end1\n",__func__);
-am_util_debug_printf("%s end2\n",__func__);
-am_util_debug_printf("%s end3\n",__func__);
-am_util_debug_printf("%s end4\n",__func__);
 #endif
     DmSecSetEccKey(&pDmEvt->eccMsg.data.key);
 
@@ -481,54 +476,81 @@ static void amdtpcScanStop(dmEvt_t *pMsg)
 /*************************************************************************************************/
 static void amdtpcScanReport(dmEvt_t *pMsg)
 {
-  uint8_t *pData, i, j;
+  uint8_t *pData, i, j, max_length, name_ind = 0;
   appDbHdl_t dbHdl;
   bool_t  connect = FALSE;
-  char unk[] = "UNKNOWN";
+  char *friendly;
 
-  // set offset to friendly, name indicator and length name
-  char *friendly = 30 + (char *) pMsg;
-  uint8_t name_ind = *(29 + (char *) pMsg);
-  uint8_t max_length = *(28 + (char *) pMsg);
+  /// Search data for friendly name type 0x9 (full name) or 0x8 (short name)  (fix Version 2.0.2)
+  // The different advertising entrys have the same format : length, data-type, data
+  // length    = length of data-type (1) + length of data
+  // data-type = kind of data (see DM_ADV_TYPE_XXXXXX in dm_api.h)
+  // data
+  //
+  // These look-up changes where kindly provided by Randy Lewis 
+  
+  i = 1;
+  while(i < pMsg->scanReport.len)
+  {
+    if(pMsg->scanReport.pData[i] == DM_ADV_TYPE_LOCAL_NAME || pMsg->scanReport.pData[i] == DM_ADV_TYPE_SHORT_NAME)
+    {
+      name_ind = pMsg->scanReport.pData[i];             
+      friendly = (char *) &pMsg->scanReport.pData[i+1]; 
+      max_length = pMsg->scanReport.pData[i-1]-1;
+      break;
+    }
+    else
+    {
+      i += pMsg->scanReport.pData[i-1]+1;             // skip length to next entry type
+    }
+  }
+
+  // name entry was not found
+  if (name_ind == 0)
+  {
+    friendly = "-No Name-";
+    max_length = strlen(friendly);
+  }
 
 #ifdef AMDTP_MAIN_DEBUG
+
+  // Arrange address results in conventional MAC address format: //REL
+  am_menu_printf("%d  %02x:%02x:%02x:%02x:%02x:%02x  ",pMsg->scanReport.addrType,
+   pMsg->scanReport.addr[5],  pMsg->scanReport.addr[4],  pMsg->scanReport.addr[3],
+   pMsg->scanReport.addr[2],  pMsg->scanReport.addr[1],  pMsg->scanReport.addr[0]);
+
   am_menu_printf("%s %d %s\r\n", __func__, infocnt, friendly);
 #endif
 
-  /* capture name & peer address. */
+  /// capture name & peer address.
 
   // check whether address was already captured, overwrite in that case
   for (j = 0; j < infocnt; j++) {
     if (BdaCmp(scaninfo[j].addr, pMsg->scanReport.addr)) break;
   }
+
   // copy bluetooth address
   memcpy(scaninfo[j].addr, pMsg->scanReport.addr, sizeof(bdAddr_t));
 
-  // check for valid name indicator
-  if (name_ind != DM_ADV_TYPE_LOCAL_NAME && name_ind != DM_ADV_TYPE_SHORT_NAME)
-  {
-    friendly = unk;           // set unknown
-    max_length = sizeof(unk);
-  }
-
   // copy name
-  for (i = 0; i < DEVICENAMELEN && i < max_length ; i++) {
+  if(max_length > DEVICENAMELEN) max_length = DEVICENAMELEN;
+
+  for (i = 0; i < max_length ; i++) {
     scaninfo[j].dname[i] = *(friendly + i);
-    if (scaninfo[j].dname[i] < 0x20) break;
-    //am_menu_printf("%d add %c \r\n", j, scaninfo[j].dname[i]);
+    if (scaninfo[j].dname[i] < 0x20) scaninfo[j].dname[i] = 0x20;
   }
 
-  // terminate (in case name was longer than DEVICENAMELEN
+  // terminate (in case name was longer than DEVICENAMELEN)
   scaninfo[j].dname[i] = 0x0;
 
   // entry was added to list
   if (j == infocnt) {
     infocnt++;
-    
+
     // if more discovered than buffer, overwrite last entry (fix Version 2.0.1)
     if (infocnt == MAXDEVICEINFO ) infocnt--;
   }
-  
+
   /* disregard if not scanning or autoconnecting */
   if (!amdtpcCb.scanning || !amdtpcCb.autoConnect)
   {
@@ -705,7 +727,7 @@ void AmdtpcConnOpen(uint8_t idx)
     {
 #ifdef AMDTP_MAIN_DEBUG
         am_menu_printf("AmdtpcConnOpen() devInfo = NULL\r\n");
-#endif 
+#endif
     }
 }
 
@@ -742,23 +764,23 @@ void amdtpDtpTransCback(eAmdtpStatus_t status)
     }
 }
 
-// call back for received data 
+// call back for received data
 void amdtpDtpRecvCback(uint8_t * buf, uint16_t len)
 {
 #ifdef AMDTP_MAIN_DEBUG
     am_menu_printf("%s\r\n", __func__);
     am_menu_printf("-----------AMDTP Received data--------------\r\n");
     am_menu_printf("len = %d, buf[0] = %d, buf[1] = %d\r\n", len, buf[0], buf[1]);
-    
+
     int j;
     for( j = 0; j < len ; j ++) {
       if (buf[j] < 0x20) am_menu_printf("%d  0x%X %c\r\n", j, buf[j],buf[j]);
       else  am_menu_printf("%d  0x%X **\r\n", j, buf[j]);
     }
 #endif
-          
+
   if (MEASURE_THROUGHPUT) {
-          
+
       gTotalDataBytesRecev += len;
       if (!measTpStarted)
       {
@@ -766,7 +788,7 @@ void amdtpDtpRecvCback(uint8_t * buf, uint16_t len)
           WsfTimerStartSec(&measTpTimer, 1);
       }
   }
-    
+
     // handle response from server
     HandeServerResp(buf, len);
 }
@@ -800,7 +822,7 @@ static void amdtpcDiscCback(dmConnId_t connId, uint8_t status)
       /* initiate security */
       AppMasterSecurityReq(connId);
       break;
-      
+
 #ifdef SECURITYENABLED
     case APP_DISC_READ_DATABASE_HASH:
       /* Read peer's database hash */
@@ -838,7 +860,7 @@ static void amdtpcDiscCback(dmConnId_t connId, uint8_t status)
 
       /* next discovery state */
       amdtpcCb.discState++;
-      
+
 #ifdef AMDTP_MAIN_DEBUG
       am_menu_printf("%s discovery complete for phase %d\r\n", __func__, amdtpcCb.discState);
 #endif
@@ -903,7 +925,7 @@ static void showThroughput(void)
     // only restart timer if throughput
     if (gTotalDataBytesRecev != 0)   WsfTimerStartSec(&measTpTimer, 1);
     else measTpStarted = false;
-    
+
     gTotalDataBytesRecev = 0;
 }
 

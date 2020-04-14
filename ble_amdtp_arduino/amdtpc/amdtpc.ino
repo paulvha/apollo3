@@ -31,8 +31,14 @@
   * added major / minor number
   * added requesting server version numbers
   * update to capture friendly name
+
+ Version 2.0.1 / April 2020
+  * fixed issue with Bluetooth friendly names
+
+ Version 2.0.2 / April 202
+  * fixed issue with look-up friendly name (provided by Randy Lewis)
+  
   * 
- 
 */
 /********************************************************************************************************************
  *******************************************************************************************************************/
