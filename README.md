@@ -39,6 +39,9 @@ For the Linux client software use the --help or -h option
  * updated amdtps, amdtpc Apollo3 and amdtpc Linux
  * tested on Apollo3 version 1.0.30
 
+### Version 2.1 / June 2020
+ * added BLE button
+
 ## Author
  * Paul van Haastrecht (paulvha@hotmail.com)
 
