@@ -2,14 +2,20 @@
 
 ## ===========================================================
 
-Different examples for the Apollo3  processor.
+Different examples for the Apollo3 processor.
 
 ## Getting Started
-In the different folders are different programs with a readme file
+In the different folders are different programs with a readme file.
+Also check the .odt files which can be read with nearly any word processor.
 
 ## Prerequisites
+### Linux/Raspberry PI
 Some examples have an optional Bluetooth client that requires
 Bluez bluetooth stack : http://www.bluez.org/download/
+
+### Arduino
+ArduinoBLE and (optional) BME280
+Apollo3 Sparkfun library version (at least) 2.0.1
 
 ## Software installation
 Obtain the zip and install like any other for the Arduino
@@ -41,6 +47,13 @@ For the Linux client software use the --help or -h option
 
 ### Version 2.1 / June 2020
  * added BLE button
+
+### Version 3.0 / October 2020
+   Based on the complete change in version 2.0.1 the following changes have been made:
+ * Removed BLE_button, batt_temp, btble (they are not compatible anymore and obsolete)
+ * moved amdtpc to amdtp-client and changed to run on top of ArduinoBLE.
+ * moved amdtps to amdtp-server and changed to run on top of ArduinoBLE.
+ * update to the linux client to work with amdtp-server.
 
 ## Author
  * Paul van Haastrecht (paulvha@hotmail.com)

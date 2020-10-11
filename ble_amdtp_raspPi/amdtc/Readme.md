@@ -1,14 +1,14 @@
 An example for the AMD transfer protocol. Will enable data communication of
-different kinds over bluetooth between an Artemis board as server and a linux clien
-
-paulvha / February 2020 / Version 1.0
+different kinds over bluetooth between an Artemis board as server and a linux client
 
 # Arduino IDE/ Apollo3
 
-Copy the 'ble_amdts' directory example into the Arduino IDE.
+Copy the 'amdtp_server' directory example into the Arduino IDE. (tested with version 1.8.13)
+Make sure to use Apollo3 Sparkfun Library (at least) 2.0.1
+Set parameters and if necessary install BME280. (see arduino_amdtp.odt)
 compile as normal, load to the board and start the interactive monitor.
 
-# Client side L Ubuntu or Raspberry Pi
+# Client side : Ubuntu or Raspberry Pi
 
 ## Install Bluez
 Follow the instruction for Bluez installation and compilation on:
@@ -22,11 +22,21 @@ https://learn.adafruit.com/install-bluez-on-the-raspberry-pi/installation
 Once you have installed and compiled Bluez, then :
 
 cd bluez-5.52 (or what your version might be)
-copy the 'amdtc'-directory as a directory in this bluez directory
-cd btble
+copy the 'amdtc' directory as a directory in this bluez directory
+cd amdtc
 
 optional : update permissions : chmod +x make_BTBLE
 compile : ./make_amdtc
+
+# Versioning
+
+## paulvha / February 2020 / Version 1.0
+ * initial version
+
+## paulvha / October 2020 / Version 3.0
+ * Based on the complete change in version 2.0.1 changes have been made to work with the new amdtp-server
+
+# To run
 
 to execute type :
 ./amdtc -b 56:77:88:23:AB:EF -I (with the correct destination address) to

@@ -60,7 +60,7 @@
 #define AMDTP_UI
 
 // version number
-#define MAJOR_CLIENTVERSION 2 // new features, changes on both server and client
+#define MAJOR_CLIENTVERSION 3 // new features, changes on both server and client
 #define MINOR_CLIENTVERSION 0 // bug fixes, better calculation/ layout only impact client
 
 /**

@@ -3,7 +3,7 @@
 ## ===========================================================
 
 A solution with server software running on an Apollo3 board and client
-another Apollo3 board. Tested with Arduino IDE 1.8.12
+another Apollo3 board. Tested with Arduino IDE 1.8.13
 
 ## Getting Started
 As part of a project to better understand Bluetooth, I have worked
@@ -15,13 +15,18 @@ See the extras folder for more information about this protocol.
 For detailed information about the solution, please read the amdtp-arduino.odt in the extras folder.
 
 ## Prerequisites
+
 ### Server :
 If you plan to add an BME280 on the server
 <br> BME280   : https://github.com/sparkfun/SparkFun_BME280_Arduino_Library
-Make sure to have at least version 1.0.30 or higher for the Apollo3 Arduino software
+Make sure to have at least version 2.0.1 or higher for the Apollo3 Arduino software
+
+ArduinoBLE library must be available in the IDE.
 
 ### Client
-Make sure to have at least version 1.0.30 or higher for the Apollo3 Arduino software
+Make sure to have at least version 2.0.1 or higher for the Apollo3 Arduino software
+
+ArduinoBLE library must be available in the IDE.
 
 ## Software installation
 Please read the amdtp-arduino.odt in the extras folder.
@@ -51,6 +56,9 @@ Please see the description in the top of the sketch and read the documentation (
 
 ### version 2.0.2 / April 2020
   * fixed issue with look-up friendly name (provided by Randy Lewis)
+
+### version 3.0 / October 2020
+  * Rewrite as the Server and CLient now run on-top of ArduinoBLE
 
 ## Author
  * Paul van Haastrecht (paulvha@hotmail.com)
