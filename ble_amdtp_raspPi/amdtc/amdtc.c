@@ -100,78 +100,32 @@ static amdtpCb_t amdtpCb;                // the AMD transfer protocol control bl
 struct gatt_primary r_primary[MAX_PRIMARY];
 
 uint8_t g_debug = 0;                     // set verbose / debug
-uint8_t ReceivedBuf[200];                // decode
-uint16_t ReceivedLen;
 
-/*
- * As we receive bytes on a String characteristic, we can not have a zero in the middle of the
- * bytes to be received. At the sender side we translate a zero to 0x73 0x20. This routine
- * will just do the opposite and translate 0x7e 0x20 back to 0x0.
- *
- * Hope and pray that 0x7e 0x20 strings do not happen ... else we extend the decode one morestep.
- */
-void encode_receipt(const uint8_t *pdu, uint16_t len)
-{
-  char save = 0x0;
-  ReceivedLen = 0;
-
-  for (size_t i = 0; i < len; i++) {
-
-    char c = pdu[i];
-
-    // Header character for 0x0 ??
-    if (c == 0x7E && save == 0x0) {
-        save = 0x7E;
-        continue;
-    }
-
-    // did we get a header character before
-    if (save == 0x7E){
-
-      // if next is 0x20 then the real character was 0x0;
-      if (c == 0x20)  c = 0x0;
-
-      // the previous 0x7E was not header, add
-      else {
-        ReceivedBuf[ReceivedLen++] = save;
-      }
-
-    save = 0x0; // reset header
-    }
-
-    // Store real current character
-    ReceivedBuf[ReceivedLen++] = c;
-  }
-}
 
 /**
  * @brief call back after receiving notification, Either Data or acknowledgement
  */
-static void parseNotification(uint16_t handle, const uint8_t *pdu, uint16_t len, gpointer user_data)
+static void parseNotification( uint16_t handle, const uint8_t *pdu, uint16_t len, gpointer user_data)
 {
     uint8_t packet[len];
     eAmdtpStatus_t res;
     uint16_t i;
 
-
     if (g_debug > 1) g_print("%s\n", __func__);
 
-    // see description
-    encode_receipt(pdu, len);
-
     if (g_debug > 0) {
-        g_print("Data received : ");
-        for (i = 0; i < ReceivedLen; i++)  g_print("0x%X ", ReceivedBuf[i]);
+        g_print("RAW data received : ");
+        for (i = 0; i < len; i++)  g_print("0x%X ", pdu[i]);
         g_print("\n");
     }
 
     // copy as PDU is "constant" and AmdtpReceivePkt is not expecting that
-    for (i = 0 ; i < ReceivedLen; i++) packet[i] = ReceivedBuf[i];
+    for (i = 0 ; i < len; i++) packet[i] = pdu[i];
 
-    if (handle == amdtpCb.ACK_handle)
-        res = AmdtpReceivePkt(&amdtpCb, &amdtpCb.ackPkt, ReceivedLen, packet);
+    if (handle == AMDTPS_ACK_HDL)
+        res = AmdtpReceivePkt(&amdtpCb, &amdtpCb.ackPkt, len, packet);
     else
-        res = AmdtpReceivePkt(&amdtpCb, &amdtpCb.rxPkt, ReceivedLen, packet);
+        res = AmdtpReceivePkt(&amdtpCb, &amdtpCb.rxPkt, len, packet);
 
     switch(res) {
         case AMDTP_STATUS_INVALID_PKT_LENGTH:
@@ -210,6 +164,7 @@ done:
     g_main_loop_quit(event_loop);
 }
 
+
 /**
  *  @brief notifications handler
  *  called when data or acknowledgement was received from server as notification
@@ -231,8 +186,8 @@ static void events_handler(const uint8_t *pdu, uint16_t len, gpointer user_data)
 
             if (g_debug > 1) {
                 g_print("Notification handle = 0x%04x ", handle);
-                if (handle == amdtpCb.RX_handle ) g_print("(data)\n");
-                else g_print("(Acknowledge)\n");
+                if (handle == 0x804 ) g_print("(data}\n");
+                else g_print("(Acknowledge}\n");
 
             }
             // +3  = skip notify or indication indicator and handle
@@ -242,7 +197,7 @@ static void events_handler(const uint8_t *pdu, uint16_t len, gpointer user_data)
             break;
 
         case ATT_OP_HANDLE_IND: // info only.. not used at this time . Future ???
-            g_print("Indication on handle = 0x%04x value:  )", handle);
+            g_print("Indication handle ?? = 0x%04x value:  )", handle);
             break;
 
         default:
@@ -251,8 +206,10 @@ static void events_handler(const uint8_t *pdu, uint16_t len, gpointer user_data)
     }
 
     // sent something back on indication request
-    for (i = 3; i < len; i++)  g_print("%02x ", pdu[i]);
-    g_print(" Ignored\n");
+    for (i = 3; i < len; i++)
+        g_print("%02x ", pdu[i]);
+
+    g_print("\n");
 
     opdu = g_attrib_get_buffer(attrib, &plen);
     olen = enc_confirmation(opdu, plen);
@@ -297,7 +254,7 @@ static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
         return;
     }
 
-    if (! opt_quiet) g_print("Connected\n");
+    if (opt_quiet == FALSE) g_print("Connected\n");
 
     // negotiate the MTU size
     bt_io_get(io, &gerr, BT_IO_OPT_IMTU, &mtu,
@@ -340,11 +297,12 @@ static void char_write_req_cb(guint8 status, const guint8 *pdu, guint16 plen,
     if (g_debug > 1) g_print("%s\n", __func__);
 
     if (status != 0) {
-        g_printerr("Command Write Request failed: %s\n", att_ecode2str(status));
+        g_printerr("Command Write Request failed: "
+                        "%s\n", att_ecode2str(status));
         goto done;
     }
 
-    if (! dec_write_resp(pdu, plen) && !dec_exec_write_resp(pdu, plen)) {
+    if (!dec_write_resp(pdu, plen) && !dec_exec_write_resp(pdu, plen)) {
         g_printerr("Bluetooth Protocol error\n");
         goto done;
     }
@@ -352,15 +310,12 @@ static void char_write_req_cb(guint8 status, const guint8 *pdu, guint16 plen,
     // if complete packet was not sent yet, continue sending
     if (amdtpCb.txState == AMDTP_STATE_SENDING) {
 
-    if (g_debug > 0)
-        g_print("request was written successfully. continue sending \n");
-
         AmdtpSendPacketHandler(&amdtpCb,(GAttribResultFunc) char_write_req_cb);
         return;
     }
 
     if (g_debug > 0)
-        g_print("Request was written successfully. Waiting for respond notification\n");
+        g_print("request was written successfully. Waiting for respond notification \n");
 
     return;
 
@@ -382,7 +337,7 @@ gboolean characteristics_write_req(uint8_t cmd, uint8_t *buf, uint8_t len)
 
     if (len > 0){
         if (len > MAX_BUF - 1) return FALSE;
-        for (i = 0; i < len; i++) sbuf[i+1] = buf[i];
+        for (i = 0; i < len ;i++) sbuf[i+1] = buf[i];
     }
 
     if (amdtpCb.TX_handle <= 0) {
@@ -417,12 +372,12 @@ static void enable_comms_cb(guint8 status, const guint8 *pdu, guint16 plen,
     if (g_debug > 1) g_print("%s\n", __func__);
 
     if (status != 0) {
-        g_printerr("Notification Write Request failed: %s\n", att_ecode2str(status));
+        g_printerr("Notification Write Request failed: "
+                        "%s\n", att_ecode2str(status));
         goto error;
     }
 
-    // now sent hallo to server
-    if (characteristics_write_req(AMDTP_CMD_HELLO,NULL,0))  return;
+    return;
 
 error:
     got_error = TRUE;
@@ -434,7 +389,6 @@ error:
  */
 static void enable_comms()
 {
-
     if (g_debug > 1) g_print("%s\n", __func__);
 
     uint16_t handle;
@@ -443,15 +397,16 @@ static void enable_comms()
     value[0]=0x01;      // enable notification
     value[1]=0x00;
 
-    // enable TX notify (CCCD)
-    handle = amdtpCb.RX_handle + 1;
-
+    // enable TX notify
+    handle = AMDTPS_TX_CH_CCC_HDL;
     gatt_write_char(b_attrib, handle, value,2, enable_comms_cb, NULL);
 
-    // enable ACK notify (CCCD)
-    handle = amdtpCb.ACK_handle + 1;
-
+    // enable ACK notify
+    handle = AMDTPS_ACK_CH_CCC_HDL;
     gatt_write_char(b_attrib, handle, value, 2, enable_comms_cb, NULL);
+
+    // give server time to handle request
+    sleep(1);
 }
 
 /**
@@ -472,7 +427,8 @@ static void read_characteristics(uint8_t status, GSList *ranges, void *user_data
    if (g_debug > 1) g_print("%s\n", __func__);
 
     if (status) {
-        g_printerr("Discover characteristics failed: %s\n", att_ecode2str(status));
+        g_printerr("Discover characteristics failed: %s\n",
+                            att_ecode2str(status));
         goto error;
     }
 
@@ -481,30 +437,36 @@ static void read_characteristics(uint8_t status, GSList *ranges, void *user_data
      * and validate we are in sync on the handles */
 
     for (l = ranges; l; l = l->next) {
-        struct gatt_char *range = l->data;
+        struct gatt_desc *range = l->data;
 
-        // RX UUID found (RX for Artemis, TX for us)
-        if (strcmp (range->uuid, svcRxUuid) == 0) {
-            amdtpCb.TX_handle = range->value_handle;
-            t++;
-        }
-        // TX UUID (TX for Artemis, RX for us)
-        else if (strcmp (range->uuid, svcTxUuid) == 0){
-            amdtpCb.RX_handle = range->value_handle;
-            t++;
-        }
-        // ACK UUID
-        else if (strcmp (range->uuid, svcAckUuid) == 0){
-            amdtpCb.ACK_handle = range->value_handle;
-            t++;
-        }
+        if (g_debug > 0)  g_print("handle = 0x%04x, uuid = %s, t = %d\n", range->handle, range->uuid, t);
+        switch (range->handle) {
+            case AMDTP_SVC_HDL:                        /* AMDTP service declaration */
+            case AMDTPS_RX_CH_HDL:                     /* AMDTP write command characteristic */
+            case AMDTPS_TX_CH_HDL:                     /* AMDTP notify characteristic */
+            case AMDTPS_TX_CH_CCC_HDL:                 /* AMDTP notify client characteristic configuration */
+            case AMDTPS_ACK_CH_HDL:                    /* AMDTP rx ack characteristic */
+            case AMDTPS_ACK_CH_CCC_HDL:
+                t++;
+                break;
 
-        if (g_debug > 0)  g_print("Value handle = 0x%04x, uuid = %s, count = %d of 3\n", range->value_handle, range->uuid, t);
+            case AMDTPS_RX_HDL:                        /* AMDTP write command data */
+                if (strstr(range->uuid,svcRxUuid) != NULL) t++;
+                break;
+
+            //case AMDTPS_TX_HDL:                        /* AMDTP notify data ONLY thus not advertised */
+            //    if (strstr(range->uuid,svcTxUuid) != NULL) t++;
+            //    break;
+
+            case AMDTPS_ACK_HDL:                       /* AMDTP tx ack data */
+                if (strstr(range->uuid,svcAckUuid) != NULL) t++;
+                break;
+        }
     }
 
     // check we have a good match
-    if (t != 3) {
-        g_printerr("Could not get all the handles\n. Service mismatch !!");
+    if (t != 8) {
+        g_printerr("Could not match all handles\n. Service handle mismatch !!");
         goto error;
     }
 
@@ -512,7 +474,8 @@ static void read_characteristics(uint8_t status, GSList *ranges, void *user_data
     // enable server notification communication on the server
     enable_comms();
 
-    return;
+    // now sent hallo to server
+    if (characteristics_write_req(AMDTP_CMD_HELLO,NULL,0))  return;
 
 error:
     got_error = TRUE;
@@ -539,9 +502,10 @@ static gboolean read_handles()
         if (strcmp (r_primary[i].uuid, amdtpSvcUuid) == 0)
         {
             // Get handles for service : call back read_characteristics when done
-            gatt_discover_char(b_attrib, r_primary[i].range.start, r_primary[i].range.end, NULL, read_characteristics, NULL);
+            gatt_discover_desc(b_attrib,r_primary[i].range.start, r_primary[i].range.end, NULL, read_characteristics, NULL);
 
-            if (opt_quiet == FALSE) g_print("FOUND AMDTP service\n\tstart handle = 0x%04x\n\tend handle = 0x%04x\n\tuuid: %s\n", r_primary[i].range.start, r_primary[i].range.end, r_primary[i].uuid);
+            if (opt_quiet == FALSE) g_print("FOUND AMDTP service start handle = 0x%04x, end handle = 0x%04x "
+            "uuid: %s\n", r_primary[i].range.start, r_primary[i].range.end, r_primary[i].uuid);
 
             return(TRUE);
         }
@@ -575,7 +539,8 @@ static void extract_all_primary(uint8_t status, GSList *services, void *user_dat
     if (g_debug > 1) g_print("%s\n", __func__);
 
     if (status) {
-        g_printerr("Discover all primary services failed: %s\n", att_ecode2str(status));
+        g_printerr("Discover all primary services failed: %s\n",
+                            att_ecode2str(status));
         got_error = TRUE;
         goto done;
     }
@@ -594,7 +559,7 @@ static void extract_all_primary(uint8_t status, GSList *services, void *user_dat
     }
 
     if (i == MAX_PRIMARY) {
-        g_printerr("Exceeded maximum primary amount of %d.\n",MAX_PRIMARY);
+        g_printerr("Exceeded maximum primary amount of %d:\n",MAX_PRIMARY);
         got_error = TRUE;
         goto done;
     }
@@ -725,7 +690,11 @@ int main(int argc, char *argv[])
 
     // check for ADC channel
     if (opt_adc_ch) {
-        opt_adc = TRUE;
+
+        if (validate_adc(opt_adc_ch))
+            opt_adc = TRUE;
+        else
+            opt_adc_ch = 0;
     }
 
     // validate read pin

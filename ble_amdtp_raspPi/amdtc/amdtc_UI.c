@@ -8,14 +8,6 @@
 //! This has been created and tested to work against Apollo3-board running ble_amdts.ino
 //!
 //! paulvha / February 2020 / version 1.0
-
-//! paulvha/ March 2020 / version 2.0
-/*
- * update ADC pin validation (now on server)
- * update Celius, Fahrenheit and battery level to float values
- * added major/minor server and client number
- *
- */
 //! @{
 //
 // ****************************************************************************
@@ -103,9 +95,33 @@ gboolean opt_start_data = FALSE;
 gboolean opt_stop_data = FALSE;
 gboolean opt_chat = FALSE;
 gboolean FirstChat;
-gboolean opt_vers = FALSE;
 
-
+/**
+ * check for valid ADC channel
+ *
+ * Return : TRUE for OK else FALSE
+ */
+gboolean validate_adc(int ch)
+{
+    switch (ch) {
+        case 11:
+        case 12:
+        case 13:
+        case 16:
+        case 29:
+        case 31:
+        case 32:
+        case 33:
+        case 34:
+        case 35:
+            return TRUE;
+            break;
+        default:
+            g_print("%d invalid ADC channel\n",ch);
+            return FALSE;
+            break;
+    }
+}
 /**
  * check for valid digital pin
  *
@@ -172,13 +188,12 @@ uint8_t get_Digital_Pin(int cmd)
 }
 
 /**
- * obtain a ADC channel to read from user
- * validation is done on the server, given that different boards
- * use different pins
+ * obtain a valid ADC channel to read from
  */
 uint8_t get_ADC_Channel()
 {
     int ret, selection;
+    gboolean found = FALSE;
 
     // if channel provided on the command line
     if (opt_adc_ch) {
@@ -190,12 +205,18 @@ uint8_t get_ADC_Channel()
     // just in case we are receiving test data
     if (opt_start_data)  rst_terminal();
 
-    g_print("Enter ADC pin (0 = cancel): ");
-    ret = scanf("%d", &selection);
+    do{
+        g_print("Enter ADC channel (0 = cancel): ");
+        ret = scanf("%d", &selection);
 
-    if (selection == 0) {
-        g_print("Cancel selection\n");
-    }
+        if (selection == 0) {
+            g_print("Cancel selection\n");
+            found = TRUE;
+        }
+        else {
+            found = validate_adc(selection);
+        }
+    } while(found == FALSE);
 
     if (opt_start_data)  set_terminal();
 
@@ -262,9 +283,8 @@ gboolean chat(char *buf)
  */
 void MainLoop(uint8_t *buf, uint16_t len)
 {
-    int16_t val, i;
+    uint16_t val, i;
     gboolean ret;
-    float fret;
 
     if (g_debug > 0) {
         g_print("UI %d bytes data received : ", len);
@@ -298,24 +318,25 @@ void MainLoop(uint8_t *buf, uint16_t len)
 
         case AMDTP_CMD_REQ_BATTERY_LEVEL:
             if (g_debug >0) g_print("\nRead internal battery level\n");
-            fret = byte_to_float(buf, 2);
-            if (opt_quiet) g_print("%2.2f %%\n", fret);
-            else g_print("\nBattery level is at %2.2f %%\n", fret);
+
+            if (opt_quiet) g_print("%d %%\n", buf[2]);
+            else g_print("\nBattery level is at %d %%\n", buf[2]);
             break;
 
         case AMDTP_CMD_REQ_INTERNAL_TEMP_FRH:
             if (g_debug >0) g_print("\nRead internal temperature in Fahrenheit\n");
-            fret = byte_to_float(buf, 2);
-            if (opt_quiet) g_print("%2.2f %% F\n", fret);
-            else g_print("\nInternal temperature is %2.2fF\n", fret);
+
+            val = buf[2] << 8 | buf[3];
+            if (opt_quiet) g_print("%2.1f %% F\n", (float) val/10);
+            else g_print("\nInternal temperature is %2.1f %% F\n", (float) val/10);
             break;
 
         case AMDTP_CMD_REQ_INTERNAL_TEMP_CEL:
             if (g_debug >0) g_print("\nRead internal temperature in Celsius\n");
 
-            fret = byte_to_float(buf, 2);
-            if (opt_quiet) g_print("%2.1f %% C\n", fret);
-            else g_print("\nInternal temperature is %2.1fC\n", fret);
+            val = buf[2] << 8 | buf[3];
+            if (opt_quiet) g_print("%2.1f %% C\n", (float) val/10);
+            else g_print("\nInternal temperature is %2.1f %% C\n", (float) val/10);
             break;
 
         case AMDTP_CMD_BME280:
@@ -339,15 +360,9 @@ void MainLoop(uint8_t *buf, uint16_t len)
             if (g_debug > 0) g_print("\nRead ADC channel\n");
 
             val = buf[3] << 8 | buf[4];
-            if (val == -1){
-                g_print("%d : INCORRECT analogPin\n", buf[2]);
-            }
+            if (opt_quiet) g_print("%2.1f\n", (float) val);
             else
-            {
-                if (opt_quiet) g_print("%2.1f\n", (float) val);
-                else
-                 g_print("\nADC value channel %d is %2.1f or %2.1f volt\n", buf[2], (float) val, (float)((float)val * 3.3 / 1023));
-            }
+             g_print("\nADC value channel %d is %2.1f or %2.1f volt\n", buf[2], (float) val, (float)((float)val * 3.3 / 1023));
             break;
 
         case AMDTP_CMD_CHAT:
@@ -371,26 +386,15 @@ void MainLoop(uint8_t *buf, uint16_t len)
         case AMDTP_CMD_PIN_HIGH:
             if (g_debug > 0) g_print("\nSet pin high\n");
 
-            if (opt_quiet == FALSE) g_print("\nDigital pin %d is set high\n", buf[2]);
+            if (opt_quiet == FALSE) g_print("\nDigital pin %d is set high", buf[2]);
             break;
 
         case AMDTP_CMD_PIN_LOW:
             if (g_debug > 0) g_print("\nSet pin low\n");
 
-            if (opt_quiet == FALSE) g_print("\nDigital pin %d is set low\n", buf[2]);
+            if (opt_quiet == FALSE) g_print("\nDigital pin %d is set low", buf[2]);
             break;
 
-        case AMDTP_CMD_VERSION:
-            if (buf[2] != MAJOR_CLIENTVERSION){
-               g_print("*****************************************\n");
-               g_print("** WARNING MAJOR VERSIONS DO NOT MATCH **\n");
-               g_print("**    not all features supported !!    **\n");
-               g_print("*****************************************\n");
-            }
-            g_print("\nServer version: %d.%d\n", buf[2], buf[3]);
-            g_print("Client version: %d.%d\n",MAJOR_CLIENTVERSION, MINOR_CLIENTVERSION);
-
-            break;
         case AMDTP_CMD_CUSTOM1:      // repeat for other options
              if (g_debug >0) g_print("\nAMDTP_CMD_CUSTOM1\n");
 
@@ -602,10 +606,6 @@ void DetermineValue(gboolean get)
     else if(opt_chat) {           // option is reset in chat session
         GetValue = AMDTP_CMD_CHAT;
     }
-    else if(opt_vers) {
-        if (get) opt_vers = FALSE;
-        GetValue = AMDTP_CMD_VERSION;
-    }
 }
 
 /**
@@ -633,7 +633,7 @@ void display_menu()
     g_print("%d\tSet a pin HIGH\n",sel++);
     g_print("%d\tSet a pin LOW\n",sel++);
     g_print("%d\tPerform simple chat\n",sel++);
-    g_print("30\tRequest server version number\n");
+
 }
 
 /**
@@ -650,6 +650,7 @@ gboolean read_interactive()
     int selection = 0, ret;
 
     do {
+
         // in case of sending test data the keyboard in non-blocking
         if (opt_start_data) {
             selection = rd_keyboard();
@@ -711,9 +712,6 @@ gboolean read_interactive()
             case 14: // simple chat
                 opt_chat = TRUE;
                 FirstChat = TRUE;
-                break;
-            case 30: // Server version number
-                opt_vers = TRUE;
                 break;
             default:
                 g_printerr("Invalid selection: 0x%x or %c\n",selection, selection);

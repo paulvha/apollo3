@@ -433,7 +433,7 @@ guint g_attrib_register(GAttrib *attrib, guint8 opcode, guint16 handle,
     if (opcode == GATTRIB_ALL_REQS)
         opcode = BT_ATT_ALL_REQUESTS;
 
-    return bt_att_register(attrib->att, opcode, attrib_callback_notify,
+    return bt_att_register(attrib->att, opcode, (bt_att_notify_func_t) attrib_callback_notify,
                         cb, attrib_callbacks_remove);
 }
 

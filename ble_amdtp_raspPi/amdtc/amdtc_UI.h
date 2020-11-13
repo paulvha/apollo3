@@ -8,15 +8,6 @@
 //! This has been created and tested to work against Apollo3-board running ble_amdts.ino
 //!
 //! paulvha / February 2020 / version 1.0
-//! initial version
-//!
-//! paulvha/ March 2020 / version 2.0
-/*
- * update ADC pin validation (now on server)
- * update Celius, Fahrenheit and battery level to float values
- * added major/minor server and client number
- *
- */
 //! @{
 //
 // ****************************************************************************
@@ -59,10 +50,6 @@
 #ifndef AMDTP_UI
 #define AMDTP_UI
 
-// version number
-#define MAJOR_CLIENTVERSION 3 // new features, changes on both server and client
-#define MINOR_CLIENTVERSION 0 // bug fixes, better calculation/ layout only impact client
-
 /**
  * command to exchange between client and server
  *
@@ -87,7 +74,6 @@ typedef enum eAmdtpcmd
     AMDTP_CMD_READ_PIN,
     AMDTP_CMD_PIN_HIGH,
     AMDTP_CMD_PIN_LOW,
-    AMDTP_CMD_VERSION,
     AMDTP_CMD_CUSTOM1,
     AMDTP_CMD_CUSTOM2,
     AMDTP_CMD_CUSTOM3,

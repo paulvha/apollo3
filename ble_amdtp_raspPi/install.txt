@@ -22,17 +22,17 @@ Once it starts uploading you can release button 14.
 After upload it might be necessary to press reset to start the program.
 
 ***********************************************************************
-********************** Client software ****************************
+********************** Client software Ubuntu *************************
 ***********************************************************************
 3.2.1 Bluez Bluetooth stack
 
 1. In the latest version of bluez (check on http://www.bluez.org/) :
 
-    wget https://www.kernel.org/pub/linux/bluetooth/bluez-5.52.tar.xz
+    wget https://www.kernel.org/pub/linux/bluetooth/bluez-5.55.tar.xz
 
 2. Extract the source in a directory :
 
-    tar xvf bluez-5.52.tar.xz       (where 5.52 is the version)
+    tar xvf bluez-5.55.tar.xz       (where 5.55 is the version)
 
 3. Make sure you have the supporting packages :
 
@@ -40,7 +40,7 @@ After upload it might be necessary to press reset to start the program.
 
 4. enter the bluez-directory and type
 
-    .configure –enable-library
+    ./configure 
 
 5. now build the bluez stack
 
@@ -55,10 +55,11 @@ https://learn.adafruit.com/install-bluez-on-the-raspberry-pi/installation
 
 *************** 3.2.2 Client Solution  ****************************
 
-cd bluez-5.52 (or what your version might be)
+cd bluez-5.55 (or what your version might be)
 
 copy the 'amdtc'-directory as a complete directory + sub directory in this bluez directory
 !!!!!! this is the amdtc folder, with a c of the client !!!!!!!!
+
 cd amdtc
 
 (optional ?) update permissions : chmod +x make_amdtc

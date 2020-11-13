@@ -36,18 +36,22 @@ Please see the description in the top of the sketch and read the documentation (
 start ./amdtc --help-all AND read the documentation (odt)
 
 ## Versioning
-
-### version 1.0 / February 2020
- * Initial version
-
-### version 1.1 / February 2020
- * updated timer handling to prevent deadloop
+### version 2.0.1 / November 2020
+ * fixed missing handles and variables
+ * fixed install.txt parameters
+ * Tested and warning Bluez 5.55
 
 ### version 2.0 / March 2020
  * updated to handle hash
  * updated float values batterylevel and temperature
  * added client and server version number
  * updated documentation
+
+### version 1.1 / February 2020
+ * updated timer handling to prevent deadloop
+
+### version 1.0 / February 2020
+ * Initial version
 
 ## Author
  * Paul van Haastrecht (paulvha@hotmail.com)
