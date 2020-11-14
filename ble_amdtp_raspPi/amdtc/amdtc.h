@@ -51,24 +51,4 @@ size_t gatt_attr_data_from_string(const char *str, uint8_t **data);
 gboolean characteristics_write_req(uint8_t cmd, uint8_t *buf, uint8_t len);
 static gboolean read_all_primary();
 
-/**
- * handles for AM DTP Service.
- *
- * This was originally defined in the _svc_amdtp.h
- * Copyright (c) 2019, Ambiq Micro / All rights reserved.
- */
-#define AMDTPS_START_HDL               0x0800  //0x300
 
-enum
-{
-  AMDTP_SVC_HDL = AMDTPS_START_HDL,     /* AMDTP service declaration */
-  AMDTPS_RX_CH_HDL,                     /* AMDTP write command characteristic */
-  AMDTPS_RX_HDL,                        /* AMDTP write command data */
-  AMDTPS_TX_CH_HDL,                     /* AMDTP notify characteristic */
-  AMDTPS_TX_HDL,                        /* AMDTP notify data */
-  AMDTPS_TX_CH_CCC_HDL,                 /* AMDTP notify client characteristic configuration */
-  AMDTPS_ACK_CH_HDL,                    /* AMDTP rx ack characteristic */
-  AMDTPS_ACK_HDL,                       /* AMDTP rx ack data */
-  AMDTPS_ACK_CH_CCC_HDL,                /* AMDTP rx ack client characteristic configuration */
-  AMDTPS_MAX_HDL
-};

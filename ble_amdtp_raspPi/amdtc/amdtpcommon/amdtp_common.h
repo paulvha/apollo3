@@ -206,6 +206,8 @@ typedef struct
     eAmdtpPktType_t lastRxPktSn;           // last received data packet serial number
     uint16_t        attMtuSize;            // max MTU size to break long message
     uint16_t        TX_handle;
+    uint16_t        RX_handle;
+    uint16_t        ACK_handle;
     uint16_t        ACK_CCChandle;
     uint16_t        TX_CCChandle;
     time_t          AckTime;

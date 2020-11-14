@@ -120,10 +120,6 @@ gboolean amdtc_init(amdtpCb_t *amdtpCb)
     amdtpCb->txPktSn = 0;
     amdtpCb->AckTime = 0;
 
-    amdtpCb->TX_handle = AMDTPS_RX_HDL;             // send command to server
-    amdtpCb->ACK_CCChandle = AMDTPS_ACK_CH_CCC_HDL; // enable / disable acknowledgement notification from server
-    amdtpCb->TX_CCChandle = AMDTPS_TX_CH_CCC_HDL;   // enable / disable data notification from server
-
     resetPkt(&amdtpCb->rxPkt);
     resetPkt(&amdtpCb->txPkt);
     resetPkt(&amdtpCb->ackPkt);
@@ -213,6 +209,43 @@ AmdtpBuildPkt(amdtpCb_t *amdtpCb, eAmdtpPktType_t type, gboolean encrypted, gboo
     pkt->data[AMDTP_PREFIX_SIZE_IN_PKT + len + 1] = ((calDataCrc >> 8) & 0xff);
     pkt->data[AMDTP_PREFIX_SIZE_IN_PKT + len + 2] = ((calDataCrc >> 16) & 0xff);
     pkt->data[AMDTP_PREFIX_SIZE_IN_PKT + len + 3] = ((calDataCrc >> 24) & 0xff);
+
+    //**************************************************************
+    // As we sent to String Characteristic on Artemis, we can not afford zero in the middle
+    // we replace with a 0x7E + 0x20 (hopefully unique enough)
+    // to be decoded on receipt first as this can also impact the CRC
+    // paulvha October 2020
+    uint8_t s_value[512];               //AMDTP_PACKET_SIZE
+    size_t s_vlen = 0;
+    uint16_t l;
+
+    for (l = 0; l < pkt->len; l++) {
+        if (pkt->data[l] == 0x0) {
+            s_value[s_vlen++] = 0x7E;  // SPECIAL
+            s_value[s_vlen++] = 0x20;  // SPECIAL
+        }
+        else
+        {
+            s_value[s_vlen++] = pkt->data[l];
+        }
+    }
+
+    if (g_debug > 0) {
+        g_print("============== Prepared for sending ========================\n");
+        for (uint16_t i =0; i < pkt->len; i++) g_print("0x%02X ", pkt->data[i]);
+        g_print("\n");
+    }
+    //**************************************************************
+
+    // copy back to data
+    pkt->len = 0;
+    for (uint16_t i = 0; i < s_vlen; i++) pkt->data[pkt->len++] = s_value[i];
+
+    if (g_debug > 0){
+        g_print("============== Decoded sending ========================\n");
+        for (uint16_t i =0; i < pkt->len; i++) g_print("0x%02X ", pkt->data[i]);
+        g_print("\n");
+    }
 }
 
 /* timeout check on timely ACK responds
@@ -253,6 +286,8 @@ guint timeout_ACK(void *data)
 void
 AmdtpSendPacketHandler(amdtpCb_t *amdtpCb, GAttribResultFunc callback)
 {
+    if (g_debug > 0) g_print("%s\n", __func__);
+    
     uint16_t transferSize = 0;
     uint16_t remainingBytes = 0, l;
     amdtpPacket_t *txPkt;
@@ -279,7 +314,9 @@ AmdtpSendPacketHandler(amdtpCb_t *amdtpCb, GAttribResultFunc callback)
 
         if (g_debug > 0){
             g_print(" ===== sending  =====\n");
-            for (l = 0; l < transferSize;l++) g_print("0x%x ",txPkt->data[txPkt->offset + l]);
+            for (l = 0; l < transferSize;l++) {
+                g_print("0x%x ",txPkt->data[txPkt->offset + l]);
+            }
             g_print("\n");
         }
 
@@ -335,7 +372,7 @@ AmdtpPacketHandler(amdtpCb_t *amdtpCb)
             for (i = 0; i < RxLen; i++)
                 RxBuf[i] = amdtpCb->rxPkt.data[i];
 
-            // once called back from ACK call MainLoop
+            // once called back from ACK we then call MainLoop in commAck_cb
             CallMain=TRUE;
 
             amdtpCb->rxState = AMDTP_STATE_RX_IDLE;
@@ -344,15 +381,15 @@ AmdtpPacketHandler(amdtpCb_t *amdtpCb)
 
         case AMDTP_PKT_TYPE_ACK:
         {
+            if (g_debug > 0) g_print("AMDTP_PKT_TYPE_ACK\n");
+
             eAmdtpStatus_t status = (eAmdtpStatus_t)amdtpCb->ackPkt.data[0];
-            // stop tx timeout timer waiting for ACK
-            //WsfTimerStop(&amdtpCb->timeoutTimer);
 
             amdtpCb->txState = AMDTP_STATE_TX_IDLE;
 
             if (status == AMDTP_STATUS_CRC_ERROR || status == AMDTP_STATUS_RESEND_REPLY)
             {
-                if (g_debug > 0) g_print("resending packet\n");
+                if (g_debug > 0) g_print("Resending packet\n");
                 // resend packet
                 AmdtpSendPacketHandler(amdtpCb, NULL);
             }
@@ -397,7 +434,7 @@ AmdtpPacketHandler(amdtpCb_t *amdtpCb)
                 }
                 else
                 {
-                    g_print("resendPktSn = %d, lastRxPktSn = %d", resendPktSn, amdtpCb->lastRxPktSn);
+                    g_print("ResendPktSn = %d, lastRxPktSn = %d", resendPktSn, amdtpCb->lastRxPktSn);
                 }
             }
             else
@@ -435,7 +472,7 @@ AmdtpReceivePkt(amdtpCb_t *amdtpCb, amdtpPacket_t *pkt, uint16_t len, uint8_t *p
     // if first of (potential) more, the length must at least be header
     if (pkt->offset == 0 && len < AMDTP_PREFIX_SIZE_IN_PKT)
     {
-        g_printerr("Invalid packet!!!\n");
+        g_printerr("Invalid packet size !!!\n");
         AmdtpSendReply(amdtpCb, AMDTP_STATUS_INVALID_PKT_LENGTH, NULL, 0, FALSE);
         return AMDTP_STATUS_INVALID_PKT_LENGTH;
     }
@@ -449,8 +486,9 @@ AmdtpReceivePkt(amdtpCb_t *amdtpCb, amdtpPacket_t *pkt, uint16_t len, uint8_t *p
         pkt->header.pktSn = (header & PACKET_SN_BIT_MASK) >> PACKET_SN_BIT_OFFSET;
         pkt->header.encrypted = (header & PACKET_ENCRYPTION_BIT_MASK) >> PACKET_ENCRYPTION_BIT_OFFSET;
         pkt->header.ackEnabled = (header & PACKET_ACK_BIT_MASK) >> PACKET_ACK_BIT_OFFSET;
-        amdtpCb->LastRxPktType = pkt->header.pktType;     // save Type received message (used in
-        dataIdx = AMDTP_PREFIX_SIZE_IN_PKT;
+        amdtpCb->LastRxPktType = pkt->header.pktType;
+        dataIdx = AMDTP_PREFIX_SIZE_IN_PKT;         // skip size + header in first packaet
+
         if (pkt->header.pktType == AMDTP_PKT_TYPE_DATA)
         {
             amdtpCb->rxState = AMDTP_STATE_GETTING_DATA;
@@ -467,7 +505,8 @@ AmdtpReceivePkt(amdtpCb_t *amdtpCb, amdtpPacket_t *pkt, uint16_t len, uint8_t *p
     // make sure we have enough space for new data
     if (pkt->offset + len - dataIdx > AMDTP_PACKET_SIZE)
     {
-        g_printerr("not enough buffer size!!!");
+        g_printerr("Not enough buffer size!!!");
+
         if (pkt->header.pktType == AMDTP_PKT_TYPE_DATA)
         {
             amdtpCb->rxState = AMDTP_STATE_RX_IDLE;
@@ -479,7 +518,7 @@ AmdtpReceivePkt(amdtpCb_t *amdtpCb, amdtpPacket_t *pkt, uint16_t len, uint8_t *p
         return AMDTP_STATUS_INSUFFICIENT_BUFFER;
     }
 
-    // copy new data into buffer and also save crc into it if it's the last frame in a packet
+    // copy new data into buffer and also save crc into it it's the last frame in a packet
     // 4 bytes crc is included in pkt length
     memcpy(pkt->data + pkt->offset, pValue + dataIdx, len - dataIdx);
     pkt->offset += (len - dataIdx);
@@ -487,6 +526,12 @@ AmdtpReceivePkt(amdtpCb_t *amdtpCb, amdtpPacket_t *pkt, uint16_t len, uint8_t *p
     // whole packet received
     if (pkt->offset >= pkt->len)
     {
+        if (g_debug > 0){
+            g_print("============== Total Packet received ========================\n");
+            for (uint16_t i =0; i < pkt->len; i++) g_print("0x%02X ", pkt->data[i]);
+            g_print("\n");
+        }
+
         uint32_t peerCrc = 0;
         //
         // check CRC
@@ -503,6 +548,7 @@ AmdtpReceivePkt(amdtpCb_t *amdtpCb, amdtpPacket_t *pkt, uint16_t len, uint8_t *p
                 g_print("peerCrc = 0x%x, ", peerCrc);
                 g_print("len: %d\n", pkt->len);
             }
+
             if (pkt->header.pktType == AMDTP_PKT_TYPE_DATA)
             {
                 amdtpCb->rxState = AMDTP_STATE_RX_IDLE;
@@ -545,7 +591,7 @@ AmdtpSendReply(amdtpCb_t *amdtpCb, eAmdtpStatus_t status, uint8_t *data, uint16_
 
     if (st != AMDTP_STATUS_SUCCESS)
     {
-        g_printerr("AmdtpSendReply status = %d\n", status);
+        g_printerr("amdtpcSendAck Error. Status = %d\n", status);
     }
 }
 
@@ -560,10 +606,10 @@ static void commACK_cb(guint8 status, const guint8 *pdu, guint16 plen,
     if (g_debug > 1)  g_print("%s\n", __func__);
 
     if (status != 0) {
-        g_printerr("Sending ACK failed: "
-                        "%s\n", att_ecode2str(status));
+        g_printerr("Sending ACK failed: %s\n", att_ecode2str(status));
         goto error;
     }
+
     // set during amdtpPacketHandler to indicate data has been
     // received that needs to be processed by the user interface
 
@@ -595,7 +641,7 @@ static eAmdtpStatus_t
 amdtpcSendAck(amdtpCb_t *amdtpCb, eAmdtpPktType_t type, gboolean encrypted, gboolean enableACK, uint8_t *buf, uint16_t len)
 {
     if (g_debug > 1)  g_print("%s\n", __func__);
-    uint16_t handle = AMDTPS_ACK_HDL;
+    uint16_t handle = amdtpCb->ACK_handle;
 
     AmdtpBuildPkt(amdtpCb, type, encrypted, enableACK, buf, len);
 
