@@ -36,11 +36,14 @@ struct _GAttrib;
 typedef struct _GAttrib GAttrib;
 
 typedef void (*GAttribResultFunc) (guint8 status, const guint8 *pdu,
-					guint16 len, gpointer user_data);
+                    guint16 len, gpointer user_data);
 typedef void (*GAttribDisconnectFunc)(gpointer user_data);
 typedef void (*GAttribDebugFunc)(const char *str, gpointer user_data);
-typedef void (*GAttribNotifyFunc)(const guint8 *pdu, guint16 len,
-							gpointer user_data);
+
+
+typedef void (*GAttribNotifyFunc)(const guint8 *pdu, guint16 len, gpointer user_data);
+
+
 
 GAttrib *g_attrib_new(GIOChannel *io, guint16 mtu, bool ext_signed);
 GAttrib *g_attrib_ref(GAttrib *attrib);
@@ -51,18 +54,18 @@ GIOChannel *g_attrib_get_channel(GAttrib *attrib);
 struct bt_att *g_attrib_get_att(GAttrib *attrib);
 
 gboolean g_attrib_set_destroy_function(GAttrib *attrib,
-		GDestroyNotify destroy, gpointer user_data);
+        GDestroyNotify destroy, gpointer user_data);
 
 guint g_attrib_send(GAttrib *attrib, guint id, const guint8 *pdu, guint16 len,
-			GAttribResultFunc func, gpointer user_data,
-			GDestroyNotify notify);
+            GAttribResultFunc func, gpointer user_data,
+            GDestroyNotify notify);
 
 gboolean g_attrib_cancel(GAttrib *attrib, guint id);
 gboolean g_attrib_cancel_all(GAttrib *attrib);
 
 guint g_attrib_register(GAttrib *attrib, guint8 opcode, guint16 handle,
-				GAttribNotifyFunc func, gpointer user_data,
-				GDestroyNotify notify);
+                GAttribNotifyFunc func, gpointer user_data,
+                GDestroyNotify notify);
 
 uint8_t *g_attrib_get_buffer(GAttrib *attrib, size_t *len);
 gboolean g_attrib_set_mtu(GAttrib *attrib, int mtu);

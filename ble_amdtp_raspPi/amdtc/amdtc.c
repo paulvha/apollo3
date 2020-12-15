@@ -213,6 +213,7 @@ done:
 /**
  *  @brief notifications handler
  *  called when data or acknowledgement was received from server as notification
+ *  is called from gattrib.c / attrib_callback_notify()
  */
 static void events_handler(const uint8_t *pdu, uint16_t len, gpointer user_data)
 {
@@ -237,6 +238,7 @@ static void events_handler(const uint8_t *pdu, uint16_t len, gpointer user_data)
             }
             // +3  = skip notify or indication indicator and handle
             parseNotification(handle,  &pdu[3], len - 3, user_data);
+
             return;
 
             break;
@@ -287,6 +289,7 @@ static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
     uint16_t mtu;
     uint16_t cid;
     GError *gerr = NULL;
+
 
     if (g_debug > 1) g_print("%s\n", __func__);
 
@@ -340,7 +343,8 @@ static void char_write_req_cb(guint8 status, const guint8 *pdu, guint16 plen,
     if (g_debug > 1) g_print("%s\n", __func__);
 
     if (status != 0) {
-        g_printerr("Command Write Request failed: %s\n", att_ecode2str(status));
+        g_print("Bluetooth error\n");
+       // g_printerr("Command Write Request failed: %s\n", att_ecode2str(status));
         goto done;
     }
 
@@ -352,11 +356,11 @@ static void char_write_req_cb(guint8 status, const guint8 *pdu, guint16 plen,
     // if complete packet was not sent yet, continue sending
     if (amdtpCb.txState == AMDTP_STATE_SENDING) {
 
-    if (g_debug > 0)
-        g_print("request was written successfully. continue sending \n");
+        if (g_debug > 0)
+            g_print("request was written successfully. continue sending \n");
 
-        AmdtpSendPacketHandler(&amdtpCb,(GAttribResultFunc) char_write_req_cb);
-        return;
+            AmdtpSendPacketHandler(&amdtpCb,(GAttribResultFunc) char_write_req_cb);
+            return;
     }
 
     if (g_debug > 0)
@@ -394,8 +398,8 @@ gboolean characteristics_write_req(uint8_t cmd, uint8_t *buf, uint8_t len)
      *
      * amdtpCb   : control block
      * type      : data, ack or control
-     * encrypted : encryption or not
-     * enableAck : does not seem to be used
+     * encrypted : encryption or not    (FALSE)
+     * enableAck : does not seem to be used (FALSE)
      * buf       : request to sent
      * len       : length of request to sent
      */
@@ -414,8 +418,6 @@ gboolean characteristics_write_req(uint8_t cmd, uint8_t *buf, uint8_t len)
 static void enable_comms_cb(guint8 status, const guint8 *pdu, guint16 plen,
                             gpointer user_data)
 {
-   static gboolean once = true;	 // sent hello once
-   
     if (g_debug > 1) g_print("%s\n", __func__);
 
     if (status != 0) {
@@ -423,11 +425,9 @@ static void enable_comms_cb(guint8 status, const guint8 *pdu, guint16 plen,
         goto error;
     }
 
-	if (once) {
-		// now sent hallo to server
-		if (characteristics_write_req(AMDTP_CMD_HELLO,NULL,0))  return;
-		once = false;
-	}
+    // now sent hallo to server
+    if (characteristics_write_req(AMDTP_CMD_HELLO,NULL,0))  return;
+
 error:
     got_error = TRUE;
     g_main_loop_quit(event_loop);
@@ -476,7 +476,8 @@ static void read_characteristics(uint8_t status, GSList *ranges, void *user_data
    if (g_debug > 1) g_print("%s\n", __func__);
 
     if (status) {
-        g_printerr("Discover characteristics failed: %s\n", att_ecode2str(status));
+        g_print("error\n");
+       // g_printerr("Discover characteristics failed: %s\n", att_ecode2str(status));
         goto error;
     }
 
@@ -513,8 +514,11 @@ static void read_characteristics(uint8_t status, GSList *ranges, void *user_data
     }
 
     /** OK, so we are connected, we have found the service and validated the handles */
-    // enable server notification communication on the server
+    // enable notification communication on the server
     enable_comms();
+
+    //
+   // g_idle_add(read_interactive, b_attrib);
 
     return;
 
@@ -591,7 +595,7 @@ static void extract_all_primary(uint8_t status, GSList *services, void *user_dat
         r_primary[i].range.end = prim->range.end;
         strcpy(r_primary[i].uuid,prim->uuid);
 
-         if (g_debug > 0){
+        if (g_debug > 0){
             g_print("attr handle = 0x%04x, end grp handle = 0x%04x "
             "uuid: %s\n", prim->range.start, prim->range.end, prim->uuid);
         }
@@ -804,7 +808,7 @@ int main(int argc, char *argv[])
     g_main_loop_run(event_loop);
 
 done:
-
+    rst_terminal();  // reset from canonical
     if (event_loop != NULL) g_main_loop_unref(event_loop);
     g_option_context_free(context);
     g_free(opt_src);

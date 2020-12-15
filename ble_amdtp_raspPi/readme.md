@@ -36,6 +36,11 @@ Please see the description in the top of the sketch and read the documentation (
 start ./amdtc --help-all AND read the documentation (odt)
 
 ## Versioning
+
+## paulvha / December 2020 / Version 3.1
+ * update to work with Bluez 5.55 (does not work with Bluez 5.52)
+ * improvements for stability
+
 ### version 2.0.1 / November 2020
  * fixed missing handles and variables
  * fixed install.txt parameters

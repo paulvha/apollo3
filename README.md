@@ -28,6 +28,13 @@ For the Linux client software use the --help or -h option
 
 ## Versioning
 
+###  version 3.1 / december 2020
+ * update to amdtp-client and amdtp-server on Arduino
+ * update to amdtc on linux to work with Bluez 5.55 and stability
+
+### version 3.0.1 / November 2020
+ * added example Update_Apollo3_bdaddr (READ REMARKS in the TOP of Sketch)
+
 ### version 3.0 / November 2020
  * added files crc.c/crc.h
 

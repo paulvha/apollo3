@@ -42,6 +42,7 @@
 #include "src/shared/queue.h"
 #include "attrib/gattrib.h"
 
+
 struct _GAttrib {
     int ref_count;
     struct bt_att *att;
@@ -281,7 +282,22 @@ static void attrib_callback_result(uint8_t opcode, const void *pdu,
 
 /** called back after receiving notification
  */
-static void attrib_callback_notify(uint8_t opcode, const void *pdu,
+
+ /*
+ *  The event call back is different in Bluez 5.55
+ *  typedef void (*bt_att_notify_func_t)(struct bt_att_chan *chan,
+                    uint8_t opcode, const void *pdu,
+                    uint16_t length, void *user_data);
+                    *
+ *  The event call back is different in Bluez 5.52
+ *  typedef void (*bt_att_notify_func_t)(uint8_t opcode, const void *pdu,
+                    uint16_t length, void *user_data)
+                    *
+ *  SELECT the right line for your version
+ *
+ */
+//static void attrib_callback_notify(uint8_t opcode, const void *pdu,                            // use for 5.52
+static void attrib_callback_notify(struct bt_att_chan *chan, uint8_t opcode, const void *pdu,   // use for >5.55
                     uint16_t length, void *user_data)
 {
     uint8_t *buf;
@@ -326,7 +342,7 @@ guint g_attrib_send(GAttrib *attrib, guint id, const guint8 *pdu, guint16 len,
         return 0;
 
     if (func || notify) {
-;
+
         cb = new0(struct attrib_callbacks, 1);
         if (!cb)
             return 0;
@@ -433,8 +449,7 @@ guint g_attrib_register(GAttrib *attrib, guint8 opcode, guint16 handle,
     if (opcode == GATTRIB_ALL_REQS)
         opcode = BT_ATT_ALL_REQUESTS;
 
-    return bt_att_register(attrib->att, opcode, (bt_att_notify_func_t) attrib_callback_notify,
-   //return bt_att_register(attrib->att, opcode, attrib_callback_notify,
+    return bt_att_register(attrib->att, opcode, attrib_callback_notify,
                         cb, attrib_callbacks_remove);
 }
 

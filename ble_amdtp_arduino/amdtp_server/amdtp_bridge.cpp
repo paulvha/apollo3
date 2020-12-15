@@ -5,6 +5,8 @@
  * Version 3.0 / October 2020 / paulvha
  *  initial version
  *  
+ * Version 3.1 / December 2020 / paulvha
+ *  adding a delay in sending ACK (communication fails often with an ACk)
  */
 
 #include "amdtp_common.h"
@@ -28,7 +30,9 @@ void blePeripheralDisconnectHandler(BLEDevice central) {
   // reset all pointers
   amdtps_init();
 }
-
+////////////////////////////////////////////////////////
+// receiving data over the handles                    //
+////////////////////////////////////////////////////////
 void RxChar_Received(BLEDevice central, BLECharacteristic characteristic) {
   
 #ifdef BLE_SHOW_DATA 
@@ -38,31 +42,19 @@ void RxChar_Received(BLEDevice central, BLECharacteristic characteristic) {
   String a = (const char*) characteristic.value();
   int vsize = a.length();
   encode_receipt(a,vsize);
-  
   AmdtpReceivePkt(AMDTP_PKT_TYPE_DATA, ReceivedLen, ReceivedBuf);
 }
 
-// not expect to receive anything on the TX characteristic
+// not expected to receive anything on the TX characteristic
 void TxChar_Received(BLEDevice central, BLECharacteristic characteristic) {
   
 #ifdef BLE_SHOW_DATA
-  Serial.print(F("\r\nTX receive "));
+  Serial.print(F("\r\nTX receive??? "));
 #endif
 
   String a = (const char*) characteristic.value();
   int vsize = a.length();
   encode_receipt(a,vsize);
-}
-
-// send data packet over the TX characteristic
-void TxChar_Write(uint8_t *value, uint16_t vlen) {
-  
-#ifdef BLE_Debug
-  Serial.print(F("\r\nTX / data packet write: "));
-#endif
-
-  PrepSending(value,vlen);
-  TxChar.writeValue(s_value);
 }
 
 void AckChar_Received(BLEDevice central, BLECharacteristic characteristic) {
@@ -78,6 +70,22 @@ void AckChar_Received(BLEDevice central, BLECharacteristic characteristic) {
   AmdtpReceivePkt(AMDTP_PKT_TYPE_ACK, ReceivedLen, ReceivedBuf);
 }
 
+////////////////////////////////////////////////////////
+// SENDING data over the handles                      //
+////////////////////////////////////////////////////////
+
+// send data packet over the TX characteristic
+void TxChar_Write(uint8_t *value, uint16_t vlen) {
+  
+#ifdef BLE_Debug
+  Serial.print(F("\r\nTX / data packet write: "));
+#endif
+
+  PrepSending(value,vlen);
+  
+  TxChar.writeValue(s_value);
+}
+
 void AckChar_Write(uint8_t *value, uint16_t vlen) {
   
 #ifdef BLE_Debug
@@ -85,9 +93,18 @@ void AckChar_Write(uint8_t *value, uint16_t vlen) {
 #endif
 
   PrepSending(value,vlen);
+  
+  // wait to improve stability of responds
+  // have seen that Ack-packages get lost by the Apollo HCI layer
+  // if sent to quickly. We have only seen this fail with sending ACK
+  delay(500); 
+  
   AckChar.writeValue(s_value);
 }
 
+/////////////////////////////////////////////////////////////
+// Supporting routines for sending                         //
+/////////////////////////////////////////////////////////////
 // create String to send
 void PrepSending(uint8_t *value, uint16_t vlen) {
   
@@ -104,9 +121,9 @@ void PrepSending(uint8_t *value, uint16_t vlen) {
 
 /*
  * As we receive bytes on a String characteristic, we can not have a zero in the middle of the 
- * bytes to be received. As the sender side we translate a zero to 0x73 0x20. This routine
- * will just do the opposite and translate 0x7e 0x20 back to 0x0. THis is done in gatt.c on 
- * Linux/ Ubuntu.
+ * bytes to be received. At the sender side we translate a zero to 0x73 0x20. This routine
+ * will just do the opposite and translate 0x7e 0x20 back to 0x0. This is done in gatt.c on 
+ * Linux / Ubuntu.
  * 
  * Hope and pray that 0x7e 0x20 strings do not happen ... else we extend the decode one morestep.
  */
@@ -187,7 +204,7 @@ extern void set_led_low( void ){
 // Debug print functions
 //
 // ****************************************
-#if (defined BLE_Debug) || (defined BLE_SHOW_DATA)  //// amdtp_common.h
+#if (defined BLE_Debug) || (defined BLE_SHOW_DATA)  // amdtp_common.h
 
 #define DEBUG_UART_BUF_LEN 256
 

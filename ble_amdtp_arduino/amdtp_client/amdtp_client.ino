@@ -27,13 +27,17 @@
 
  Version 3.0 / October 2020
   *  major rewrite as the amdtp_client is now working on top of ArduinoBLE.h 
+  *  
+ Version 3.1 / December 2020 / paulvha
+ *  Now sending ACK on TX handle instead of ACK handle
+ *  Addded comment to handle crc32.c errors. see top crc32.c / .h
 */
 /********************************************************************************************************************
  *******************************************************************************************************************/
 
 // version number
 #define MAJOR_CLIENTVERSION 3     // new features
-#define MINOR_CLIENTVERSION 0     // bug fixes, better calculation/ layout
+#define MINOR_CLIENTVERSION 1     // bug fixes, better calculation/ layout
 
 //*********************************************************************
 //  NO CHANGES NEEDED BEYOND THIS POINT
@@ -50,12 +54,16 @@ uint8_t receiveBuf[MAXRECEIVEBUF];// hand off data buffer from Bluetooth to user
 uint16_t ReceiveBufLen;           // length of data in buffer
 bool RespReceive = false;         // indicator new data in buffer
 bool ContTestData = false;        // indicator continues testdata
+uint16_t RepeatTestDelay = 0;     // Count down (step 100ms) for next request for test data 
 
 void setup() {
 
   Serial.begin(115200);
-  Serial.printf("\rArduino AMDTP client. Version : %d.%d\r\n", MAJOR_CLIENTVERSION, MINOR_CLIENTVERSION);
- 
+  while(! Serial);
+  Serial.printf("\rArduino AMDTP client / Host. Version : %d.%d\r\n", MAJOR_CLIENTVERSION, MINOR_CLIENTVERSION);
+
+  BLE.debug(Serial);              // enable display HCI commands
+   
   // connect to server
   perform_connecting();
   
@@ -67,8 +75,8 @@ void setup() {
 }
 
 void loop() {
-  
-  // poll and check connect
+
+  // poll and check connect (in amdtp_bridge.cpp)
   if (!CheckConnect()) {
     Serial.println(F("\rDisconnected"));
     Serial.println(F("\r\nPush RESET-button on client to reconnect")); 
@@ -80,10 +88,31 @@ void loop() {
     while (Serial.available()) handle_input(Serial.read());
   }
   
-  // handle any new data received over BlueTooth
+  // handle any new data received over BlueTooth from server/slave
   if (RespReceive) {
     DisplayServerResp();
   }
+
+  // if pending request test data
+  if (ContTestData)  {
+    
+    // do we need to check to sent again ?
+    if (RepeatTestDelay != 0) {
+      
+      // if count down reached, sent request
+      // potential next count will be set when response received
+      
+      if (--RepeatTestDelay == 0 )
+        SendCmd(AMDTP_CMD_START_TEST_DATA, NULL, 0);
+      else {
+      
+        for (byte i = 0; i < 5;i++){
+          CheckConnect();
+          delay(20);
+        }
+      } // else
+    } // RepeatTestDelay
+  } // ContTestData
 }
 
 //***************************************************************
@@ -95,20 +124,20 @@ void perform_connecting()
 {
   Serial.println(F("\rStarting Bluetooth"));
     
-  // Start ArduinoBLE
+  // Start ArduinoBLE       //(in amdtp_bridge.cpp)
   if (!StartBLE()){
     Serial.println(F("\rStarting BLE failed!"));
     while(1);
   }
   
   // find AMDTP server
-  if (!PerformScan()){
+  if (!PerformScan()){       //(in amdtp_bridge.cpp)
     Serial.println(F("\rCould not find AMDTP server"));
     while(1);
   }
 
   // connect and find handles
-  if (!get_handles()){
+  if (!get_handles()){       //(in amdtp_bridge.cpp)
     Serial.println(F("\rCould not connect or find all characteristics"));
     while(1);
   }
@@ -143,6 +172,7 @@ void display_menu()
 
 void handle_input(char c)
 {
+  
   if (c == '\r') return;    // skip CR
         
   if (c != '\n') {          // act on linefeed
@@ -160,15 +190,18 @@ void handle_input(char c)
     return;
   }
   
+  CheckConnect();
+  
   switch (req)
   {
     case 1:
         Serial.print("\rRequest server to send test data\r\n");
         ContTestData = true;
+        RepeatTestDelay = 0;      // trigger to resend will be set after receive data 
         SendCmd(AMDTP_CMD_START_TEST_DATA, NULL, 0);
         break;
     case 2:
-        Serial.print("\r*********** Request server to stop sending test data\r\n");
+        Serial.print("\rRequest server to stop sending test data\r\n");
         ContTestData = false;
         break;
     case 3:
@@ -186,7 +219,7 @@ void handle_input(char c)
         break;
     case 6:
         Serial.print("\rRequest internal temperature in Celsius\r\n");
-        AmdtpcSendCmd(AMDTP_CMD_REQ_INTERNAL_TEMP_CEL, NULL, 0);
+        SendCmd(AMDTP_CMD_REQ_INTERNAL_TEMP_CEL, NULL, 0);
         break;
     case 7:
         Serial.print("\rRequest internal temperature in Fahrenheit\r\n");
@@ -198,7 +231,7 @@ void handle_input(char c)
         break;
     case 9:
         Serial.print("\rTurn server onboard led off\r\n");
-        AmdtpcSendCmd(AMDTP_CMD_TURN_LED_OFF, NULL, 0);
+        SendCmd(AMDTP_CMD_TURN_LED_OFF, NULL, 0);
         break;
     case 10:
         Serial.print("\rRequest BME280 measurement\r\n");
@@ -252,6 +285,10 @@ void clr_input()
   PendingCmdInput = 0;
   input[0] = 0x0;
   inpcnt = 0;
+
+  // clear any pending input
+  while (Serial.available())  Serial.read();
+
 }
 
 //*****************************************************************************
@@ -378,6 +415,7 @@ void AmdtpReqBatLd()
 //*****************************************************************************
 void HandleServerResp(uint8_t * buf, uint16_t len)
 {
+  Serial.printf("HandleServerResp. len = %d\n", len);
   for (ReceiveBufLen = 0 ; ReceiveBufLen < len ; ReceiveBufLen++) receiveBuf[ReceiveBufLen] = buf[ReceiveBufLen];
   RespReceive = true;
 }
@@ -459,12 +497,12 @@ void DisplayServerResp()
         Serial.printf("Test data : %s %d\n", &receiveBuf[2], val);
         showmenu = false;
                 
-        if (ContTestData){
-          delay(2000);    // wait 2 seconds
-          AmdtpcSendCmd(AMDTP_CMD_START_TEST_DATA, NULL, 0);
-        }
-        else
+        if (! ContTestData)
           AmdtpcSendCmd(AMDTP_CMD_STOP_TEST_DATA, NULL, 0);
+        else
+          // set to count down in loop() 20 X 100ms = 2000 mS = 2 s
+          RepeatTestDelay = 20;
+
         break;
 
     case AMDTP_CMD_STOP_TEST_DATA:

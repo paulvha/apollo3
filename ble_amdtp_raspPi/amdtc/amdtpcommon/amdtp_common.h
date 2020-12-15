@@ -196,6 +196,7 @@ typedef struct
 {
     eAmdtpState_t   txState;
     eAmdtpState_t   rxState;
+    eAmdtpState_t   AckState;
     gboolean        txReady;               // TRUE if ready to send notifications
     amdtpPacket_t   rxPkt;
     amdtpPacket_t   txPkt;

@@ -17,7 +17,16 @@
  *  Agreement do not use this file and delete all copies in your possession or control;
  *  if you do not have a copy of the Agreement, you must contact ARM Ltd. prior
  *  to any use, copying or further distribution of this software.
- */
+ *  
+  */////////////////////////////////////////////////////////////////////////////////////////////    
+ //  This CRC MIGHT NOT BE NEEEDED. IT IS INCLUDED IN MBED AND NEW RELEASE APOLLO3 LIBRARY 2.0.3 
+ //  BUT IF NEEDED :
+ // 
+ //  UNCOMMENT IN amdtp_common.c line 55
+ //  //#include "crc32.h"
+ //  
+ //  Rename in crc32.c, on line 128 
+ //  CalcCrc32_org to CalcCrc32 
 /*************************************************************************************************/
 #ifndef CRC32_H
 #define CRC32_H

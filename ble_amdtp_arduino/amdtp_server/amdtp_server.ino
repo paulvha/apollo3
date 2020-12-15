@@ -5,7 +5,7 @@
   The client will take the initiative to sent a request/command which this server will handle 
   and respond back to the client. The protocol is based on the Ambiq Micro Data Transfer Profile.
 
-  See the arduino_amdtp.oddt documents
+  See the arduino_amdtp.odt documents
   
   ***********************************************************************************
   paulvha/ February 2020 / version 1.0
@@ -23,13 +23,18 @@
   * change ADC pin request handling
    
   paulvha / October 2020 / version 3.0
-  * This now works on top of ArduinoBLE and Apollo3 version 2.0.1 
+  * This now works on top of ArduinoBLE and Apollo3 version 2.0.1
+  
+  paulvha / December 2020 / version 3.1
+  * update with different ACK and timing to improve stability
+  * changed from getTempDegF to getTempDegC (new in 2.0.2)
+  * CRC32 is now also define in Mbed. Included instruction in CRC32.c/ .h
   
   ************************************************************************************
   == BME280
   Optional support for BME280 connected to 'qwuic' interface OR sda/scl pins. 
   
-  You have to UNCOMMENT the line 84 !!!!!!!!!!!!!!!!!!!!.
+  You have to UNCOMMENT the line 89 !!!!!!!!!!!!!!!!!!!!.
   
   This has been tested with an Adafruit BME280. Parts of the code below are coming from
   Sparkfun BME280 library: https://github.com/sparkfun/SparkFun_BME280_Arduino_Library
@@ -73,7 +78,7 @@
 
 // Server version
 #define MAJOR_SERVERVERSION 3         // new features implemented that require update to client
-#define MINOR_SERVERVERSION 0         // bug fixes, better calculation / layout
+#define MINOR_SERVERVERSION 1         // bug fixes, better calculation / layout
 
 // maximum length of reply / data message
 #define MAXREPLY 100
@@ -129,7 +134,9 @@ void setup() {
   while (!Serial);
   
   Serial.println(F("Starting Bluetooth"));
-
+  
+  BLE.debug(Serial);   // leave debug on HCI on for more stability
+  
   // begin initialization
   if (!BLE.begin()) {
     Serial.println(F("starting BLE failed!"));
@@ -201,10 +208,10 @@ void loop() {
 }
 
 /*
- * This routine is called when data / cmd has been received from the client
+ * This routine is called when data / cmd has been received from the host
  *
  * The case-values (like AMDTP_CMD_HELLO) needs to stay in sync with
- * the eAmdtpPktcmd_t definitions in BLE_amdtp.h
+ * the eAmdtpPktcmd_t definitions in BLE_amdtp.h or amdtp_bridge.h
  */
 
 void UserRequestReceived(uint8_t * buf, uint16_t len)
@@ -463,7 +470,6 @@ void UserRequestReceived(uint8_t * buf, uint16_t len)
     SendReplyClient();
 }
 
-
 /**
  * perform a read on analog pin
  */
@@ -492,19 +498,19 @@ void chat()
       SendReplyClient();
       opt_chat = false;
     }
-    else
+    else {
       val_data++;
+      BLE.poll();     // make sure to keep polling BLE regular
+    }
   }
 }
 
 /*
  * Send some test data
+ * This is only send on request of the host
  */
 void send_test_data()
 {
-
- // wait in between sending
- //if(TestCounter > 0) delay(2000);
 
  *val_data++ = 'T';
  *val_data++ = 'e';
@@ -625,7 +631,7 @@ void Read_BME280()
 
 float read_Internal_temp(uint8_t v)
 {
-  float temp_Deg = getTempDegF();       // computed temperature in deg celsius
+  float temp_Deg = getTempDegC();       // computed temperature in deg celsius (new in 2.0.2)
 
   if (temp_Deg == 0) return 0;
      

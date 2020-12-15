@@ -17,7 +17,17 @@
  *  Agreement do not use this file and delete all copies in your possession or control;
  *  if you do not have a copy of the Agreement, you must contact ARM Ltd. prior
  *  to any use, copying or further distribution of this software.
- */
+ *  
+ */////////////////////////////////////////////////////////////////////////////////////////////    
+ //  This CRC MIGHT NOT BE NEEEDED. IT IS INCLUDED IN MBED AND NEW RELEASE APOLLO3 LIBRARY 2.0.3 
+ //  BUT IF NEEDED :
+ // 
+ //  UNCOMMENT IN amdtp_common.c line 55
+ //  //#include "crc32.h"
+ //  
+ //  Reename in CRC32.c, on line 120 
+ //  CalcCrc32_org to CalcCrc32
+
 /*************************************************************************************************/
 #ifndef CRC32_H
 #define CRC32_H
@@ -41,7 +51,15 @@ extern "C" {
  *  This routine was originally generated with crcmod.py using the following parameters:
  *    - polynomial 0x104C11DB7
  *    - bit reverse algorithm
- */
+ */////////////////////////////////////////////////////////////////////////////////////////////    
+ //  This CRC MIGHT NOT BE NEEEDED. IT IS INCLUDED IN NEW MBED AND NEW RELEASE APOLLO3 LIBRARY 2.0.3 
+ //  BUT IF NEEDED :
+ // 
+ //  UNCOMMENT IN amdtp_common.c line 55
+ //  //#include "crc32.h"
+ //  
+ //  Rename in crc32.c, on line 128 
+ //  CalcCrc32_org to CalcCrc32 
 /*************************************************************************************************/
 uint32_t CalcCrc32(uint32_t crcInit, uint32_t len, uint8_t *pBuf);
 

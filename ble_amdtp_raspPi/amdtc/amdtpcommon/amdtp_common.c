@@ -80,10 +80,12 @@
 #include "../gatt.h"
 #include "../amdtc.h"
 #include "crc32.h"
+#include <unistd.h>
 
 extern void MainLoop(uint8_t *buf, uint16_t len);       // user level MainLoop in amdtc_UI.c
 extern uint8_t g_debug;             // Debug level from command line
 gboolean CallMain = FALSE;          // used to indicate that MainLoop needs to be called
+
 extern gboolean opt_start_data;
 
 // save received data for processing in user interface
@@ -148,6 +150,7 @@ gboolean amdtc_init(amdtpCb_t *amdtpCb)
 // buf       : data to sent
 // len       : length of data to sent
 //
+// testing different ACK response. Now setting enableAck flag
 //*****************************************************************************
 
 void
@@ -193,7 +196,7 @@ AmdtpBuildPkt(amdtpCb_t *amdtpCb, eAmdtpPktType_t type, gboolean encrypted, gboo
         header = header | (1 << PACKET_ENCRYPTION_BIT_OFFSET);
     }
 
-    if (enableACK)
+    if (enableACK)    // test different ACK apporach
     {
         header = header | (1 << PACKET_ACK_BIT_OFFSET);
     }
@@ -218,6 +221,7 @@ AmdtpBuildPkt(amdtpCb_t *amdtpCb, eAmdtpPktType_t type, gboolean encrypted, gboo
     uint8_t s_value[512];               //AMDTP_PACKET_SIZE
     size_t s_vlen = 0;
     uint16_t l;
+    uint16_t i;
 
     for (l = 0; l < pkt->len; l++) {
         if (pkt->data[l] == 0x0) {
@@ -232,18 +236,18 @@ AmdtpBuildPkt(amdtpCb_t *amdtpCb, eAmdtpPktType_t type, gboolean encrypted, gboo
 
     if (g_debug > 0) {
         g_print("============== Prepared for sending ========================\n");
-        for (uint16_t i =0; i < pkt->len; i++) g_print("0x%02X ", pkt->data[i]);
+        for ( i =0; i < pkt->len; i++) g_print("0x%02X ", pkt->data[i]);
         g_print("\n");
     }
     //**************************************************************
 
     // copy back to data
     pkt->len = 0;
-    for (uint16_t i = 0; i < s_vlen; i++) pkt->data[pkt->len++] = s_value[i];
+    for ( i = 0; i < s_vlen; i++) pkt->data[pkt->len++] = s_value[i];
 
     if (g_debug > 0){
         g_print("============== Decoded sending ========================\n");
-        for (uint16_t i =0; i < pkt->len; i++) g_print("0x%02X ", pkt->data[i]);
+        for ( i =0; i < pkt->len; i++) g_print("0x%02X ", pkt->data[i]);
         g_print("\n");
     }
 }
@@ -256,23 +260,17 @@ guint timeout_ACK(void *data)
     amdtpCb_t *amdtpCb = data;
     time_t seconds;
 
-    if (amdtpCb->txState == AMDTP_STATE_WAITING_ACK) {
+    seconds = time(NULL);
 
-        seconds = time(NULL);
-
-        // if more than 2 seconds passed
-        if (seconds - amdtpCb->AckTime > 2) {
-            g_printerr("ACK responds failed\n");
-            got_error = TRUE;
-            g_main_loop_quit(event_loop);
-        }
-
-        // come back again later
-        return TRUE;
+    // if more than 2 seconds passed
+    if (seconds - amdtpCb->AckTime > 2) {
+        g_printerr("ACK responds failed\n");
+        got_error = TRUE;
+        g_main_loop_quit(event_loop);
     }
 
-    // no need to repeat unless it is triggered again after sending
-    return FALSE;
+    // come back again later
+    return TRUE;
 }
 
 //*****************************************************************************
@@ -286,8 +284,6 @@ guint timeout_ACK(void *data)
 void
 AmdtpSendPacketHandler(amdtpCb_t *amdtpCb, GAttribResultFunc callback)
 {
-    if (g_debug > 0) g_print("%s\n", __func__);
-    
     uint16_t transferSize = 0;
     uint16_t remainingBytes = 0, l;
     amdtpPacket_t *txPkt;
@@ -324,7 +320,7 @@ AmdtpSendPacketHandler(amdtpCb_t *amdtpCb, GAttribResultFunc callback)
         gatt_write_char(b_attrib, amdtpCb->TX_handle, &txPkt->data[txPkt->offset], transferSize, (GAttribResultFunc) callback, NULL);
         txPkt->offset += transferSize;
     }
-
+    // all has been sent.. now first get an ACK
     if ( txPkt->offset >= txPkt->len )
     {
         // reset the acknowledgement package
@@ -335,7 +331,8 @@ AmdtpSendPacketHandler(amdtpCb_t *amdtpCb, GAttribResultFunc callback)
         amdtpCb->AckTime = time(NULL);
         g_timeout_add_seconds (2, (GSourceFunc) timeout_ACK, amdtpCb);
 
-        amdtpCb->txState = AMDTP_STATE_WAITING_ACK;
+        // we can still add new request
+        amdtpCb->txState = AMDTP_STATE_TX_IDLE;
     }
 }
 
@@ -468,6 +465,7 @@ AmdtpReceivePkt(amdtpCb_t *amdtpCb, amdtpPacket_t *pkt, uint16_t len, uint8_t *p
     uint8_t dataIdx = 0;
     uint32_t calDataCrc = 0;
     uint16_t header = 0;
+    uint16_t i;
 
     // if first of (potential) more, the length must at least be header
     if (pkt->offset == 0 && len < AMDTP_PREFIX_SIZE_IN_PKT)
@@ -528,7 +526,7 @@ AmdtpReceivePkt(amdtpCb_t *amdtpCb, amdtpPacket_t *pkt, uint16_t len, uint8_t *p
     {
         if (g_debug > 0){
             g_print("============== Total Packet received ========================\n");
-            for (uint16_t i =0; i < pkt->len; i++) g_print("0x%02X ", pkt->data[i]);
+            for (i =0; i < pkt->len; i++) g_print("0x%02X ", pkt->data[i]);
             g_print("\n");
         }
 
@@ -641,7 +639,9 @@ static eAmdtpStatus_t
 amdtpcSendAck(amdtpCb_t *amdtpCb, eAmdtpPktType_t type, gboolean encrypted, gboolean enableACK, uint8_t *buf, uint16_t len)
 {
     if (g_debug > 1)  g_print("%s\n", __func__);
-    uint16_t handle = amdtpCb->ACK_handle;
+
+    //uint16_t handle = amdtpCb->ACK_handle;    // Avoid sending over notify and sent over standard TX to improve stability
+    uint16_t handle = amdtpCb->TX_handle;
 
     AmdtpBuildPkt(amdtpCb, type, encrypted, enableACK, buf, len);
 
@@ -661,6 +661,7 @@ amdtpcSendAck(amdtpCb_t *amdtpCb, eAmdtpPktType_t type, gboolean encrypted, gboo
 void
 AmdtpSendControl(amdtpCb_t *amdtpCb, eAmdtpControl_t control, uint8_t *data, uint16_t len)
 {
+    if (g_debug > 1)  g_print("%s\n", __func__);
     uint8_t buf[ATT_DEFAULT_PAYLOAD_LEN] = {0};
     eAmdtpStatus_t st;
 

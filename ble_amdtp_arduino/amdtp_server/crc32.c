@@ -17,9 +17,17 @@
  *  Agreement do not use this file and delete all copies in your possession or control;
  *  if you do not have a copy of the Agreement, you must contact ARM Ltd. prior
  *  to any use, copying or further distribution of this software.
- */
+ *  
+ */////////////////////////////////////////////////////////////////////////////////////////////    
+ //  This CRC MIGHT NOT BE NEEEDED. IT IS INCLUDED IN NEW MBED AND NEW RELEASE APOLLO3 LIBRARY 2.0.3 
+ //  BUT IF NEEDED :
+ // 
+ //  UNCOMMENT IN amdtp_common.c line 55
+ //  //#include "crc32.h"
+ //  
+ //  Rename in crc32.c, on line 128 
+ //  CalcCrc32_org to CalcCrc32
 /*************************************************************************************************/
-
 
 #include <string.h>
 #include <stdint.h>
@@ -113,9 +121,9 @@ static const uint32_t crc32Table[256] =
  *  This routine was originally generated with crcmod.py using the following parameters:
  *    - polynomial 0x104C11DB7
  *    - bit reverse algorithm
- */
+ *    
 /*************************************************************************************************/
-uint32_t CalcCrc32(uint32_t crcInit, uint32_t len, uint8_t *pBuf)
+uint32_t CalcCrc32_org(uint32_t crcInit, uint32_t len, uint8_t *pBuf)
 {
   uint32_t crc = crcInit;
 

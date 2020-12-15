@@ -72,6 +72,4 @@ void HandleServerResp(uint8_t * buf, uint16_t len);
 extern void set_led_high( void );
 extern void set_led_low( void );
 
-
-
 #endif // _BLE_AMDTP_H_

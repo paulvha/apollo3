@@ -61,7 +61,7 @@
 
 // version number
 #define MAJOR_CLIENTVERSION 3 // new features, changes on both server and client
-#define MINOR_CLIENTVERSION 0 // bug fixes, better calculation/ layout only impact client
+#define MINOR_CLIENTVERSION 1 // bug fixes, better calculation/ layout only impact client
 
 /**
  * command to exchange between client and server
@@ -108,9 +108,12 @@ typedef union {
 void DetermineValue(gboolean get);
 void MainLoop(uint8_t *buf, uint16_t len);
 
+
 // foreward internal use
 void display_menu();
+//gboolean read_interactive(gpointer user_data);
 gboolean read_interactive();
+//gboolean HandleRequest();
 float byte_to_float(uint8_t *buf, int x);
 void display_BME280(uint8_t *buf, uint16_t len);
 void set_terminal();

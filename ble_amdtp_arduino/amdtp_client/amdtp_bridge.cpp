@@ -5,6 +5,8 @@
  * Version 3.0 / October 2020 / paulvha
  *  initial version
  *  
+ * Version 3.1 / December 2020 / paulvha
+ *  Now sending ACK on TX handle instead of ACK handle
  */
  
 #include "ArduinoBLE.h"
@@ -25,7 +27,7 @@ bool LastPacketSendWasData;       // problem with Notify in ArduinoBLE
 
 //****************************************
 //
-// Receive / send functions
+// Receive handle functions
 //
 //****************************************
 
@@ -54,6 +56,35 @@ void TxChar_Received(BLEDevice central, BLECharacteristic characteristic) {
   encode_receipt(a,vsize);
 }
 
+void AckChar_Received(BLEDevice central, BLECharacteristic characteristic) {
+  
+#ifdef BLE_SHOW_DATA
+  Serial.print(F("\rACK receive"));
+#endif
+  
+  // ArduinoBLE Ack is returning the same package as sent by this client
+  // causes the stack to go crazy. It is actually an error in ArduinoBLE.
+  // We now ignore if we did not sent a Data package just before
+/*  
+  if (! LastPacketSendWasData) {
+    
+#ifdef BLE_SHOW_DATA
+   Serial.println(F(" Ignore package !! (Notify of send Ack)"));
+#endif    
+   return;
+  }
+*/
+  String a = (const char*) characteristic.value();
+  int vsize = characteristic.valueSize();
+  encode_receipt(a,vsize);
+  AmdtpReceivePkt(AMDTP_PKT_TYPE_ACK, ReceivedLen, ReceivedBuf);
+}
+
+//****************************************
+//
+// Transmit handle functions
+//
+//****************************************
 // send data packet over the TX characteristic
 void TxChar_Write(uint8_t *value, uint16_t vlen) {
   
@@ -66,49 +97,31 @@ void TxChar_Write(uint8_t *value, uint16_t vlen) {
   TxChar.writeValue(value, (int) vlen);
 }
 
-void AckChar_Received(BLEDevice central, BLECharacteristic characteristic) {
-  
-#ifdef BLE_SHOW_DATA
-  Serial.print(F("\rACK receive"));
-#endif
-  
-  // ArduinoBLE Ack is returning the same package as sent by this client
-  // causes the stack to go crazy. It is actually an error in ArduinoBLE.
-  // We now ignore if we did not sent a Data package just before
-  if (! LastPacketSendWasData) {
-    
-#ifdef BLE_SHOW_DATA
-  Serial.println(F("d Ignore package !! (Notify of send Ack)"));
-#endif    
-    return;
-  }
-
-  String a = (const char*) characteristic.value();
-  int vsize = characteristic.valueSize();
-  encode_receipt(a,vsize);
-  AmdtpReceivePkt(AMDTP_PKT_TYPE_ACK, ReceivedLen, ReceivedBuf);
-}
-
 // send data packet over the ACK characteristic
 void AckChar_Write(uint8_t *value, uint16_t vlen) {
   
 #ifdef BLE_Debug
-  Serial.println(F("\rAck write:"));
+  Serial.println(F("\rAck write"));
 #endif
 
   LastPacketSendWasData = false;
+
+  // now sending over TX instead of ACK handle. The ACK write is repeated as it is a notify-channel
+  // and generates more traffic and makes the connection unstable
   
-  AckChar.writeValue(value, (int) vlen);
+  //AckChar.writeValue(value, (int) vlen);  
+  delay(700);    // apperently a delay is needed to make it stable on HCI layer
+  TxChar.writeValue(value, (int) vlen);
 }
 
-/*
- * As we receive bytes on a String characteristic, we can not have a zero in the middle of the 
- * bytes to be received. As the sender side we translate a zero to 0x73 0x20. This routine
- * will just do the opposite and translate 0x7e 0x20 back to 0x0. THis is done in gatt.c on 
- * Linux/ Ubuntu.
- * 
- * Hope and pray that 0x7e 0x20 strings do not happen ... else we extend the decode one morestep.
- */
+//*******************************************************************************************
+// As we receive bytes on a String characteristic, we can not have a zero in the middle of the 
+// bytes to be received. As the sender side we translate a zero to 0x73 0x20. This routine
+// will just do the opposite and translate 0x7e 0x20 back to 0x0. THis is done in gatt.c on 
+// Linux/ Ubuntu.
+// 
+// Hope and pray that 0x7e 0x20 strings do not happen ... else we extend the decode one morestep.
+//********************************************************************************************
 void encode_receipt(String a, int vsize)
 {
   char save = 0x0;
@@ -167,8 +180,6 @@ void encode_receipt(String a, int vsize)
 bool StartBLE()
 {
   AMD_stat = AMD_IDLE;
-  
-  // BLE.debug(Serial); // enable display HCI commands
     
   // begin initialization
   if (!BLE.begin()) return false;
@@ -217,7 +228,7 @@ bool PerformScan()
     if (peripheral) {
       
       // discovered a peripheral
-      Serial.println("\rDiscovered an AMDTP peripheral");
+      Serial.println("\rDiscovered an AMDTP server / slave");
       Serial.println("\r-----------------------");
   
       // print address
@@ -374,8 +385,15 @@ extern "C" void debug_printf(char* fmt, ...){
     va_start (args, fmt);
     vsnprintf(debug_buffer, DEBUG_UART_BUF_LEN, (const char*)fmt, args);
     va_end (args);
-
-    SERIAL_PORT.print(debug_buffer);
+    
+    // changed as the Arduino Nano 33 BLE Sense can only handle up to 64 characters
+    uint8_t i = 0;
+    uint8_t len = strlen(debug_buffer);
+  
+    for(i = 0; i < len ;i++) {
+      SERIAL_PORT.print((char) debug_buffer[i]);
+    }
+    //SERIAL_PORT.print(debug_buffer);
 }
 #else  // do nothing
 extern "C" void debug_printf(char* fmt, ...){}

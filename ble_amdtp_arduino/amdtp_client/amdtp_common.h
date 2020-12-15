@@ -50,6 +50,14 @@
 #ifndef AMDTP_COMMON_H
 #define AMDTP_COMMON_H
 
+/* BLE_DEBUG will show the routines and debug information
+ * BLE_SHOW_DATA will show the data being received and sent
+ * 
+ * uncomment / remove '//' to enable
+ */
+//#define BLE_Debug 1
+//#define BLE_SHOW_DATA 1
+
 // define the serial port
 #define SERIAL_PORT Serial
 
@@ -59,13 +67,7 @@
 #define ATT_UUID_AMDTP_TX  "00002760-08C2-11E1-9073-0E8AC72E0012"
 #define ATT_UUID_AMDTP_ACK  "00002760-08C2-11E1-9073-0E8AC72E0013"
 
-/* BLE_DEBUG will show the routines and debug information
- * BLE_SHOW_DATA will show the data being received and sent
- * 
- * uncomment / remove '//' to enable
- */
-//#define BLE_Debug 1
-//#define BLE_SHOW_DATA 1
+
 
 /**********************************************************/
 /* NO NEED FOR CHANGES AFTER THIS POINT. AMDTP PARAMATERS */
@@ -188,7 +190,6 @@ amdtpPacket_t;
 typedef struct
 {
     eAmdtpState_t       txState;
-    eAmdtpState_t       rxState;
     amdtpPacket_t       rxPkt;              // buffers (512 + 4+4)
     amdtpPacket_t       txPkt;              // buffers (512 + 4+4)
     amdtpPacket_t       ackPkt;             // buffer (20)

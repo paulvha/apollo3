@@ -52,7 +52,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include "amdtp_common.h"
-#include "crc32.h"
+//#include "crc32.h"      // already in some MBED releases
 
 
 #if (defined BLE_Debug) || (defined BLE_SHOW_DATA)    // amdtp_common.h
@@ -74,7 +74,7 @@ uint8_t ackPktBuf[20];
 /* Control block */
 static struct
 {
-    uint8_t             *txdecode;            // store decoded data
+    uint8_t             *txdecode;          // store decoded data
     bool                txReady;            // TRUE if ready to send notifications
     amdtpCb_t           core;
 }
@@ -111,13 +111,12 @@ amdtps_init()
 
     amdtpsCb.txdecode = txDecode;
     amdtpsCb.core.attMtuSize = ATT_DEFAULT_MTU;         // needed to break a package is pieces
-    amdtpsCb.core.rxState = AMDTP_STATE_RX_IDLE;    // enable sending
+
     amdtpsCb.core.txState = AMDTP_STATE_TX_IDLE;
     amdtpsCb.txReady = true;
 }
 
 //*****************************************************************************
-//
 //! @brief reset package
 //*****************************************************************************
 void
@@ -143,6 +142,10 @@ eAmdtpStatus_t
 AmdtpReceivePkt(uint8_t handle, uint16_t len, uint8_t *pValue)
 {
   amdtpPacket_t *pkt;
+  
+  uint8_t dataIdx = 0;
+  uint32_t calDataCrc = 0;
+  uint16_t header = 0;
 
 #ifdef BLE_Debug
   debug_print(__func__, __FILE__, __LINE__);
@@ -150,10 +153,6 @@ AmdtpReceivePkt(uint8_t handle, uint16_t len, uint8_t *pValue)
 
   if (handle == AMDTP_PKT_TYPE_DATA)   pkt = &amdtpsCb.core.rxPkt;
   else  pkt = &amdtpsCb.core.ackPkt;
-
-  uint8_t dataIdx = 0;
-  uint32_t calDataCrc = 0;
-  uint16_t header = 0;
 
   // len must include length (2) and header (2)
   if (pkt->offset == 0 && len < AMDTP_PREFIX_SIZE_IN_PKT)
@@ -176,10 +175,6 @@ AmdtpReceivePkt(uint8_t handle, uint16_t len, uint8_t *pValue)
     pkt->header.encrypted = (header & PACKET_ENCRYPTION_BIT_MASK) >> PACKET_ENCRYPTION_BIT_OFFSET;  // mask = 1, offset is 7, next bit
     pkt->header.ackEnabled = (header & PACKET_ACK_BIT_MASK) >> PACKET_ACK_BIT_OFFSET; // mask 1, offset is 6, next bit
     dataIdx = AMDTP_PREFIX_SIZE_IN_PKT;     // 4
-    if (pkt->header.pktType == AMDTP_PKT_TYPE_DATA)     // if data
-    {
-        amdtpsCb.core.rxState = AMDTP_STATE_GETTING_DATA;    // indicate getting data
-    }
 
 #ifdef BLE_Debug
     debug_printf("\rpkt len = 0x%x, pkt header = 0x%x :\n", pkt->len, header);
@@ -207,10 +202,6 @@ AmdtpReceivePkt(uint8_t handle, uint16_t len, uint8_t *pValue)
 #ifdef BLE_Debug
     debug_printf("\rNot enough buffer size!!!\n");
 #endif
-    if (pkt->header.pktType == AMDTP_PKT_TYPE_DATA)      // if data
-    {
-      amdtpsCb.core.rxState = AMDTP_STATE_RX_IDLE;       // set to idle
-    }
 
     resetPkt(pkt);
     AmdtpSendReply(AMDTP_STATUS_INSUFFICIENT_BUFFER, NULL, 0);
@@ -235,13 +226,9 @@ AmdtpReceivePkt(uint8_t handle, uint16_t len, uint8_t *pValue)
     if (peerCrc != calDataCrc)
     {
 #ifdef BLE_Debug
-      debug_printf("\rcrc error :\ncalDataCrc = 0x%x ", calDataCrc);
-      debug_printf("peerCrc = 0x%x\n", peerCrc);
+      debug_printf("\rcrc error :\ncalculated = 0x%x ", calDataCrc);
+      debug_printf("Received = 0x%x\n", peerCrc);
 #endif
-      if (pkt->header.pktType == AMDTP_PKT_TYPE_DATA)
-      {
-          amdtpsCb.core.rxState = AMDTP_STATE_RX_IDLE;
-      }
       
       // reset pkt
       resetPkt(pkt);
@@ -255,9 +242,12 @@ AmdtpReceivePkt(uint8_t handle, uint16_t len, uint8_t *pValue)
         
     return AMDTP_STATUS_RECEIVE_DONE;
  }
-
+#ifdef BLE_Debug
+      debug_printf("Not all the message data has been received in single packet. only %d of %d \n",pkt->offset, pkt->len);
+#endif  
   // not all had been received
   return AMDTP_STATUS_RECEIVE_CONTINUE;
+
 }
 
 //*****************************************************************************
@@ -285,32 +275,31 @@ AmdtpPacketHandler(eAmdtpPktType_t type, uint16_t len, uint8_t *buf)
       // finally we are going to user level
       HandeRespServer(buf, len);          // defined in amdp_bridge.cpp
 
-      amdtpsCb.core.rxState = AMDTP_STATE_RX_IDLE;
       resetPkt(&amdtpsCb.core.rxPkt);
       break;
 
     case AMDTP_PKT_TYPE_ACK:
     {
       eAmdtpStatus_t status = (eAmdtpStatus_t)buf[0];
-
+      
+      // not checking now whether txState was AMDTP_STATE_WAITING_ACK
       amdtpsCb.core.txState = AMDTP_STATE_TX_IDLE;
 
       if (status == AMDTP_STATUS_CRC_ERROR || status == AMDTP_STATUS_RESEND_REPLY)
       {
-        // resend packet
-        AmdtpSendPacketHandler();
+
+        AmdtpSendPacketHandler();     // resend packet
       }
       else
       {
+
         // increase packet serial number if send successfully
         if (status == AMDTP_STATUS_SUCCESS)
         {
           amdtpsCb.core.txPktSn++;
             
           if (amdtpsCb.core.txPktSn == 16)     // max 4 bits part of the header (so count 0 - 15)
-          {
             amdtpsCb.core.txPktSn = 0;
-          }
         }
 
         // reset packet
@@ -328,7 +317,6 @@ AmdtpPacketHandler(eAmdtpPktType_t type, uint16_t len, uint8_t *buf)
     
     if (control == AMDTP_CONTROL_RESEND_REQ)
     {
-      amdtpsCb.core.rxState = AMDTP_STATE_RX_IDLE;
       resetPkt(&amdtpsCb.core.rxPkt);
       if (resendPktSn > amdtpsCb.core.lastRxPktSn)
       {
@@ -355,6 +343,9 @@ AmdtpPacketHandler(eAmdtpPktType_t type, uint16_t len, uint8_t *buf)
     break;
 
   default:
+#ifdef BLE_Debug
+        debug_printf("default... no idea what type of packet was received\n");
+#endif
     break;
   }
 }
@@ -377,11 +368,11 @@ AmdtpBuildPkt(eAmdtpPktType_t type, bool encrypted, bool enableACK, uint8_t *buf
   if (type == AMDTP_PKT_TYPE_DATA)
   {
     pkt = &amdtpsCb.core.txPkt;
-    header = amdtpsCb.core.txPktSn << PACKET_SN_BIT_OFFSET;  // add 4 bit serial number to right offset
+    header = amdtpsCb.core.txPktSn << PACKET_SN_BIT_OFFSET;       // add 4 bit serial number to right offset
   }
   else 
   {
-    pkt = &amdtpsCb.core.ackPkt;                      // acknowledgement of earlier received data
+    pkt = &amdtpsCb.core.ackPkt;                                  // acknowledgement of earlier received data
   }
 
   //
@@ -393,21 +384,21 @@ AmdtpBuildPkt(eAmdtpPktType_t type, bool encrypted, bool enableACK, uint8_t *buf
   pkt->data[1]  = ((len + AMDTP_CRC_SIZE_IN_PKT) >> 8) & 0xff;   // MSB length
 
   // header
-  header = header | (type << PACKET_TYPE_BIT_OFFSET);             // add 4 bit type
+  header = header | (type << PACKET_TYPE_BIT_OFFSET);            // add 4 bit type
   if (encrypted)
   {
-    header = header | (1 << PACKET_ENCRYPTION_BIT_OFFSET);      // set encryption bit (not used really)
+    header = header | (1 << PACKET_ENCRYPTION_BIT_OFFSET);       // set encryption bit (not used really)
   }
   if (enableACK)
   {
-    header = header | (1 << PACKET_ACK_BIT_OFFSET);             // set acknowledgement bit
+    header = header | (1 << PACKET_ACK_BIT_OFFSET);              // set acknowledgement bit
   }
-  pkt->data[2] = (header & 0xff);                                 // set header
+  pkt->data[2] = (header & 0xff);                                // set header
   pkt->data[3] = (header >> 8);
 
   // copy data
-  memcpy(&(pkt->data[AMDTP_PREFIX_SIZE_IN_PKT]), buf, len);       // now add the data
-  calDataCrc = CalcCrc32(0xFFFFFFFFU, len, buf);                  // calculate the CRC
+  memcpy(&(pkt->data[AMDTP_PREFIX_SIZE_IN_PKT]), buf, len);      // now add the data
+  calDataCrc = CalcCrc32(0xFFFFFFFFU, len, buf);                 // calculate the CRC
 
   // add checksum
   pkt->data[AMDTP_PREFIX_SIZE_IN_PKT + len] = (calDataCrc & 0xff); // add the 32 bit CRC
@@ -418,9 +409,9 @@ AmdtpBuildPkt(eAmdtpPktType_t type, bool encrypted, bool enableACK, uint8_t *buf
 #ifdef BLE_SHOW_DATA
   
   if (type == AMDTP_PKT_TYPE_DATA)
-    debug_printf("\r============== Data Prepared for sending ========================\n");
+    debug_printf("\r=========== Data Prepared for sending =====================\n");
   else
-    debug_printf("\r============== Ack Prepared for sending ========================\n");
+    debug_printf("\r=========== Ack Prepared for sending =====================\n");
     
   for (uint16_t i =0; i < pkt->len; i++) debug_printf("0x%02X ", pkt->data[i]);
   debug_printf("\n");
@@ -433,7 +424,7 @@ AmdtpBuildPkt(eAmdtpPktType_t type, bool encrypted, bool enableACK, uint8_t *buf
   for (uint16_t i = 0; i < decoded_len; i++) pkt->data[pkt->len++] = amdtpsCb.txdecode[i];
 
 #ifdef BLE_SHOW_DATA
-  debug_printf("\r============== Decoded ========================\n");
+  debug_printf("\r=========== Decoded =====================\n");
   debug_printf("\rlength %d\r\n",pkt->len);
   for (uint16_t i =0; i < pkt->len; i++) debug_printf("0x%02X ", pkt->data[i]);
   debug_printf("\n\n");
@@ -455,6 +446,7 @@ AmdtpSendControl(eAmdtpControl_t control, uint8_t *data, uint16_t len)
   uint8_t buf[ATT_DEFAULT_PAYLOAD_LEN] = {0};
 
   buf[0] = control;
+  
   if (len > 0)  memcpy(buf + 1, data, len);
   
   amdtpsSendAck(AMDTP_PKT_TYPE_CONTROL, false, false, buf, len + 1);
@@ -485,8 +477,8 @@ AmdtpSendReply(eAmdtpStatus_t status, uint8_t *data, uint16_t len)
 //
 // send acknowledgement over the ACK handle
 // type : ack or control
-// encrypted set encryption
-// enable ack ???
+// encrypted set encryption   (not used right now, maybe future ??)
+// enable ack                 (not used right now, maybe future ??)
 // buf : data to sent
 // len : length of data to sent
 //*****************************************************************************
@@ -500,7 +492,7 @@ amdtpsSendAck(eAmdtpPktType_t type, bool encrypted, bool enableACK, uint8_t *buf
   // create packet with CRC etc
   AmdtpBuildPkt(type, encrypted, enableACK, buf, len);
   
-  // sent it (amdtp_bridge)
+  // sent it (in amdtp_bridge.cpp)
   SendAckPacket(amdtpsCb.core.ackPkt.data,amdtpsCb.core.ackPkt.len);
   
   // the package has been sent: clear out
@@ -509,7 +501,7 @@ amdtpsSendAck(eAmdtpPktType_t type, bool encrypted, bool enableACK, uint8_t *buf
 
 //*****************************************************************************
 //
-// Sent command to server
+// Sent command to server (called from sketch)
 // param cmd : server command to sent
 // param buf : buffer with optional data
 // param len : length of optional data
@@ -534,13 +526,13 @@ bool AmdtpcSendCmd(uint8_t cmd, uint8_t *buf, uint8_t len)
     if (len > RXDATALEN)  return(false);
     memcpy(data + 1, buf, len);
   }
+  
+#ifdef BLE_Debug
+    debug_printf("\rAmdtpcSendPacket Opcode Sent = %d\n",data[0]);
+#endif
 
   //                          data packet,   encrypted, enableACK, data, length of data
   status = AmdtpsSendPacket(AMDTP_PKT_TYPE_DATA, false, false, data, len + 1);
-
-#ifdef BLE_Debug
-    debug_printf("\rAmdtpcSendPacket = %d, Opcode Sent = %d\n", status, data[0]);
-#endif
 
   if (status != AMDTP_STATUS_SUCCESS)
   {
@@ -593,7 +585,7 @@ AmdtpsSendPacket(eAmdtpPktType_t type, bool encrypted, bool enableACK, uint8_t *
   if ( amdtpsCb.core.txState != AMDTP_STATE_TX_IDLE )
   {
 #ifdef BLE_Debug
-    debug_printf("\rData sending failed, tx state = %d\n", amdtpsCb.core.txState);
+    debug_printf("\rData sending failed, tx state is NOT idle ( but %d)\n", amdtpsCb.core.txState);
 #endif
     return AMDTP_STATUS_BUSY;
   }
@@ -636,7 +628,6 @@ AmdtpSendPacketHandler()
   
   if ( amdtpsCb.core.txState == AMDTP_STATE_TX_IDLE ) {
     txPkt->offset = 0;
-    amdtpsCb.core.txState = AMDTP_STATE_WAITING_ACK;
 
     // send small pieces of the packet. ArduinoBLE does not seem to break down in
     // chunks with sending. it just restricts sending to mtusize -3
@@ -652,6 +643,9 @@ AmdtpSendPacketHandler()
      SendDataPacket(&txPkt->data[txPkt->offset], transferSize);
      txPkt->offset += transferSize;
     }
+    
+    // amdtpsCb.core.txState = AMDTP_STATE_WAITING_ACK;
+    
   }
   else {
 #ifdef BLE_Debug
@@ -660,12 +654,12 @@ AmdtpSendPacketHandler()
   }
 }
 
-//**************************************************************
+//*************************************************************************************
 // As we sent to String Characteristic on Artemis, we can not afford zero in the middle
 // we replace with a 0x7E + 0x20 (hopefully unique enough)
 // to be decoded on receipt first as this can also impact the CRC
 // paulvha October 2020
-
+//*************************************************************************************
 uint16_t decode_sent(uint8_t *value, uint16_t vlen)
 {
   uint16_t l, ll=0;

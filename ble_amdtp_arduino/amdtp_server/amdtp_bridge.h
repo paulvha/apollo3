@@ -1,3 +1,14 @@
+/*
+ * This header file contains the routines that bridge between user level in the sketch
+ * and the amdtp - protocol handler layer
+ * 
+ * Version 3.0 / October 2020 / paulvha
+ *  initial version
+ *  
+ * Version 3.1 / December 2020 / paulvha
+ *  adding a delay in sending ACK (communication fails often with an ACk)
+ */
+
 #ifndef _BLE_AMDTP_H_
 #define _BLE_AMDTP_H_
 
@@ -61,6 +72,5 @@ extern void set_led_high( void );
 extern void set_led_low( void );
 extern BLEStringCharacteristic TxChar;
 extern BLEStringCharacteristic AckChar;
-
 
 #endif // _BLE_AMDTP_H_
