@@ -58,8 +58,9 @@ This project is licensed under the GNU GENERAL PUBLIC LICENSE 3.0
 
 ### The Sparkfun BLE driver is licensed under :
 ![license](https://github.com/sparkfun/Arduino_Apollo3/blob/master/docs/LICENSE.md)
+
 SparkFun code, firmware, and software is released under the MIT License(http://opensource.org/licenses/MIT).
 
-### Parts of the code written by me that has been added / changed to enable ArduinoBLE on V1.2.1 are delivered without support and
-the same license applies as it is for the orginal ArduinoBLE or Sparkfun code.
+### added or change code
+Parts of the code written by me that has been added / changed to enable ArduinoBLE on V1.2.1 are delivered without support and the same license applies as it is for the orginal ArduinoBLE or Sparkfun code.
 
