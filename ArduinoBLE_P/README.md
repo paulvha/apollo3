@@ -13,7 +13,7 @@ looks to be the future for the Apollo3 boards.
 Arduino IDE. The binary code that is created is much lighter, smaller easier to understand. BUT V1.2.1 does not have BLE. The BLE
 stack that was available in earlier V1 versions has been removed.
 
-<br>This is a port of ArduinoBLE version 1.13 taken from ![ArduinoBLE](https://github.com/arduino-libraries/ArduinoBLE).
+<br>This is a port of the necessary BLE-stack files for V1.2.1 and  ArduinoBLE version 1.13 taken from ![ArduinoBLE](https://github.com/arduino-libraries/ArduinoBLE).
 A number of known bugfixes have been applied. It is delivered as is and there are NO plans to incorporate new functionalities or apply bug-changes as they become known or available. A number of bugs are known to be solved in future versions of the official version, see their ![website](https://github.com/arduino-libraries/ArduinoBLE/issues).
 
 ## Getting started
