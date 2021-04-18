@@ -28,7 +28,10 @@ For the Linux client software use the --help or -h option
 
 ## Versioning
 
-###  version 3.1 / december 2020
+### version 3.2 / April 2021
+ * added SoftwareSerial for Library 2.0.6
+
+### version 3.1 / december 2020
  * update to amdtp-client and amdtp-server on Arduino
  * update to amdtc on linux to work with Bluez 5.55 and stability
 
