@@ -29,20 +29,24 @@ However for many solutions a 9600 baud sending/receiving Software Serial or only
 
     Original code :
 
+<prev>
     case IRQ_RISE:
             if (handler->_rise) {
                 handler->_rise(handler->_rise_param);
             }
             break;
+</prev>
 
     Add a line to original code:
 
+<prev>
     case IRQ_RISE:
     case (IRQ_FALL | IRQ_RISE):      //<<<<<< add this line to get both
             if (handler->_rise) {
                 handler->_rise(handler->_rise_param);
             }
             break;
+</prev>
 
     As this file is NOT included in the MBED-OS pre-compiled library, you can make the change and just recompile the sketch.
 
