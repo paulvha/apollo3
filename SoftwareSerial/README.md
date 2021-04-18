@@ -44,6 +44,7 @@ However for many solutions a 9600 baud sending/receiving Software Serial or only
                 handler->_rise(handler->_rise_param);
             }
             break;
+
 </pre>
 
     As this file is NOT included in the MBED-OS pre-compiled library, you can make the change and just recompile the sketch.
