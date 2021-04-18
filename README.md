@@ -28,6 +28,9 @@ For the Linux client software use the --help or -h option
 
 ## Versioning
 
+### version 3.3 / April 2021
+ * added BLE for version 1.2.1 (ArduinoBLE_P)
+
 ### version 3.2 / April 2021
  * added SoftwareSerial for Library 2.0.6
 

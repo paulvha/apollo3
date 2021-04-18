@@ -1,0 +1,82 @@
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+Version 1.1 / February 2021 / paulvha
+
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+Installation instruction to add the ArduinoBLE_P and Exactle Bluetooth stack to Sparkfun Library version 1.2.1.
+
+INSTALL_DIR : directory where version 1.2.1 of the library is installed
+
+### The following data is included
+
+exactleP folder  	: contains the patched Bluetooth stack
+platform.new file      : updated platform.txt file needed for compile on Library 1.2.1
+ArduinoBLE_P 		: example sketches + library
+
+########################################################################
+### copy the ExactLE Bluetooth stack  !!!!!! ONLY NEEDED FOR 1.2.1 #####
+########################################################################
+
+IF YOU HAD A PREVIOUS FUNCTION, MAKE SURE TO REPLACE AS THE
+STACK NOW HAS CHANGES TO STABILITY AND SERVICE DESCRIPTIONS !!
+
+Goto to INSTALL_DIR/cores/arduino/am_sdk_ap3
+copy the complete exactleP folder in here.
+The amd_sdk_ap3 folder will look like:
+CMSIS
+devices
+mcu
+exactleP
+utils
+
+################################################################################
+# Apply changes to the compiler instructions  !!!!!! ONLY NEEDED FOR 1.2.1 #####
+################################################################################
+You have 2 options.
+
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+## Option 1: replace the platform.txt file
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+Goto to INSTALL_DIR
+make a copy of platform.txt : e.g. mv platform.txt platform.org
+Now copy the platform.new (part of this package) cp platform.new  platform.txt
+## end option 1 #####
+
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+## Option 2: apply changes in the current platform.txt file
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+Goto to INSTALL_DIR
+make a copy of platform.txt : e.g. cp platform.txt platform.org
+
+Open an editor (the line-numbers below are an indicator)
+
+line 43 : add in paths to the source code
+ap3core.exactle.path={ap3core.path}/am_sdk_ap3/exactleP
+
+line 50 : add the core exactle 
+includes.exactle="-I{ap3core.exactle.path}/ws-core/sw/wsf/ambiq" "-I{ap3core.exactle.path}/ws-core/sw/wsf/include"  "-I{ap3core.exactle.path}/ws-core/sw/util" "-I{ap3core.exactle.path}/ws-core/include" "-I{ap3core.exactle.path}/sw/hci/ambiq/apollo3"  "-I{ap3core.exactle.path}/sw/hci/include" "-I{ap3core.exactle.path}/sw/hci/ambiq"
+
+line 63 : add compiler options to enable Bluetooth stack tracing
+defines.extra=-DWSF_TRACE_ENABLED  -DCORDIO_ZERO_COPY_HCI
+
+line 93 : add the {includes.exactle} to include.all
+includes.all={includes.variant} {includes.core} {includes.ambiq_sdk} {includes.cmsis} {includes.extra} {includes.exactle} 
+
+Now save the changes in the file.
+## end option 2 ###
+
+
+##########################################################
+# install UPDATED ArduinoBLE_P library
+##########################################################
+
+In case you have already installed ArduinoBLE, remove that first. The ArduinoBLE_P for Apollo3 1.2.1 has changes to make
+it work on Exactle, but it will also work on version 2.0.X and has a number of known buf fixes applied
+
+Start Arduino IDE
+Select from menu sketch-> Include Library -> Add .ZIP library
+locate ArduinoBLE_P.zip
+click OK
+
+Now open an example : file-> Examples-> ArduinoBLe -> peripheral ... choose the example

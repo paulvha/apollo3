@@ -1,0 +1,334 @@
+Changes Applied for ArduinoBLE_P (P from Patched)
+
+This version of ArduinoBLE can work on Sparkfun library 2.0.x as well as Library 1.2.1
+The original ArduinoBLE was version 1.1.3 now version 3.1.3
+
+========================
+#Enable changing BDADDR
+========================
+Before you can compile it requires a SMALL CHANGE  in ArduinoBLE/src/uility/HCI.h.
+
+Around line 80 you will find :
+
+private :
+int sendCommand(uint16_t opcode, uint8_t plen = 0, void* parameters = NULL);
+
+Now move the sendCommand() to the line ABOVE private, into the public area so we can call
+this function from the sketch:
+
+int sendCommand(uint16_t opcode, uint8_t plen = 0, void* parameters = NULL);
+private:
+
+=================================
+#Enable working on Sparkfun 1.2.1
+=================================
+New files have been added to ArduinoBLE/src/uility/
+
+HCIExactleTransport.cpp
+HCIExactleTransport.h
+
+The handle the HCI interface between the ArduinoBLE HCI commands and
+the Exactle layer.
+
+=================================
+#Handle correct detection
+=================================
+Depending on the architecture either UART, Cordio or EXACTLE HCI-Transport
+layer is selected. This needs a small change
+
+In HCIUartTransport.cpp around line 20
+change :  #if !defined(ARDUINO_ARCH_MBED)
+to     :  #if !defined(ARDUINO_ARCH_MBED) && !defined(ARDUINO_ARCH_APOLLO3)
+
+=================================
+#Added example
+=================================
+Added example10_ph_BME280 and example10_central_BME280. This will demonstrate
+a menu structure interaction and sending the BME280 sensor data.
+
+=============================================
+# MANY different BUGS fixes applied
+=============================================
+
+In ArduinoBLE/src/uility/ATT.CPP fix a bug with incorrect definition of handle.
+   In routine handleNotifyOrInd() around line 1379
+   change : uint8_t handle = handleNotifyOrInd->handle;
+   to     : uint16_t handle = handleNotifyOrInd->handle;
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In ArduinoBLE/src/uility/HCICordioTransport.CPP fix a bug to prevent loosing data.
+   In routine handleRxData() around line 284
+   change :     return;
+   to     :     yield();
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In ArduinoBLE/src/uility/HCICordioTransport.CPP fix a bug of using non-initialized Cordio routines
+   In routine begin() around line 196
+   change :      CordioHCIHook::getDriver().start_reset_sequence();
+   to     :      // CordioHCIHook::getDriver().start_reset_sequence(); //(comment out !!)
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In ArduinoBLE/src/uility/HCICordioTransport.CPP fix a bug that will block sleep
+
+4 changes to be applied:
+
+   1) In global space around line 70
+   ADD : volatile bool GoSleep = false;    // added {paulvha}
+................................................................
+   2) In routine bleLoop() around line 121
+   ADD :  in the top of while (true) loop :
+
+   while (true){
+
+       if (GoSleep) {    // added {paulvha}
+            timer.stop();
+            //Serial.print("SLEEP\n");
+            rtos::ThisThread::flags_wait_any(0x02); // wait for signal
+            //Serial.print("WAKE\n");
+            timer.start();
+        }
+
+        ........
+..................................................................
+   3) In routine begin() around line 209
+   change  :	bleLoopThread.start(bleLoop);
+
+   to      :
+    if (GoSleep) {
+      bleLoopThread.flags_set(0x02);  // restart scheduler (paulvha)
+      GoSleep = false;
+    }
+    else
+      bleLoopThread.start(bleLoop);     // start WSF sheduler
+...............................................................
+   4) In routine end() around line 225
+   change  :    bleLoopThread.terminate();      // once terminated you can NOT restart (paulvha)
+   to      :    GoSleep = true;                 // set WSF sheduler to sleep (paulvha)
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In ArduinoBLE/src/uility/HCICordioTransport.CPP fix a bug to prevent crash if no buffer can be obtained
+  In routine write() around line 273
+
+  AFTER:
+    uint8_t* packet = (uint8_t*) WsfMsgAlloc(max(packetLength, MIN_WSF_ALLOC));
+
+  ADD:
+  if (packet == NULL) {
+     Serial.println("HCICordioTransportClass::write");  // {paulvha}
+     Serial.println("Could not obtain memory");
+     return(0);
+  }
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In ArduinoBLE/src/uility/HCI.CPP fix a bug to prevent uncontrolled hang during attributes
+
+    In routine poll() around line 146
+    change :
+
+     if (_debug) {
+        dumpPkt("HCI EVENT RX <- ", _recvIndex, _recvBuffer);
+     }
+
+    to :
+
+    if (_debug) {
+        dumpPkt("HCI EVENT RX <- ", _recvIndex, _recvBuffer);
+    }
+    else
+        delay(20);
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In ArduinoBLE/src/uility/HCI.CPP fix a crash after disconnect when working as Central
+3 changes are needed
+
+    1) In global space around line 73
+
+    AFTER :
+    	 #define HCI_OE_USER_ENDED_CONNECTION 0x13	
+    
+    ADD : 
+   	 bool ScanResponseDataSet = false;
+
+    ....................................................
+    
+    2) In leSetScanResponseData() around line 232
+    
+    AFTER : 
+         memcpy(leScanResponseData.data, data, length);
+ 
+    ADD:
+      // indicate running as peripheral {paulvha}
+      ScanResponseDataSet = true;
+      
+    ....................................................
+    
+    3) In handleEventPkt() around line 603
+    
+    CHANGE : 
+         HCI.leSetAdvertiseEnable(0x01);
+ 
+    TO :
+        if (ScanResponseDataSet) HCI.leSetAdvertiseEnable(0x01);
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In ArduinoBLE/src/local/BLELocalDevice.CPP fix a bug to give time to settle after reset()
+
+   In routine begin() around line 118
+   AFTER:
+
+    if (HCI.reset() != 0) {
+     end();
+     DebugPrintf("HCI reset failed\n");
+     return 0;
+    }
+
+   ADD :
+    delay(1000);
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In ArduinoBLE/src/local/BLELocalCharacteristic.CPP fix a bug Peripheral device notifies subscribed Central of characteristic value change written by central
+Issue :https://github.com/arduino-libraries/ArduinoBLE/issues/144
+
+  In routine writeValue() around line 113
+  AFTER :
+  if (_fixedLength) {
+    _valueLength = _valueSize;
+  }
+  
+  ADD :
+  if (_written) {
+    return 1;
+  }
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Fix a bug where disconnect needs a clean up in ATT to prevent memory leaks
+3 changes to apply
+
+1) In ArduinoBLE/src/uility/ATT.CPP around line 247
+  
+BEFORE:
+  void ATTClass::addConnection(uint16_t handle, uint8_t role, uint8_t peerBdaddrType,
+  
+ADD:
+// can lead to memory leaks for _peers[i].device and other issues,
+// especially if disconnect does not not happen nicely
+// https://github.com/arduino-libraries/ArduinoBLE/issues/129
+// {paulvha}
+void ATTClass::end()
+{
+    for (int i = 0; i < ATT_MAX_PEERS; i++) {
+        if (_peers[i].connectionHandle == 0xffff) {
+        continue;
+        }
+    
+        _peers[i].connectionHandle = 0xffff;
+        _peers[i].role = 0x00;
+        _peers[i].addressType = 0x00;
+        memset(_peers[i].address, 0x00, sizeof(_peers[i].address));
+        _peers[i].mtu = 23;
+        
+        if (_peers[i].device) {
+          delete _peers[i].device;
+          _peers[i].device = NULL;
+        }
+    }
+}
+
+..................................................................
+2) In In ArduinoBLE/src/uility/ATT.h around line 67
+
+AFTER:
+  bool disconnect();
+ADD:
+  void end();       // {paulvha}
+
+
+..................................................................
+3) In ArduinoBLE/src/local/BLELocalDevice.CPP
+
+In void BLELocalDevice::end(), around line 156
+AFTER :
+  GATT.end();
+  
+ADD:
+  ATT.end();        // {paulvha}
+  
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In ArduinoBLE/src/local/BLELocalCharacteristic.CPP fix a bug where .end needs a clean up in ATT to prevent memory leaks
+
+In BLELocalCharacteristic::BLELocalCharacteristic() aroud line 47
+
+BEFORE :
+	_descriptors.add(cccd);
+ADD:    
+	cccd->retain(); // {paulvha}
+	
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In ArduinoBLE/src/uility/GATT.CPP fix a bug where .end needs a clean up in GATT to prevent memory leaks
+
+In void GATTClass::addService(BLELocalService* service) around line 138
+
+BEFORE:
+	_attributes.add(characteristic);
+ADD:
+	characteristic->retain();  // IMPORTANT: call this again since we are adding it twice {paulvha}
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In ArduinoBLE/src/uility/GATT.CPP fix a bug where .end needs a clean up in GATT to prevent memory leaks	
+
+In void GATTClass::end() around line 64
+
+CHANGE : _attributes.clear();
+
+TO : clearAttributes(); // call this instead of _attributes.clear(); {paulvha}
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In ArduinoBLE/src/uility/HCI.CPP fix issue with memory allocation warning
+4 changes
+
+1) In int HCIClass::sendAclPkt() around line 449
+
+CHANGE:
+  uint8_t txBuffer[sizeof(aclHdr) + plen];
+TO:
+  uint8_t* txBuffer = (uint8_t*)malloc(sizeof(aclHdr) + plen);  // issue fixed {paulvha}
+
+...................................................................................
+
+2) In int HCIClass::sendAclPkt() around line 461
+
+AFTER:
+  HCITransport.write(txBuffer, sizeof(aclHdr) + plen);
+ADD:
+  free(txbuffer);  // issue fixed {paulvha}
+
+...................................................................................
+
+3) In int HCIClass::sendCommand() around line 497
+
+CHANGE:
+  uint8_t txBuffer[sizeof(aclHdr) + plen];
+TO:
+  uint8_t* txBuffer = (uint8_t*)malloc(sizeof(pktHdr) + plen);  // issue fixed {paulvha}
+
+...................................................................................
+
+4) In int HCIClass::sendCommand() around line 509
+
+AFTER:
+  HCITransport.write(txBuffer, sizeof(pktHdr) + plen);
+ADD:
+  free(txbuffer);  // issue fixed {paulvha}
+
+...................................................................................
+
+
+
+
+
