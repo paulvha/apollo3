@@ -81,27 +81,31 @@ To give you an idea (once the interrupts are set and enabled) when a level chang
 =======================
 
 It takes around 50 – 55us between level change on the RX line and the user interrupt handler in Software Serial is called.
-
+<pre>
 The time between level change and step 1 is close ~5us
 
 * level change   start step 1    read step 2    loop in step 3     start call step 4      start step 7
 *    0             +5us            +5us              +31us               +4us                +10us
                      5             10                41                 45                   55us
+<pre>
 
 On 9600 baudrate (with a bit time of 104us) there is enough time to handle the interrupt. but on 19200.. the next bit is already passing by when the interrupt handler is just called. The timing is getting completely out of sync.
 
 ### Same program / measurement, but now on V1.2.1
 =================================================
-
+<pre>
 The time between level change and step 1 is close ~1.5us
 * level change       start step 1    read step 2    loop in step 3         start step 7
 *    0                +1.5us            +3.4us        +5.6us                   +1.2us
                      1.5                4.9           10.5                     11.7us
+<pre>
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 WOW….. that is a massive difference… it takes ~55us on V2 while ~11.7us on V1.  Both run on the same ATP board and constant reproducable
 For this measurement I have used set/clear digital pin (no Serial prints). The overhead is about 1.5us on V1 and 2us on V3, but corrected
 in the timing above
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ### What is causing this ?
