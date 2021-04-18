@@ -35,11 +35,9 @@ However for many solutions a 9600 baud sending/receiving Software Serial or only
                 handler->_rise(handler->_rise_param);
             }
             break;
-</pre>
 
     Add a line to original code:
 
-<pre>
     case IRQ_RISE:
     case (IRQ_FALL | IRQ_RISE):      //<<<<<< add this line to get both
             if (handler->_rise) {
