@@ -4,13 +4,12 @@
 April 2021 / paulvha
 
 ## Background
-=============
 
 Many people raised question: where is softwareSerial on V2 of the Apollo3 library?
 Sounds like a nice challenge to try. I started off with the version that was written by Nathan Seidle for V1.2.x Apollo3 library. This V1 library is NOT using MBED-OS, but has all the functions in itself.
 
 ## Result
-========
+
 After long testing and debugging Software Serial is possible with sending/receiving speed up to 9600 and a sending only speed up to 57600.
 
 Higher speeds are not possible with V2.0.x library as something (MBED-OS?) is impacting the overall performance of the excution process with factor of about 3 to 5. So execution of a user level program on V2 is much slower as it seems that the processor is being busy with something else.
@@ -19,8 +18,7 @@ That said, normally you would not notice the difference due to the large process
 
 However for many solutions a 9600 baud sending/receiving Software Serial or only sending to 57600 is a good enough solution.
 
-## Installation.
-===============
+## Installation
 
 1. Copy the complete SofwareSerial-directory in the directory :   2.0.6/libraries
 
