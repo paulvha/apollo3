@@ -27,7 +27,7 @@ In hm01b0.c, in routine hm01b0_blocking_read_oneframe() around the while loop I 
 AM_CRITICAL_BEGIN and AM_CRITICAL_END
 
 so it looks like
-'''
+```
     AM_CRITICAL_BEGIN
     while((ui32HsyncCnt < HM01B0_PIXEL_Y_NUM))
     {
@@ -53,10 +53,11 @@ so it looks like
 end:
     AM_CRITICAL_END
     return ui32Err;
-'''
+```
 
 In the file hm01b0_arduino.cpp, the routine begin(), I have added a software reset.
-'''
+
+```
 After :
   status = hm01b0_init_if(&cfg);
   if(status != HM01B0_ERR_OK){ goto fail; }
@@ -65,13 +66,13 @@ added :
 
   hm01b0_reset_sw(&cfg);
   delay(100)
-'''
+```
 
 #####################################
 ### optional : enable D10 on EDGE ###
 
 If you want to use D10 on Edge (e.g. with pinMode) you need to make the following 3 changes :
-'''
+```
 In {vlib}/cores/mbed-os/targets/TARGET_Ambiq_Micro/TARGET_Apollo3/TARGET_SFE_EDGE/PinNames.h
 
 after line 41 : D3 = 3,
@@ -84,6 +85,6 @@ to     :  const pin_size_t variantPinCount = 5;
 
 After line :  {D3, 3, NULL, /*NULL, NULL, NULL,*/ NULL},
 add a line :  {D10, 10, NULL, /*NULL, NULL, NULL,*/ NULL},  // <<< missing for camera
-'''
+```
 
 #####################################
