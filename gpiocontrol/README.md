@@ -141,15 +141,17 @@ Not really see much of a value in this, but in case you want to use this make su
 .eIntDir = AM_HAL_GPIO_PIN_INTDIR_NONE,                 // NO interrupts
 .eGPRdZero = AM_HAL_GPIO_PIN_RDZERO_READPIN             // when read.. read as zeros
 
-### Input pad
+### Input pad with pull-up
 .uFuncSel = 3,                                          // set pin as GPIO
 .ePowerSw = AM_HAL_GPIO_PIN_POWERSW_NONE,               // no power switch
 .ePullup = AM_HAL_GPIO_PIN_PULLUP_12K,                  // 12K pullup
 .eDriveStrength = AM_HAL_GPIO_PIN_DRIVESTRENGTH_2MA,    // ignored anyway
 .eGPOutcfg = AM_HAL_GPIO_PIN_OUTCFG_DISABLE,            // No output
 .eGPInput = AM_HAL_GPIO_PIN_INPUT_ENABLE,               // enable for input
-.eIntDir = 0x0,                            			    // NO interrupts
+.eIntDir = 0x0,                                         // NO interrupts
 .eGPRdZero = AM_HAL_GPIO_PIN_RDZERO_READPIN             // when read the pad
+
+only for pads 0, 1, 5, 6, 8, 9, 25, 27, 39, 40, 42, 43, 48 and 49
 
 ### Power switch VDD
 .uFuncSel = 3,                                          // set pin as GPIO
