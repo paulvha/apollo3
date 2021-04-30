@@ -6,7 +6,7 @@ The Apollo3 chip has different GPIO setting to adjust the input and output pad. 
 
 ## Disclaimer
 
-During testing the code I accidentally damaged one of the pad (41) on my ATP board. Oh well..XXX happens BUT I want to warn you to be careful and be fully aware that using any open source code, like this one, you are on your own: No Support, No warranty, NO help with damage. In legal terms :
+During testing the code I accidentally damaged one of the pad (41) on my ATP board. Oh well..XXX happens. BUT I want to warn you to be careful and be fully aware that using any open source code, like this one, you are on your own: No Support, No warranty, NO help with damage. In legal terms :
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
@@ -44,7 +44,7 @@ More info on Arduino pinMode() [https://www.arduino.cc/en/Tutorial/Foundations/D
 
 ## Using Apollo3 extra options
 
-Some people want to be able to use the extra capabilities the Apollo3 chip has, but this can not be achieved with the standard pinMode(). The Hardware Abstraction Layer (HAL) has the functions to enable those capabilities on the Apollo3 chip. I have developed users level code to connect directly to the HAL. BUT as a result a number of checks that are normally performed are by-passed and the developer needs to know what he she is doing. Also your code is now only valid for an Apollo3 board running Sparkfun boards library.
+Some people want to be able to use the extra capabilities the Apollo3 chip has, but this can not be achieved with the standard pinMode(). The Hardware Abstraction Layer (HAL) has the functions to enable those capabilities on the Apollo3 chip. I have developed users level code to connect directly to the HAL. **As a result however, a number of checks that are normally performed are by-passed and the developer needs to know what he she is doing. Also your code is now only valid for an Apollo3 board running Sparkfun boards library.**
 
 ## Pad Configuration variables
 
@@ -53,7 +53,7 @@ As part of the structure am_hal_gpio_pincfg_t the following are the GPIO configu
 ### uFuncSel  Function select (FUNCSEL)
 Each pad can be set (value 0 to 7) to perform a different function. For GPIO this is set to 3.
 
-ePowerSw  power switch source (VCC) or sink (VSS)
+### ePowerSw  power switch source (VCC) or sink (VSS)
 This can enable the power switch setting. The following options are allowed:
 
     AM_HAL_GPIO_PIN_POWERSW_NONE : NO power switch setting
@@ -71,7 +71,7 @@ This will enable a pull-up resistor on a pad . The following options are allowed
     AM_HAL_GPIO_PIN_PULLUP_24K,  :  Pull-up is 24K
     AM_HAL_GPIO_PIN_PULLDOWN     :  Pulldown  (~63K)
 
-Weak pullup can be set on all pads except pad 20. Pulldown is only allowed on pad 20
+Weak pullup can be set on all pads except pad 20. Pulldown is only allowed on pad 20.
 Pullup 1.5K – 24K can only be set on pads 0, 1, 5, 6, 8, 9, 25, 27, 39, 40, 42, 43, 48 and 49.
 
 ### eDriveStrength  Pad strength designator
