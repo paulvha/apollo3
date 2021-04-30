@@ -1,4 +1,4 @@
-# GPIO output strength
+# GPIO input /output settings
 
 ## Background
 
