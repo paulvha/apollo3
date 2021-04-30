@@ -107,7 +107,7 @@ This is very useful in circuits that have a common bus for multiple components. 
 ### eGPInput GPIO Input
 This will set the pad in an input state. The following options are allowed :
 
-    AM_HAL_GPIO_PIN_INPUT_AUTO 	  : available but NOT used by HAL
+    AM_HAL_GPIO_PIN_INPUT_AUTO    : available but NOT used by HAL
     AM_HAL_GPIO_PIN_INPUT_NONE    : Do not set pad as input
     AM_HAL_GPIO_PIN_INPUT_ENABLE  : enable pad as input
 
@@ -118,7 +118,7 @@ This will set the pad interrupt trigger. The following options are allowed :
     AM_HAL_GPIO_PIN_INTDIR_HI2LO  : trigger on high to low
     AM_HAL_GPIO_PIN_INTDIR_NONE   : do not trigger
     AM_HAL_GPIO_PIN_INTDIR_BOTH   : trigger on level change
-    0x0                                                              : enable reading
+    0x0                           : enable reading
 
 To use this from a sketch would need to define the interrupt routine that is called. It is much easier to us attachInterrupt(). Do not use  AM_HAL_GPIO_PIN_INTDIR_NONE as that will result in always read as zero.
 
@@ -130,7 +130,7 @@ This will set the pad for readback will always be zero. The following options ar
 Not really see much of a value in this, but in case you want to use this make sure that eIntDir is set as  AM_HAL_GPIO_PIN_INTDIR_NONE.
 
 ## Example settings
-
+```
 ### Output pad
 .uFuncSel = 3,                                          // set pin as GPIO
 .ePowerSw = AM_HAL_GPIO_PIN_POWERSW_NONE,               // no power switch
@@ -174,3 +174,4 @@ Note : only valid on pad 37 and 41.
 .eGPRdZero = AM_HAL_GPIO_PIN_RDZERO_READPIN             // when read.. read as zeros
 
 Note : only valid on pad 3 and 36
+```
