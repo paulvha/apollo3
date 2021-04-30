@@ -27,6 +27,10 @@ Please see the description in the top of the sketch
 For the Linux client software use the --help or -h option
 
 ## Versioning
+
+### version 3.5 / April 2021
+ * added GPIO control
+
 ### version 3.4 / April 2021
  * added HB01B0 for Version 2.0.6
 
