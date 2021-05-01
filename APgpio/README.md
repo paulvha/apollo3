@@ -18,7 +18,7 @@ A “pin” is the name of the place where you connect your wire on a board. A p
 ## Commands available
 
 There are 3 commands available:
-
+```
 ### APmode(pad,mode)
 This will set a pad in an certain mode
 Pad    : a number between 0 and 50
@@ -45,7 +45,7 @@ Return : TRUE if succeeded, False if failed.
 This will read the input level from a pad.
 Pad    : a number between 0 and 50
 return : True = HIGH, False = LOW
-
+```
 ## Software installation
 Copy the APgpio-directory in the Sparkfun boards library folder:
 xxx/libraries. xxx is 1.2.1 or 2.0.6 (depending on the version).
@@ -56,10 +56,10 @@ Example4 is depending on ![BME280](https://github.com/sparkfun/SparkFun_BME280_A
 
 ## Examples
 4 examples are available:
-Example1 : set three different inputs
-Example2 : set output
-Example3 : Set power switch output
-Example4 : Set Power switch output for BME280
+* Example1 : set three different inputs
+* Example2 : set output
+* Example3 : Set power switch output
+* Example4 : Set Power switch output for BME280
 
 ## Versioning
 ### Version 1.0 / May 2021
