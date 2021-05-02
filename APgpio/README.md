@@ -13,7 +13,9 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 ## Pin or Pad
 
-A “pin” is the name of the place where you connect your wire on a board. A pad is the connection point of the Apollo3 processor to the board. While “pin” does not have to be the same as a “pad” on Apollo3 board it nearly always is. Often there is confusion whether to use a pinName (like D3) or a pin / pad-number (like 3). When addressing the HAL it is always the pad-number, the layer(s) above will translate a pinName to a pad-number.
+A “pin” is the name of the place where you connect your wire on a board. A pad is the connection point of the Apollo3 processor to the board. While “pin” does not have to be the same as a “pad” on a number of Apollo3 board it is. That said you should check the schematics to be sure. Often there is confusion whether to use a pinName (like D3) or a pin / pad-number (like 3). When addressing the HAL it is always the pad-number, the layer(s) above will translate a pinName to a pad-number.
+
+<br> To help, I have created an overview of the different Artemis boards. I have mapped the pin-descriptions printed on board to the different pads. If a pad is used on the board internally that is called out also. It is the spreadsheets AP_pads in the extras-folder of the library.
 
 ## Commands available
 
