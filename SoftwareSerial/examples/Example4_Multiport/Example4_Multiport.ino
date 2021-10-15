@@ -7,13 +7,13 @@
   Feel like supporting open source hardware? Buy a board from SparkFun!
   https://www.sparkfun.com/artemis
 
-  This example shows how to enable multiple software serial ports at 57600bps.
+  This example shows how to enable multiple software serial ports at 19200bps.
   You can only receive on one pin at a time. Use .listen() to switch between
   RX pins.
 
-  Note: When multiple ports are enabled receiving at 115200bps is no longer
+  Note: When multiple ports are enabled receiving at 38400 is no longer
   possible. This is because the receive interrupt has additional overhead
-  and cannot run fast enough to correctly capture bits in time. TX at 115200
+  and cannot run fast enough to correctly capture bits in time. TX at 19200
   is still supported.
 
   Hardware Connections:
@@ -24,7 +24,7 @@
     TXO on SerialBasic <-> Pin 7 on Artemis
   Load this code
   Open Arduino serial monitor at 115200
-  Open Terminal window (TeraTerm) at 57600
+  Open Terminal window (TeraTerm) at 19200
   Press a button in terminal window, you should see it in Arduino monitor
 */
 
@@ -39,7 +39,7 @@ void setup() {
   Serial.begin(115200);
   Serial.println("Software Serial Example");
 
-  mySerialA.begin(57600);
+  mySerialA.begin(19200);
   mySerialB.begin(9600);
 
   //We are now using mySerialB because it was the last one to begin. Use .listen() to change ports.

@@ -7,7 +7,7 @@
   Feel like supporting open source hardware? Buy a board from SparkFun!
   https://www.sparkfun.com/artemis
 
-  This example shows how to send characters at 57600bps. It's counter intuitive
+  This example shows how to send characters at 19200bps. It's counter intuitive
   but by printing faster and receiving faster we can do more with interrupt
   based software serial.
   Any pin can be used for TX or RX.
@@ -20,7 +20,7 @@
     TXO on SerialBasic <-> Pin 7 on Artemis
   Load this code
   Open Arduino serial monitor at 115200
-  Open Terminal window (TeraTerm) at 57600
+  Open Terminal window (TeraTerm) at 19200
   Press a button in terminal window, you should see it in Arduino monitor
 */
 
@@ -35,7 +35,7 @@ void setup() {
   Serial.begin(115200);
   Serial.println("Software Serial Example");
 
-  mySerial.begin(57600);
+  mySerial.begin(19200);
 }
 
 void loop() {

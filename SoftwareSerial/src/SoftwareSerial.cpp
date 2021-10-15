@@ -1,15 +1,6 @@
 /*
   This is a library written for the SparkFun Artemis
 
-  *********************************************************************
-  * This is a special port of Software Serial for Library version 2.0.6
-  * While there is an option to increase the speed above 9600, given the
-  * long time it takes the V2 library to trigger the interrupt handler
-  * of Software Serial receiving speed to max 9600 is supported.
-  * For sending only upto 57600 can be achieved.
-  * See the readme in the library / paulvha
-  *********************************************************************
-
   SparkFun sells these at its website: www.sparkfun.com
   Do you like this library? Help support open source hardware. Buy a board!
   https://www.sparkfun.com/artemis
@@ -20,7 +11,8 @@
 
   SoftwareSerial support for the Artemis
   Any pin can be used for software serial receive or transmit
-  at 300 to 115200bps and anywhere inbetween.
+  at 300 to 19200 and anywhere inbetween.
+
   Limitations (similar to Arduino core SoftwareSerial):
     * RX on one pin at a time.
     * No TX and RX at the same time.
@@ -30,7 +22,7 @@
     * Uses Timer/Compare module H (aka 7). This will remove PWM capabilities
     on pads 11, 37, 48, and 49.
     * Parity is supported during TX but not checked during RX.
-    * Enabling multiple ports causes 115200 RX to fail (because there is additional instance switching overhead)
+    * Enabling multiple ports causes 19200 RX to fail (because there is additional instance switching overhead)
 
   Development environment specifics:
   Arduino IDE 1.8.x
@@ -42,6 +34,19 @@
 
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+  *********************************************************************
+  * This is a special port of Software Serial for Library version 2.1.1
+  *
+  * While there is an option to increase the speed above 19200, given the
+  * long time it takes the V2 library to trigger the interrupt handler
+  * of Software Serial receiving speed to max 19200 for readable data is
+  * supported. See detailed info just above rxBIT() below.
+  *
+  * For sending only upto 19200 can be achieved.
+  * See the explained.odt in the library / paulvha
+  *********************************************************************
 */
 
 #include "SoftwareSerial.h"
@@ -58,9 +63,14 @@ SoftwareSerial *ap3_active_softwareserial_handle = 0;
 #define TIME_DEBUG_PIN 14       // shows timing
 #endif
 
-inline void _software_serial_isr(void *arg)
+// This routine is called by MBED OR the driver directly
+#ifdef BYPASS_MBED_INTERRUPT
+void _software_serial_isr(uint32_t id, gpio_irq_event event)
+#else
+inline void _software_serial_isr(void *id)
+#endif
 {
-  SoftwareSerial *handle = (SoftwareSerial *)arg;
+  SoftwareSerial *handle = (SoftwareSerial *)id;
   handle->rxBit();
 }
 
@@ -79,6 +89,7 @@ SoftwareSerial::~SoftwareSerial()
   end(); // End detaches the interrupt which removes the reference to this object that is stored in the GPIO core
 }
 
+// start 8 bits, no parity, 1 stopbit
 void SoftwareSerial::begin(uint32_t baudRate)
 {
   begin(baudRate, SERIAL_8N1);
@@ -92,9 +103,6 @@ void SoftwareSerial::listen()
   if (ap3_active_softwareserial_handle != NULL)
     ap3_active_softwareserial_handle->stopListening(); //Gracefully shut down previous instance
 
-  //Point to new instance's cmpr7 ISR
-  ap3_active_softwareserial_handle = this;
-
   lastBitTime = 0; //Reset for next byte
 
   //Clear pin change interrupt
@@ -103,16 +111,63 @@ void SoftwareSerial::listen()
   //Clear compare interrupt
   am_hal_stimer_int_clear(AM_HAL_STIMER_INT_COMPAREH);
 
+#ifdef BYPASS_MBED_INTERRUPT
+  // set interrupt
+  SetInterrupt(_rxPin);
+#else
+  //Point to new instance's cmpr7 ISR
+  ap3_active_softwareserial_handle = this;
+
   //Attach this instance RX pin to PCI
   attachInterruptParam(_rxPin, _software_serial_isr,  CHANGE, (void *)this);
+#endif
+
 }
+#ifdef BYPASS_MBED_INTERRUPT
+
+// Handle interrupt outside Mbed
+void SoftwareSerial::SetInterrupt(PinName pinName)
+{
+    pin_size_t index = pinIndexByName(pinName);
+
+    // if pin is not on this board varian
+    if( index == variantPinCount ){ return; }
+
+    //init pin
+    gpio_init(&gpio, pinName);
+
+    // set pullup before starting
+    indexPinMode(index, INPUT);
+
+    // init IRQ and set the routine to call on interrupt
+    gpio_irq_init(&gpio_irq, pinName, (& _software_serial_isr), (uint32_t)this);
+
+    // set interrupts (both directions)
+    gpio_irq_set(&gpio_irq, IRQ_RISE, 1);
+    gpio_irq_set(&gpio_irq, IRQ_FALL, 1);
+
+    //Point to new instance's cmpr7 ISR
+    ap3_active_softwareserial_handle = this;
+
+    gpio_irq_enable(&gpio_irq);
+}
+
+void SoftwareSerial::RemoveInterrupt(PinName pinName)
+{
+    gpio_irq_disable(&gpio_irq);
+}
+#endif //BYPASS_MBED_INTERRUPT
 
 void SoftwareSerial::stopListening()
 {
   // Disable the timer interrupt in the NVIC.
   NVIC_DisableIRQ(STIMER_CMPR7_IRQn);
 
+#ifdef BYPASS_MBED_INTERRUPT
+  RemoveInterrupt(_rxPin);
+#else
   detachInterrupt(_rxPin);
+#endif
 
   ap3_active_softwareserial_handle == NULL;
 }
@@ -159,13 +214,10 @@ void SoftwareSerial::begin(uint32_t baudRate, uint16_t SSconfig)
        comp = 18;
        break;
     case 38400:
-       comp = 16;
-       break;
-    case 57600:
-       comp = 11;
+       comp = 14;
        break;
     default:
-       Serial.println("Speed above 57600 can not be set for sending. See readme\n");
+       Serial.println("Speed above 38400 can not be set. See readme\n");
        return;
        break;
   }
@@ -173,11 +225,6 @@ void SoftwareSerial::begin(uint32_t baudRate, uint16_t SSconfig)
   txSysTicksPerBit = (TIMER_FREQ / baudRate) - comp; //Shorten the txSysTicksPerBit by the number of ticks needed to run the txHandler ISR
 
   rxSysTicksPerByte = (TIMER_FREQ / baudRate) * (_dataBits + _parityBits + _stopBits);
-
-  //During RX, if leftover systicks is more than a fraction of a bit, we will call it a bit
-  //This is needed during 115200 when cmpr ISR extends into the start bit of the following byte
-  // left over from V1.. but 115200 is not possible on V2
-  rxSysTicksPartialBit = rxSysTicksPerBit / 4;
 
   txSysTicksPerStopBit = txSysTicksPerBit * _stopBits;
 
@@ -187,7 +234,12 @@ void SoftwareSerial::begin(uint32_t baudRate, uint16_t SSconfig)
 
 void SoftwareSerial::end(void)
 {
+#ifdef BYPASS_MBED_INTERRUPT
+  RemoveInterrupt(_rxPin);
+#else
   detachInterrupt(_rxPin);
+#endif
+
   // todo: anything else?
 }
 
@@ -243,7 +295,11 @@ size_t SoftwareSerial::write(uint8_t toSend)
   //As soon as user wants to send something, turn off RX interrupts
   if (txInUse == false)
   {
-    detachInterrupt(_rxPin);
+#ifdef BYPASS_MBED_INTERRUPT
+  RemoveInterrupt(_rxPin);
+#else
+  detachInterrupt(_rxPin);
+#endif
 
     rxInUse = false;
   }
@@ -309,20 +365,17 @@ void SoftwareSerial::beginTX()
   NVIC_EnableIRQ(STIMER_CMPR7_IRQn);
 
   //Initiate start bit
-  if (_invertLogic == false)
-  {
-    digitalWrite(_txPin, LOW);
-  }
-  else
-  {
-    digitalWrite(_txPin, HIGH);
-  }
+  digitalWrite(_txPin, _invertLogic ? HIGH : LOW);
 }
+
 
 //Assumes the global variables have been set: _parity, _dataBits, outgoingByte
 //Sets global variable _parityBit
 void SoftwareSerial::calcParityBit()
 {
+  // if invert is requested
+  if(_invertLogic)  outgoingByte = ~outgoingByte;
+
   if (_parity == 0)
     return; //No parity
 
@@ -482,6 +535,46 @@ ap3_err_t SoftwareSerial::softwareserialSetConfig(uint16_t SSconfig)
   return retval;
 }
 
+/*
+ *
+ * As we have to handle a level change on the line within one bit time,
+ * not to miss any bit, this is a very time critical routine.
+ *
+ * The bit time for 9600 baud => 104us, 19200 baud => 52us, 38400 baud => 26us
+ *
+ * It takes about 18us before a level change on the line triggers
+ * the rxBIT routine.(bypassing Mbed) In the Apollo3 driver, routine am_gpio_isr(),
+ * takes 3.5us to get data, 10us to detect which pin generated the interrupt and
+ * another 2.7us to read the information which interrupt routine to call next
+ * with the right data. The last uS's are needed to make the call.
+ *
+ * This routine itself takes 3.3us if the level change happend after
+ * 1 bit time, 4.6us after 2 bit times, 6.9us after 4 bit times, 7.8us after 5 bits.
+ * so about 1.2us for an extra bit.
+ *
+ * This difference is because of the loop on how many bits it needs
+ * to register in 'incomingByte'
+ *
+ * Say we are running 38400 baud we have to handle within 26uS.
+ * 26us - 18us = 8us left for this routine. So if you then receive a byte
+ * with 6 consecutive bits, the routine will take about 9us. 18 + 9 = 27us. The
+ * a next line change / bit will have passed.... :-(
+ *
+ * Let's use questionmark (0x3f). The LSB is sent first so 6 x 1 bit/high followed
+ * by 2 x 1 bit/low. At 38400 baud 6 x 26us = 156us then the level changes from high
+ * to low for 2 x 26us = 52us. This routine is called 18us after the level change and takes
+ * 8.9us. Thus after 27us it returns, BUT as we receive 2 bits we have 52us to complete.
+ * Well ontime and we receive the bits and the full character correctly.
+ *
+ * The character where this becomes of a problem is DEL (0x7F), because then have 7
+ * bits/high and only 1 low bit...
+ *
+ * Handle a readable data can be done on 38400. However when use digital data e.g. from a sensor,
+ * this can be in the range of 0x0 - 0xff stick to 19200.
+ *
+ * On 19200 we have a bit time of 52us to handle.. more than enough time.
+ *
+ */
 //ISR that is called each bit transition on RX pin
 void SoftwareSerial::rxBit(void)
 {
@@ -491,14 +584,13 @@ void SoftwareSerial::rxBit(void)
   am_hal_gpio_output_set(PROC_DEBUG_PIN);
 #endif
 
+  // start of byte
   if (lastBitTime == 0)
   {
-    bitCounter = 0;
     lastBitTime = bitTime;
-    bitType = false;
     rxInUse = true; //Indicate we are now in process of receiving a byte
 
-    //Setup cmpr7 interrupt to handle overall timeout
+    // Setup cmpr7 interrupt to handle overall timeout for a byte
     AM_REGVAL(AM_REG_STIMER_COMPARE(0, 7)) = rxSysTicksPerByte; //Direct reg write to decrease execution time
 
     // Enable the timer interrupt in the NVIC.
@@ -513,50 +605,31 @@ void SoftwareSerial::rxBit(void)
     // we must at least have 1 bit
     if (numberOfBits == 0) numberOfBits = 1;
 
-    if (bitCounter == 0)
-    {
-      //Catch any partial bits
-      //For very high bauds (115200) the final interrupt spills over into the
-      //start bit of the next byte. This catches the partial systicks and correctly
-      //identifies the start bit as such.
-      uint16_t partialBits = (bitTime - lastBitTime) % rxSysTicksPerBit;
-      if (partialBits > rxSysTicksPartialBit)
-      {
-#ifdef DEBUG
-//        Serial.println("Partial!");
-#endif
-        numberOfBits++;
-      }
-
-      //Exclude start bit from byte shift
-      bitCounter++;
-      numberOfBits--;
-    }
-
     if (_parity)
     {
       if (numberOfBits + bitCounter > _dataBits + _parityBits)
       {
-#ifdef DEBUG
-//        Serial.println("Exclude");
-#endif
         numberOfBits--; //Exclude parity bit from byte shift
       }
     }
 
-    for (uint8_t y = 0; y < numberOfBits; y++) //Add bits of the current bitType (either 1 or 0) to our byte
+    bitCounter += numberOfBits;
+
+    while (numberOfBits--)  //Add bits of the current bitType (either 1 or 0) to our byte
     {
 #ifdef TIME_DEBUG_PIN
-  am_hal_gpio_output_set(TIME_DEBUG_PIN);       // show the number of bits detected on the time debug pin
+    // am_hal_gpio_output_set(TIME_DEBUG_PIN);       // show the number of bits detected on the time debug pin
 #endif
       incomingByte >>= 1;
-      if (bitType == true)  incomingByte |= 0x80;
+
+      // if line was HIGH
+      if (bitType)  incomingByte |= 0x80;
 
 #ifdef TIME_DEBUG_PIN
-  am_hal_gpio_output_clear(TIME_DEBUG_PIN);
+    //am_hal_gpio_output_clear(TIME_DEBUG_PIN);
 #endif
     }
-    bitCounter += numberOfBits;
+
     bitType = !bitType;    //Next bit will be inverse of this bit
     lastBitTime = bitTime; //Remember this bit time as the starting time for the next PCI
   }
@@ -566,6 +639,7 @@ void SoftwareSerial::rxBit(void)
 #endif
 }
 
+// called when we should have received a complete byte
 void SoftwareSerial::rxEndOfByte()
 {
 
@@ -629,7 +703,8 @@ void SoftwareSerial::rxEndOfByte()
   }
 
   lastBitTime = 0; //Reset for next byte
-
+  bitCounter = 0;
+  bitType = false;
   rxInUse = false; //Release so that we can TX if needed
 
   am_hal_gpio_interrupt_clear(AM_HAL_GPIO_BIT(digitalPinToInterrupt(_rxPin)));//Clear any residual PCIs
@@ -647,17 +722,21 @@ void SoftwareSerial::txHandler()
 {
   if (bitCounter < _dataBits) //Data bits 0 to 7
   {
+#ifdef TIME_DEBUG_PIN
+   // am_hal_gpio_output_set(TIME_DEBUG_PIN);       // show the number of bits detected on the time debug pin
+#endif
+
     AM_REGVAL(AM_REG_STIMER_COMPARE(0, 7)) = txSysTicksPerBit; //Direct reg write to decrease execution time
-    if (outgoingByte & 0x01)
-    {
-      digitalWrite(_txPin,HIGH);
-    }
-    else
-    {
-      digitalWrite(_txPin,LOW);
-    }
+
+    if (outgoingByte & 0x01)  digitalWrite(_txPin,HIGH);
+    else digitalWrite(_txPin,LOW);
+
     outgoingByte >>= 1;
     bitCounter++;
+
+#ifdef TIME_DEBUG_PIN
+ //   am_hal_gpio_output_clear(TIME_DEBUG_PIN);       // show the number of bits detected on the time debug pin
+#endif
   }
   else if (bitCounter == _dataBits) //Send parity bit or stop bit(s)
   {
@@ -665,35 +744,33 @@ void SoftwareSerial::txHandler()
     {
       //Send parity bit
       AM_REGVAL(AM_REG_STIMER_COMPARE(0, 7)) = txSysTicksPerBit; //Direct reg write to decrease execution time
-      if (_parityForByte)
-      {
-        digitalWrite(_txPin,HIGH);
-      }
-      else
-      {
-        digitalWrite(_txPin,LOW);
-      }
+
+      if (_parityForByte) digitalWrite(_txPin,HIGH);
+      else digitalWrite(_txPin,LOW);
+
     }
     else
     {
-      //Send stop bit
+      //Send stop bit (the ticks take in account whether it should be 1 or 2)
       AM_REGVAL(AM_REG_STIMER_COMPARE(0, 7)) = txSysTicksPerStopBit; //Direct reg write to decrease execution time
-      digitalWrite(_txPin,HIGH);
+      digitalWrite(_txPin, _invertLogic ? LOW : HIGH);
     }
     bitCounter++;
   }
+
+  // is true if we have either sent a stopbit or parity bit
   else if (bitCounter == (_dataBits + 1)) //Send stop bit or begin next byte
   {
     if (_parity)
     {
-      //Send stop bit
+      //Send stop bit (the ticks take in account whether it should be 1 or 2)
       AM_REGVAL(AM_REG_STIMER_COMPARE(0, 7)) = txSysTicksPerStopBit; //Direct reg write to decrease execution time
-      digitalWrite(_txPin,HIGH);
+      digitalWrite(_txPin, _invertLogic ? LOW : HIGH);
       bitCounter++;
     }
     else
     {
-      //Start next byte
+      //are we done sending all bytes ??
       if (txBufferTail == txBufferHead)
       {
         // Disable the timer interrupt in the NVIC.
@@ -715,9 +792,10 @@ void SoftwareSerial::txHandler()
       }
     }
   }
+  // this is true if we have sent a stopbit after the parity
   else if (bitCounter == (_dataBits + 2)) //Begin next byte
   {
-    //Start next byte
+    //are we done sending all bytes ??
     if (txBufferTail == txBufferHead)
     {
       // Disable the timer interrupt in the NVIC.
@@ -748,6 +826,7 @@ extern "C" void am_stimer_cmpr7_isr(void)
 #endif
 
   uint32_t ui32Status = am_hal_stimer_int_status_get(false);
+
   if (ui32Status & AM_HAL_STIMER_INT_COMPAREH)
   {
     am_hal_stimer_int_clear(AM_HAL_STIMER_INT_COMPAREH);

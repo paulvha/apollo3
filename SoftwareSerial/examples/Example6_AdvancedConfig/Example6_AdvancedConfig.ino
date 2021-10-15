@@ -17,7 +17,7 @@
     RXO on SerialBasic <-> Pin 8 on Artemis
     TXO on SerialBasic <-> Pin 7 on Artemis
   Load this code
-  Open Arduino serial monitor at 57600
+  Open Arduino serial monitor at 115200
   Open Terminal window (TeraTerm) at 9600 with special settings *8 bits, even parity, 2 stop!*
   Press a button in terminal window, you should see it in Arduino monitor
 */
@@ -30,10 +30,10 @@ int counter = 0;
 void setup() {
   //We set the serial monitor speed high so that we spend less time printing the output
   //and more time checking mySerial.available()
-  Serial.begin(57600);
+  Serial.begin(115200);
   Serial.println("Software Serial Example");
 
-  mySerial.begin(57600, SERIAL_8E2); //Use 8 data bits, even parity, and 2 stop bits
+  mySerial.begin(19200, SERIAL_8E2); //Use 8 data bits, even parity, and 2 stop bits
 }
 
 void loop() {

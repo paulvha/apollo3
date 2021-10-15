@@ -48,10 +48,34 @@
 #define _SoftwareSerial_H
 #include "Arduino.h"
 #include <Stream.h>
+#include "gpio_irq_api.h"
 
-#define AP3_SS_BUFFER_SIZE 128 //Limit to 8 bits
+#define AP3_SS_BUFFER_SIZE 128 //Limit to 128 bytes
 
 #define TIMER_FREQ 3000000L
+
+/** Added October 2021
+    By default MBED is bypassed for handling the RX interrupt.
+    This saves execution time and allows an RX speed upto 38400 baud else
+    the maximum speed is 19200
+
+    Using MBED the timedelay between a level change on the line and detection
+    in SoftwareSerial is ~22us. Bypassing MBED the timedelay is ~18us.
+
+    The interrupt handler itself takes 3.3us if the level change happend after
+    1 bit time, 4.6us after 2 bit times, 6.9us after 4 bit times, 7.8us after 5 bits.
+    so about 1.2us for an extra bit.
+
+    On 38400 baud the bit time is 26us. With bypassing we can handle the
+    interrupt within a single bit time. Without bypassing we just on the
+    boundery and run higher risk on missing the next bit.
+
+    So extended explaned.odt which can be read with any word processor
+
+    By defining bypass below, the interrupt is directly routed
+    to Software Serial. */
+
+#define BYPASS_MBED_INTERRUPT 1
 
 class SoftwareSerial : public Stream
 {
@@ -87,7 +111,6 @@ public:
 
 private:
   ap3_err_t softwareserialSetConfig(uint16_t SSconfig);
-  void startRXListening(void);
   void beginTX();
 
   uint8_t txBuffer[AP3_SS_BUFFER_SIZE];
@@ -112,12 +135,20 @@ private:
   //For RX
   uint16_t rxSysTicksPerBit = 0;
   uint32_t rxSysTicksPerByte = 0;
-  uint16_t rxSysTicksPartialBit = 0;
+
   volatile uint8_t numberOfBits[10];
   volatile uint32_t lastBitTime = 0;
   volatile uint8_t bitCounter;
   volatile bool bitType = false;
   bool _rxBufferOverflow = false;
+
+#ifdef BYPASS_MBED_INTERRUPT
+  gpio_t gpio;                      // handle for GPIO
+  gpio_irq_t gpio_irq;              // handle interrupt outside Mbed
+
+  void SetInterrupt(PinName pinName);
+  void RemoveInterrupt(PinName pinName);
+#endif
 
   //For TX
   void calcParityBit();
