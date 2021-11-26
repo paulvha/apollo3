@@ -28,6 +28,9 @@ For the Linux client software use the --help or -h option
 
 ## Versioning
 
+### Version 3.6 / November 2021
+ * added MLX90615 and info about SMBUS compliance
+
 ### version 3.5 / May 2021
  * added APgpio for extended control of GPIO
 

@@ -1,0 +1,34 @@
+
+#######################################
+# Syntax Coloring Map For Digital
+# Infrared Temperature Sensor MLX90615
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+getTemperature	KEYWORD2
+getPWMTemperature	KEYWORD2
+pwm_init	KEYWORD2
+isConnected	KEYWORD2
+readReg	KEYWORD2
+writeReg	KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+MLX90615	LITERAL1
+MLX90615_EEPROM_SA	LITERAL1
+MLX90615_EEPROM_PWMT_MIN	LITERAL1
+MLX90615_EEPROM_PWMT_RNG	LITERAL1
+MLX90615_EEPROM_CONFIG	LITERAL1
+MLX90615_EEPROM_EMISSIVITY	LITERAL1
+MLX90615_RAW_IR_DATA	LITERAL1
+MLX90615_AMBIENT_TEMPERATURE	LITERAL1
+MLX90615_OBJECT_TEMPERATURE	LITERAL1
