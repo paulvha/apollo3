@@ -149,8 +149,8 @@ For the sketch 'mlx_pwm_read', you do NOT need this.
 
 The following sketches are provided
 
-mlx_change_mode   : to switch between PWM and SMBuS
-mlx_pwm_read      : to read the MLX90614 in PWM mode
-mlx_ReadRegisters : to read the MLX90614 registers in SMBus mode
+* mlx_change_mode   : to switch between PWM and SMBuS
+* mlx_pwm_read      : to read the MLX90614 in PWM mode
+* mlx_ReadRegisters : to read the MLX90614 registers in SMBus mode
 
 Version 1.0 / November 2021 / paulvha
