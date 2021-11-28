@@ -153,29 +153,4 @@ mlx_change_mode   : to switch between PWM and SMBuS
 mlx_pwm_read      : to read the MLX90614 in PWM mode
 mlx_ReadRegisters : to read the MLX90614 registers in SMBus mode
 
-## Appendix A
-
-Here are the default values read with the sketch 'mlx_ReadRegisters'.
-This sketch CAN NOT BE DONE ON ARTEMIS / APOLLO3. I used my Arduino Uno
-
-MLX90614_REGISTER_TA 		(0x6)	0x3974
-MLX90614_REGISTER_TOBJ1 	(0x7)	0x39B5
-MLX90614_REGISTER_TOBJ2 	(0x8)	0x0
-MLX90614_REGISTER_TOMAX 	(0x20)	0x9993
-MLX90614_REGISTER_TOMIN 	(0x21)	0x62E3
-MLX90614_REGISTER_PWMCTRL 	(0x22)	0x201
-MLX90614_REGISTER_TARANGE 	(0x23)	0xF71C
-MLX90614_REGISTER_KE 		(0x24)	0xFFFF
-MLX90614_REGISTER_CONFIG 	(0x25)	0x9FB4
-MLX90614_REGISTER_ADDRESS 	(0x2E)	0xBE5A
-
-================================ Disclaimer ==========================
- This program is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- GNU General Public License for more details.
- You should have received a copy of the GNU General Public License
- along with this program.  If not, see <http://www.gnu.org/licenses/>.
-======================================================================
-
 Version 1.0 / November 2021 / paulvha
