@@ -28,6 +28,9 @@ For the Linux client software use the --help or -h option
 
 ## Versioning
 
+### version 3.7 / November 2021
+ * added MLX90614 PWM mode
+
 ### Version 3.6 / November 2021
  * added MLX90615 and info about SMBUS compliance
 
