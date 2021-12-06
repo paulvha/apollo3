@@ -28,6 +28,9 @@ For the Linux client software use the --help or -h option
 
 ## Versioning
 
+### Version 3.08 / december 2021
+ * added OneWire on Uart
+
 ### version 3.7 / November 2021
  * added MLX90614 PWM mode
 
