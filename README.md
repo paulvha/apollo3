@@ -28,6 +28,9 @@ For the Linux client software use the --help or -h option
 
 ## Versioning
 
+### version 3.09 / december 2021
+ * added document on deepdive on I2C and QWIIC button
+
 ### Version 3.08 / december 2021
  * added OneWire on Uart
 
