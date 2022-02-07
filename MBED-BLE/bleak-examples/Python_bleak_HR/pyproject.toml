@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "python_heartrate"
+version = "0.1.0"
+description = ""
+authors = ["Paul van Haastrecht paulvha@hotmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+bleak = "^0.6.4"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"

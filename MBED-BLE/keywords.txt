@@ -1,0 +1,62 @@
+﻿#######################################
+# Syntax Coloring Map
+# MBED BLE  // paulvha February  2022
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+mbed_ble.h	KEYWORD1
+ble_instance	KEYWORD1
+Instance	KEYWORD1
+GattServAMDTP	KEYWORD1
+amdtpc.h	KEYWORD1
+amdtps.h	KEYWORD1
+ScanParameters	KEYWORD1
+EventQueue	KEYWORD1
+scan_duration_t	KEYWORD1
+AdvertisingDataParser	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+traceCback	KEYWORD2
+Enable_BLE_Debug	KEYWORD2
+Display_advertise_details	KEYWORD2
+Display_payload	KEYWORD2
+display_value_hex	KEYWORD2
+phy_to_string	KEYWORD2
+print_address	KEYWORD2
+print_error	KEYWORD2
+print_mac_address	KEYWORD2
+print_manufact	KEYWORD2
+print_num_hex	KEYWORD2
+WsfTraceRegisterHandler	KEYWORD2
+WsfTraceEnable	KEYWORD2
+print_uuid	KEYWORD2
+print_properties	KEYWORD2
+set_device_name	KEYWORD2
+start	KEYWORD2
+IsConnected	KEYWORD2
+IsAdvertising	KEYWORD2
+SendToCentral	KEYWORD2
+IsSendingComplete	KEYWORD2
+IsConnectionComplete	KEYWORD2
+onEventsToProcess	KEYWORD2
+schedule_ble_events	KEYWORD2
+dispatch_forever	KEYWORD2
+startScan	KEYWORD2
+StoreDataReceived	KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+BLE_Debug	LITERAL1
+TYPE_ADVERTISE	LITERAL1
+
+
+
+
+
