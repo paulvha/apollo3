@@ -29,7 +29,7 @@ For the Linux client software use the --help or -h option
 ## Versioning
 
 ### version 3.11 / March 2022
- * added microSD longfilenames
+ * added microSD
 
 ### version 3.10 / February 2022
  * added MBED-BLE
