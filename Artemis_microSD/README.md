@@ -22,20 +22,20 @@ You need to select the right platform in the top of the sketch.
 It will show :
 
 <br> MicroSD menu example. Version 1.2
-Press Enter to continue.
+<br>Press Enter to continue.
 <br>
 <br>
-1  = list the files in current directory
-2  = Change directory
-3  = Create new directory
-4  = Create new file
-5  = Back to root directory
-6  = Remove file
-7  = Remove directory
-8  = One level up
-9  = Read file. Display in ASCII only
-10 = Read file. Display in HEX and ASCII
-15 = Close SD
+<br>1  = list the files in current directory
+<br>2  = Change directory
+<br>3  = Create new directory
+<br>4  = Create new file
+<br>5  = Back to root directory
+<br>6  = Remove file
+<br>7  = Remove directory
+<br>8  = One level up
+<br>9  = Read file. Display in ASCII only
+<br>10 = Read file. Display in HEX and ASCII
+<br>15 = Close SD
 
 NOTE 1:
 Make sure to use a formatted MicroSD card.
