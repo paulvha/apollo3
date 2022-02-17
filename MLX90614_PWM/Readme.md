@@ -64,7 +64,7 @@ The following parameters (which can be set in the top of the sketch)
 will be used:
 
 PWM_OBJ_TEMP
-When set as true the PWM signal will provide the object temperature. When
+<br>When set as true the PWM signal will provide the object temperature. When
 set as false the Ambient temperature.
 
 p.s. Although it is possible to provide BOTH the Ambient and Object
