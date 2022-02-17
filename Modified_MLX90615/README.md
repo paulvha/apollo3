@@ -6,11 +6,11 @@ The libray is a modified version of the orginal, with the original references be
 The examples have all been updated and can be compiled on Sparkfun Artemis board , the V1.x library ONLY or for AVR boards
 
 The following examples are available :
-MLX_changeAddr   : change the MLX90615 I2C address
-MLX_Set_Mode     : change MLX90615 between SMB and PWM mode
-MLX_Check_Mode   : will try to connect and display in SMB and/or PWM mode
-MLX_MultiDevice  : will demo to read multiple MLX90615 on single I2C channel
-MLX_SingleDevice : will demo reading a single MLX90615 in SMB mode
+<br>MLX_changeAddr   : change the MLX90615 I2C address
+<br>MLX_Set_Mode     : change MLX90615 between SMB and PWM mode
+<br>MLX_Check_Mode   : will try to connect and display in SMB and/or PWM mode
+<br>MLX_MultiDevice  : will demo to read multiple MLX90615 on single I2C channel
+<br>MLX_SingleDevice : will demo reading a single MLX90615 in SMB mode
 
 Included is a document around the SMBUS compliance for Apollo3
 

@@ -49,10 +49,10 @@ and back again. As often as you like, although according to the
 datasheet you can erase and write the EEPROM only about 100.000 times.
 
 The sketch will have 4 options:
-Want to change from SMB to PWM?
-Want to change from PWM to SMB?
-Want to start reading in PWM?
-Want to start reading in SMBUS?
+1. Want to change from SMB to PWM?
+2. Want to change from PWM to SMB?
+3. Want to start reading in PWM?
+4. Want to start reading in SMBUS?
 
 ### Want to change from SMB to PWM?
 
@@ -72,17 +72,17 @@ temperature in extended PWM mode, the timing  dependency becomes even
 more critical and also the complexity. I kept it simple.
 
 PWM_TEMP_MIN
-The PWM signal width will be relative the range (between minimum and
+<br>The PWM signal width will be relative the range (between minimum and
 maximum temperature). The smaller the range the more accurate the
 reading of the PWM signal. With this parameter you can set the minimum
 temperature. The value is in Celsius and the lowest allowed is -20C
 
 PWM_TEMP_MAX
-With this parameter you can set the maximum temperature. The value is
+<br>With this parameter you can set the maximum temperature. The value is
 in Celsius and the highest allowed is 120C.
 
 PWM_CLOCK
-You can adjust the frequency of the PWM signal. When set as '2' the
+<br>You can adjust the frequency of the PWM signal. When set as '2' the
 frequency is 1Khz, '4' will give you 500Hz etc.
 
 REMEMBER REMEMBER REMEMBER REMEMBER REMEMBER REMEMBER
