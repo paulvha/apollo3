@@ -1,13 +1,18 @@
 /**
  *  
- * A filemanager for reading and writing the MicroSD on different Artemis platforms :
+ * A filemanager for reading and writing the MicroSD on different Artemis platforms 
+ * and Micromod nRF52840 & ESP32:
  * 
- * 1. MicroMod MainBoard (DEV-18576) with MM Artemis Processor (WRL-16781)
- * 2. MicroMod Data logger carrier board (DEV-16829) with MM Artemis Processor (WRL-16781)
- * 3. Artemis OpenLog (DEV-16832)
+ * 1. MicroMod MainBoard (DEV-18576) with MM Artemis Processor (WRL-16401)
+ * 2. MicroMod Data logger carrier board (DEV-16829) with MM Artemis Processor (WRL-16401)
+ * 3. Artemis OpenLog (DEV-16832) (NOT QWIIC Openlog that with another filemanager)
  * 4. Artemis ATP (DEV-15442) with external SparkFun Level Shifting microSD (DEV-13743)
+ * 5. MicroMod MainBoard (DEV-18576) with MM nRF52840 Processor (WRL-16984)
+ * 6. MicroMod Data logger carrier board (DEV-16829) with RF52840 Processor (WRL-16984)
+ * 7. MicroMod MainBoard (DEV-18576) with MM ESP Processor (WRL-16781)
+ * 8. MicroMod Data logger carrier board (DEV-16829) with MM ESP32 Processor (WRL-169781) 
  * 
- * Parts of the code has been taken from the OpenLog sketch/program created by Sparkfun
+ * Parts of the code has been taken from the OpenLog sketch/program created by Sparkfun.
  * 
  * Author : paulvha@hotmail.com
  * 
@@ -16,6 +21,10 @@
   //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  * 
  * ============================ Versioning ==============================================
+ *  1.5                                 / April 2022
+ *  Added support for MM nRF52840 on MM Mainboard and MM Data logger carrier board.
+ *  Added support for MM ESP32 on MM Mainboard and MM Data logger carrier board.
+ *  
  *  1.4                                 / March 2022
  *  Added abbreviation input posibility
  *  Added rename file function
@@ -33,9 +42,9 @@
  *  Added support for ATP
  *  
  *  1.0                                 / December 2021
- *  initial version for Aretemis OpenLog 
+ *  Initial version for Aretemis OpenLog 
  * 
- * =============================== Connections ===========================================
+ * ============================= Connections ===========================================
  * 
  * External   Artemis
  * MicroSD    ATP
@@ -77,7 +86,26 @@
  * CD         Not connected
  * GND        GND 
  * POWER      15
- * 
+ *
+ *            nRF52840 or ESP32
+ * MicroSD    MICROMOD_MAIN board  (FYI only fixed)
+ * D2/CS      G4
+ * D1         MOSI / COPI
+ * SCK        SCK
+ * D0         MISO / CIPO
+ * CD         Not connected
+ * GND        GND 
+ *
+ *            nRF52840 or ESP32
+ * MicroSD    MICROMOD_MMDLCB  (FYI only fixed)
+ * D2/CS      SS (on-board) or G0 (on HEADER_CS) (defined by PIN_MICROSD_CHIP_SELECT)
+ * D1         MOSI / COPI
+ * SCK        SCK
+ * D0         MISO / CIPO
+ * CD         Not connected (on-board) / not used (on HEADER_CS)
+ * GND        GND
+ * POWER      G1  (define by PIN_MICROSD_POWER)
+ *
  *  ================================ Disclaimer ======================================
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -87,7 +115,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *  
- *  The above is more to be covered in case you loose data. Usage is at your own risk
+ *  The above is more to be covered in case you loose data. Usage is at your own risk.
  *  ===================================================================================
  */
 
@@ -104,12 +132,19 @@
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 // ================================= Board Selection ========================================
-//#define ARTEMIS_OPENLOG                  // select Artemis Openlog board
-//#define MICROMOD_MMDLCB                  // Micromod data logger carrier board
-#define MICROMOD_MAINB                   // Micromod mainboard
+//#define ARTEMIS_OPENLOG                  // Artemis Openlog board (select Artemis ATP)
 //#define ATP                              // ATP with external microSD
 
-// =================================== Global Defines =====================================
+//#define MICROMOD_MAINB_APOLLO3           // Micromod mainboard& MM Artemis (WRL-16401)
+//#define MICROMOD_MMDLCB_APOLLO3          // Micromod data logger carrier board & MM Artemis (WRL-16401)
+
+#define MICROMOD_MAINB_NRF52840          // Micromod mainboard with MM nRF52840 (WRL-16984)
+//#define MICROMOD_MMDLCB_NRF52840         // Micromod data logger carrier board with MM nRF52840 (WRL-16984)
+
+//#define MICROMOD_MAINB_ESP32             // Micromod mainboard with MM ESP32 (WRL-16781)
+//#define MICROMOD_MMDLCB_ESP32            // Micromod data logger carrier board with MM ESP32 (WRL-16781)      
+
+// =================================== Global Defines ========================================
 // SD_FAT_TYPE = 0 for SdFat/File, 1 for FAT16/FAT32, 2 for exFAT, 3 for FAT16/FAT32 and exFAT.
 #define SD_FAT_TYPE 3 
 
@@ -118,15 +153,27 @@
 #define MAX_DIR_ENTRY 100                   // maximum entries in a current directory
 
 // ================================= Board definitions =======================================
-#ifdef MICROMOD_MMDLCB
-const byte PIN_MICROSD_POWER = 33;          // LDO power
+#ifdef MICROMOD_MMDLCB_APOLLO3 
+#define MICROMOD_MMDLCB
+const byte PIN_MICROSD_POWER = G1;          // LDO power
 const int sdPowerDownDelay = 100;           // Delay for this many ms before turning off the SD card power
-const byte PIN_MICROSD_CHIP_SELECT = 41;    // CS (chip select IOM)
-#endif // MICROMOD_MMDLCB
+const byte PIN_MICROSD_CHIP_SELECT = SPI_CS;// CS (chip select IOM)
+#endif // MICROMOD_MMDLCB_APOLLO3
 
-#ifdef MICROMOD_MAINB
-const byte PIN_MICROSD_CHIP_SELECT = 28;    // CS (chip select IOM)
-#endif // MICROMOD_MAINB
+#if (defined MICROMOD_MMDLCB_NRF52840) || defined (MICROMOD_MMDLCB_ESP32)
+#define MICROMOD_MMDLCB
+const byte PIN_MICROSD_POWER = G1;          // LDO power
+const int sdPowerDownDelay = 100;           // Delay for this many ms before turning off the SD card power
+const byte PIN_MICROSD_CHIP_SELECT = SS;    // CS (chip select IOM)  G0 = headerCS / SS = onboard CS
+#endif // MICROMOD_MMDLCB_NRF52840 & MICROMOD_MMDLCB_ESP32
+
+#ifdef MICROMOD_MAINB_APOLLO3 
+const byte PIN_MICROSD_CHIP_SELECT = G4;    // CS (chip select IOM)
+#endif // MICROMOD_MAINB_APOLLO3
+
+#if (defined MICROMOD_MAINB_NRF52840) || defined (MICROMOD_MAINB_ESP32)
+const byte PIN_MICROSD_CHIP_SELECT = G4;    // CS (chip select IOM)
+#endif //MICROMOD_MAINB_NRF52840 & MICROMOD_MAINB_ESP32
 
 #ifdef ARTEMIS_OPENLOG
 const byte PIN_MICROSD_POWER = 15;          // power the FET
@@ -139,11 +186,11 @@ const byte PIN_MICROSD_CD_SELECT = 27;      // Connect CD here (card detect) set
 const byte PIN_MICROSD_CHIP_SELECT = 23;    // Connect CS here (chip select)
 #endif // ATP
 
-//*******************************************************************************************
-//***                    NO NEED TO MAKE CHANGES BEYOND THIS POINT                         **
-//*******************************************************************************************
+//**********************************************************************************************
+//***                      NO NEED TO MAKE CHANGES BEYOND THIS POINT                          **
+//**********************************************************************************************
 
-// =================================== Global variables =====================================
+// =================================== Global variables ========================================
 
 #define SD_CONFIG SdSpiConfig(PIN_MICROSD_CHIP_SELECT, SHARED_SPI, SD_SCK_MHZ(24)) // 24MHz
 
@@ -178,19 +225,30 @@ char RootDir[MAX_DIR_ENTRY * 5];
 char TempDir[MAX_DIR_ENTRY * 5];
 
 bool ShowHidden = false;    // show hidden folders / files
+bool Valid_entry = false;   // was valid entry was shown during DisplayArray
 bool online_microSD = false;
 int  sel, offset;
-uint16_t pdate, ptime;      // get date and time
-bool Valid_entry = false;   // was valid entry was shown during DisplayArray
 
-// ======================= start of program ===================================
+// Allow YYYY-MM-DD hh:mm
+char buf[sizeof("YYYY-MM-DD hh:mm ") -1];
+uint16_t pdate, ptime;      // get date and time
+
+// ============================= start of program ==============================================
 
 void setup() {
 
   Serial.begin(115200); 
-  while (!Serial); 
-
-  Serial.println(F("Artemis MicroSD filemanager (Version 1.4)\nPress Enter to continue."));
+  while (!Serial);
+   
+#if defined (MICROMOD_MAINB_NRF52840) || defined(MICROMOD_MMDLCB_NRF52840)
+  Serial.print(F("nRF52840")); 
+#elif defined (MICROMOD_MAINB_ESP32) || defined (MICROMOD_MMDLCB_ESP32)
+  Serial.print(F("ESP32")); 
+#else
+  Serial.print(F("Artemis"));
+#endif
+  Serial.println(F(" MicroSD filemanager (Version 1.5)\nPress Enter to continue."));
+  
   GetFileName();
   
   beginSD();
@@ -198,8 +256,8 @@ void setup() {
   if (!online_microSD) {
     Serial.println(F("Something went wrong during initializing MicroSD."));
     Serial.println(F("Is the MicroSD installed correctly ?"));
-    Serial.println(F("Is the right board selected in top of sketch ?"));
-    Serial.println(F("Is the right board selected in the Arduino IDE ?"));
+    Serial.println(F("Is the right board selected in top of sketch?"));
+    Serial.println(F("Is the right processor selected in the Arduino IDE ?"));
     Serial.println(F("Freeze !"));
     while(1);
   }
@@ -231,7 +289,7 @@ void loop() {
   else Serial.println(F("11 = Show hidden folder / files"));
 
   Serial.println(F("12 = Rename file"));
-  Serial.println(F("15 = Close SD"));
+  Serial.println(F("15 = Close MicroSD"));
   Serial.print(F("\nYour input (? = help)") );
 
   if (GetEntryNum(true) == -1) return;
@@ -278,8 +336,7 @@ void loop() {
    
     case 15:
       digitalWrite(PIN_MICROSD_CHIP_SELECT, HIGH); // Make sure microSD is deselected
-      
-#if (defined ARTEMIS_OPENLOG) || (defined MICROMOD_MMDLCB)
+#if defined ARTEMIS_OPENLOG || defined MICROMOD_MMDLCB 
       delay(sdPowerDownDelay);
       microSDPowerOff();
 #endif
@@ -462,6 +519,7 @@ bool list_files(bool show, bool root)
 {
   offset = 0;
   bool NoEntryDetected = true;
+  char TD_buf[2 * sizeof(buf)];  // holds time and date conversion
      
   if (root) sprintf(RootDir,"%s","/");  
   
@@ -471,19 +529,25 @@ bool list_files(bool show, bool root)
   }
   
   if (!sd_root.open(RootDir)) {
-    Serial.printf("Error: during opening SD card %s\n",RootDir);
+    Serial.print("Error: during opening SD card  "); 
+    Serial.println(RootDir);
     return false;
   }
 
   if (!sd_root.isDir()) {
-    Serial.printf("Error: %s is NOT a directory\n\n",RootDir);
+    Serial.print("Error: "); 
+    Serial.print(RootDir);
+    Serial.println(" is NOT a directory\n");
     sd_root.close();
     return false;
   }
 
   sd_root.rewind();
   
-  if (show) Serial.printf("Content of %s\n", RootDir);
+  if (show) {
+    Serial.print("Content of "); 
+    Serial.println(RootDir);
+  }
   
   while (sd_file.openNext(&sd_root, O_RDONLY))
   {
@@ -508,20 +572,18 @@ bool list_files(bool show, bool root)
         Serial.print(offset);
         if (sd_file.isDir()) Serial.print("\tdir \t");
         else Serial.print("\tfile\t");
-    
+  
         // add index, time and date
         if (sd_file.getModifyDateTime(&pdate, &ptime)) {
-          
-          // Allow YYYY-MM-DD hh:mm
-          char buf[sizeof("YYYY-MM-DD hh:mm ") -1];
-          char* str = buf + sizeof(buf);
+          snprintf(TD_buf, sizeof(buf),"%s",buf);       // re-init conversion info
+          char* str = TD_buf + sizeof(buf);
           str = fsFmtTime(str, ptime);
           *--str = '\t';
           str = fsFmtDate(str, pdate);
           str[16] = 0x0;               // terminate on right place          
           Serial.print(str);
         }
-        
+    
         Serial.print("\tsize\t");
         uint32_t fs = sd_file.fileSize();
 
@@ -529,11 +591,19 @@ bool list_files(bool show, bool root)
         else Serial.print("0   ");
 
         if (sd_file.isHidden()) {
-          if (ShowHidden) Serial.printf("\t%s (hidden)\n",fname);
-          else Serial.printf("\t%s\n",fname);
+          if (ShowHidden) {
+            Serial.print("\t");
+            Serial.print(fname);
+            Serial.println(" (hidden)");
+          }
+          else   {
+            Serial.print("\t");
+            Serial.println(fname);
+          }
         }
         else
-          Serial.printf("\t%s\n",fname);
+          Serial.print("\t");
+          Serial.println(fname);
       }
     }
     
@@ -562,14 +632,15 @@ bool list_files(bool show, bool root)
 bool Set_dir()
 {
   if (! sd.chdir("/")) {
-    Serial.printf("Error during opening root directory.\n");
+    Serial.println("Error during opening root directory.");
     return false;
   }
 
   if (strlen(RootDir) == 1) return true;
 
   if (! sd.chdir(RootDir)) {
-    Serial.printf("Error during opening base directory %s.\n", RootDir);
+    Serial.print("Error during opening base directory ");
+    Serial.println(RootDir);
     return false;
   }
   
@@ -628,7 +699,8 @@ bool create_file(bool dir)
   // check it exists ??
   if (sd_file.exists(fname))
   {
-    Serial.printf("%s already exists.\n", fname);
+    Serial.print(fname);
+    Serial.println(" already exists.");
     sd_file.close();
     return false;
   } 
@@ -654,7 +726,10 @@ bool create_file(bool dir)
     else {
       Serial.println(F("File has been created."));
 
-      Serial.printf("Which sentence to do you want to include in the file %s. Only enter is nothing.\n",fname);
+      Serial.print("Which sentence to do you want to include in the file ");
+      Serial.print(fname);
+      Serial.println(". Only enter is nothing.");
+
 
       if (GetFileName() != 0) {
       
@@ -704,7 +779,8 @@ bool remove_file(bool dir){
 
   if (dir) {
     if (! DirContent[sel].isDir) {
-      Serial.printf("%s Not a valid directory.\n",DirContent[sel].name);
+      Serial.print(DirContent[sel].name);
+      Serial.println(" Not a valid directory.");
       return false;
     }
     
@@ -728,17 +804,25 @@ bool remove_file(bool dir){
     sd_root.close();
     
     if(count > 0) {
-      Serial.printf("ERROR. can not remove %s as it has %d entry(s)\n", DirContent[sel].name, count);
+      Serial.print("ERROR. can not remove ");
+      Serial.print(DirContent[sel].name);
+      Serial.print(" as it has ");
+      Serial.print(count);
+      Serial.println(" entry(s)");
       return false;
     }
     else {
-      Serial.printf("%s empty directory\n",DirContent[sel].name);
+      Serial.print(DirContent[sel].name);
+      Serial.println(" empty directory.");
+
     }
   }
   else {
   
     if (DirContent[sel].isDir) {
-      Serial.printf("%s Not a valid file.\n",DirContent[sel].name);
+      Serial.print(DirContent[sel].name);
+      Serial.println(" Not a valid file.");
+
       return false;
     } 
   }
@@ -811,17 +895,23 @@ bool Read_entry(bool hex)
   // open file
   if (! sd_file.open(DirContent[sel].name, O_READ))
   {
-    Serial.printf("Error: could not open : %s\n",DirContent[sel].name);
+    Serial.print("Error: could not open : "); 
+    Serial.println(DirContent[sel].name);
     return false;
   }
 
   uint32_t fs = sd_file.fileSize();
   if (fs == 0) {
-     Serial.printf("%s is empty.\n\n",DirContent[sel].name);
+     Serial.print(DirContent[sel].name);
+     Serial.println(" is empty.\n");
      return true;
   }
   else  
-    Serial.printf("Content of %s (%d bytes)\n\n",DirContent[sel].name, fs);
+    Serial.print("Content of ");
+    Serial.print(DirContent[sel].name);
+    Serial.print("( ");
+    Serial.print(fs);
+    Serial.println(" bytes)\n");
   
   uint8_t j, i = 0;
   char ch, bufhex[40];
@@ -934,7 +1024,8 @@ bool Rename_file()
   // check it exists ??
   if (sd_file.exists(fname))
   {
-    Serial.printf("%s already exists\n", fname);
+    Serial.print(fname);
+    Serial.println(" already exists");
     sd_file.close();
     return false;
   } 
@@ -944,7 +1035,8 @@ bool Rename_file()
   // open file
   if (! sd_file.open(DirContent[sel].name, O_WRONLY))
   {
-    Serial.printf("Error: Could not open: %s\n", DirContent[sel].name);
+    Serial.print("Error: Could not open: ");
+    Serial.println(DirContent[sel].name);
     return false;
   }
 
@@ -1030,7 +1122,7 @@ bool OneLevelUP()
 //**********************************************************************************************
 void beginSD()
 {
-#if (defined ARTEMIS_OPENLOG) || (defined MICROMOD_MMDLCB)
+#if defined ARTEMIS_OPENLOG || defined MICROMOD_MMDLCB
   pinMode(PIN_MICROSD_POWER, OUTPUT);
 #endif
 
@@ -1049,7 +1141,7 @@ void beginSD()
   pinMode(PIN_MICROSD_CHIP_SELECT, OUTPUT);
   digitalWrite(PIN_MICROSD_CHIP_SELECT, HIGH); // Be sure SD is deselected
   
-#if (defined ARTEMIS_OPENLOG) || (defined MICROMOD_MMDLCB)
+#if defined ARTEMIS_OPENLOG || defined MICROMOD_MMDLCB
   // For reasons I don't understand, we seem to have to wait for at least 1ms after SPI.begin before we call microSDPowerOn.
   // If you comment the next line, the Artemis resets at microSDPowerOn when beginSD is called from wakeFromSleep...
   // But only on one of my V10 red boards. The second one I have doesn't seem to need the delay!?
@@ -1088,26 +1180,33 @@ void beginSD()
   online_microSD = true;
 }
 
-#if (defined ARTEMIS_OPENLOG) || (defined MICROMOD_MMDLCB)
-
+#if defined ARTEMIS_OPENLOG || defined MICROMOD_MMDLCB
 void microSDPowerOn()
 {
-# ifdef MICROMOD_MMDLCB
+/* Opposite to what to expect, the LDO is enable is already pulled HIGH with a resistor
+ * on the MMDLCB board. 
+ * So actually the power is always ON, unless the PIN_MICROSD_POWER was pulled low (off) before
+ */
+#if defined MICROMOD_MMDLCB
   digitalWrite(PIN_MICROSD_POWER, HIGH);
 #endif
-# ifdef ARTEMIS_OPENLOG
+
+#if defined ARTEMIS_OPENLOG 
   digitalWrite(PIN_MICROSD_POWER, LOW);
 #endif
 }
 
 void microSDPowerOff()
 {
-# ifdef MICROMOD_MMDLCB
+
+#if defined MICROMOD_MMDLCB 
   digitalWrite(PIN_MICROSD_POWER, LOW);
 #endif
-# ifdef ARTEMIS_OPENLOG
+
+#if defined ARTEMIS_OPENLOG 
+  Serial.println("dbug OFF\n");
   digitalWrite(PIN_MICROSD_POWER, HIGH);
 #endif
 }
 
-#endif //(defined ARTEMIS_OPENLOG) || (defined MICROMOD_MMDLCB)
+#endif //defined ARTEMIS_OPENLOG || defined MICROMOD_MMDLCB

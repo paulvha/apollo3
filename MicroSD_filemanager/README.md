@@ -1,27 +1,31 @@
-# Artemis MicroSD filemanager for reading and writing
+#  MicroSD filemanager for reading and writing
 ## ===========================================================
 
 ## Background
 Wanted to created a sketch to handle the MicroSD reading and writing
 It has been on library version V1.2.3 as well as V2.2.0. No change needed.
 
-<br> This filemanager sketch has been developed to work on different Artemis platforms.
+<br> This filemanager sketch has been developed to work on different Artemis platforms and the Micromod nRF52840 & ESP32:
 You need to select the right platform in the top of the sketch.
 
 * MicroMod MainBoard (DEV-18576) with MicroMod Artemis Processor (WRL-16781)
 * MicroMod Data logger carrier board (DEV-16829) with MicroMod Artemis Processor (WRL-16781)
 * Artemis OpenLog (DEV-16832)
 * Artemis ATP (DEV-15442) with external SparkFun Level Shifting microSD (DEV-13743)
+* MicroMod MainBoard (DEV-18576) with MM nRF52840 Processor (WRL-16984)
+* MicroMod Data logger carrier board (DEV-16829) with RF52840 Processor (WRL-16984)
+* MicroMod MainBoard (DEV-18576) with MM ESP Processor (WRL-16781)
+* MicroMod Data logger carrier board (DEV-16829) with MM ESP32 Processor (WRL-169781)
 
 ## Usage
-* select the right board in the top of sketch (around line 105)
+* select the right board in the top of sketch (around line 134)
 * select the right board and bootloader in the Arduino IDE
 * compile and upload
 * open the Serial monitor with 115200
 
 It will show :
 
-<br>Artemis MicroSD filemanager (Version 1.4)
+<br>Artemis MicroSD filemanager (Version 1.5)
 <br>Press Enter to continue.
 <br>
 <br>
@@ -63,9 +67,14 @@ NOTE 3:
 It is strongly adviced to close the SD BEFORE removing the power. The SD could get damaged otherwise.
 
 ## Dependency
-The sketch is depending on the SdFat v2.0.7 by Bill Greiman which can be installed through a link in the top of the sketch
+The sketch is depending on the SdFat v2.0.7 by Bill Greiman which can be installed through a link in the top of the sketch.
 
 ## Versioning
+
+### Version 1.5 / April 2022
+ *  Added support for MM nRF52840 on MM Mainboard and MM Data logger carrier board.
+ *  Added support for MM ESP32 on MM Mainboard and MM Data logger carrier board.
+
 ### version 1.4 / March 2022
  * Added abbreviation input posibility
  * Added rename file function

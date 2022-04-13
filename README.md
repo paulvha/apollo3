@@ -28,6 +28,9 @@ For the Linux client software use the --help or -h option
 
 ## Versioning
 
+### version 3.13 / April 2022
+ * updated MicroSD Filemanager for more MicroMod processors
+
 ### version 3.12 / March 2022
  * updated Artemis Filemanager for MicroSD
  * added Qwicc Openlog filemanager
