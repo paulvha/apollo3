@@ -2,7 +2,7 @@
   QWICC OpenLog filemanager
   
   By: Paulvha@hotmail.com
-  Date: March, 2022
+  initial date: March, 2022
   
  *  ================================ Disclaimer ======================================
  *  This program is distributed in the hope that it will be useful,
@@ -14,12 +14,22 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *  ===================================================================================
 
-  This has been tested on a Sparkfun Qwicc Openlog module (DEV-15164) connected to an Artemis ATP.
+ //=========================== Versioning ===============================
 
-//=========================== Versioning ===============================
-
+  V1.1                                / September 2022
+  Changed some the subroutines for enhancements and a better flow
+  Made adjustments so the program now also works with Sparkfun Qwicc Openlog module (DEV-15164) connected to an ATmega
+ 
+  QWICC    ATMEGA
+  Red       3v3
+  Black     GND
+  Blue      SDA
+  Yellow    SCL
+  
   v1.0                                / March 2022
-  initial version
+  Initial version
+  This has been tested on a Sparkfun Qwicc Openlog module (DEV-15164) connected to an Artemis ATP.
+  
 */
 
 #include <Wire.h>
@@ -27,9 +37,9 @@
 
 //======================== user defines ==================================
 
-#define MAXFILENAME 14                       // maximum length file or directory name (size is hardcoded in Openlog source)   
-#define MAX_DIR_ENTRY 200                    // maximum entries in a current directory
-#define EXTRA_BUF 10000                      // Add extra buffer size                
+#define MAXFILENAME 14                      // maximum length file or directory name (size is hardcoded in Openlog source)   
+#define MAX_DIR_ENTRY 100                   // maximum entries in a current directory
+#define EXTRA_BUF 1000                      // Add extra buffer size for file content. Adjust if needed (and possible)             
 #define BUFLEN  (MAXFILENAME * MAX_DIR_ENTRY) + EXTRA_BUF  // max length to read directory content
 
 // make sure the bufferlength fits 
@@ -65,13 +75,17 @@ void setup()
 {
   Serial.begin(115200);
   while (!Serial); 
-  Serial.println(F("QWICC OpenLog filemanager. (V1.0)\nPress Enter to continue."));
+  Serial.println(F("QWICC OpenLog filemanager. (V1.1)\nPress Enter to continue."));
   GetFileName();
   
   Wire.begin();
-  Wire.setClock(400000);
-  myLog.begin();                            // Open connection to QWICC OpenLog
-
+  Wire.setClock(100000);
+  
+  if ( !myLog.begin()){                   // Open connection to QWICC OpenLog
+    Serial.println(F("QWICC OpenLog filemanager could not be initialised. freeze."));
+    while(1);
+  }
+  
   // read root directory into buffer
   list_files(false, true);
 }
@@ -316,6 +330,9 @@ void flush()
  * @param root :
  *  true  : start of root directory
  *  false : start at current directory
+ *
+ * @return
+ *  return true if all went well, false if there was an error/warning
  *  
  *  Note 1 :
  *  I have tried to use searchDirectory() and then getNextDirectoryItem() as in example7. But that 
@@ -329,6 +346,7 @@ bool list_files(bool show,bool root)
   bool ShowOnce = true;           // show header once
   char DirEntry[15];              // store each directory entry
   uint8_t n = 0;                  // length of characters in entry
+  bool ret = true;                // return true if all went well, false if there was an error/warning
   
   if (root) {
     ROOT;                         // rewind to root
@@ -337,71 +355,81 @@ bool list_files(bool show,bool root)
 
   String myFile = "*";            // get all entries
   
-  OpenLog_Dir_list((uint8_t *) buf, BUFLEN, myFile);  // see note1 above
-  
+  OpenLog_Dir_list((uint8_t *) buf, BUFLEN, myFile);  // see note 1 above
+
   // parse the received content  
   for (uint16_t i = 0 ; i < BUFLEN ; i++) {
 
-    // if not fillers for entry name
-    if (buf[i] != 0xFF) {
-     
-      DirEntry[n++] = buf[i];
+    // skip fillers
+    if ((buf[i] & 0xff) ==  0xFF)  continue;
+  
+    DirEntry[n++] = buf[i];
 
-      // end of full entry name
-      if(buf[i] == 0x0) {
+    // end of full entry name
+    if (buf[i] == 0x0) {
 
-        // only 0x0 in buffer
-        if (n == 1) {
-          n = 0;
-          continue;
-        }
+      // only 0x0 in buffer ?
+      if (n == 1) {
+        n = 0;
+        continue;
+      }
 
-        // at least ONE directory entry has been detected
-        NoEntryDetected = false;
+      // at least ONE directory entry has been detected
+      NoEntryDetected = false;
+      
+      // remove '/' which was added to indicate directory
+      if (DirEntry[n-2] == '/'){
+        DirContent[offset].isDir = true;
+        DirEntry[n - 2] = 0x0;
+        n--;
+      }
+      else 
+        DirContent[offset].isDir = false;
+      
+      // add entry in array
+      sprintf(DirContent[offset].name,"%s",DirEntry);
+
+      if (show) {
         
-        // remove '/' which was added to indicate directory
-        if (DirEntry[n-2] == '/'){
-          DirContent[offset].isDir = true;
-          DirEntry[n - 2] = 0x0;
-          n--;
+        if (ShowOnce) {
+          Serial.print("\nContent for ");
+          Serial.println(RootDir);
+          ShowOnce = false;  
         }
-        else 
-          DirContent[offset].isDir = false;
         
-        // add entry in array
-        sprintf(DirContent[offset].name,"%s",DirEntry);
-
-        if (show) {
-          
-          if (ShowOnce) {
-            Serial.print("\nContent for ");
-            Serial.println(RootDir);
-            ShowOnce = false;  
-          }
-          
-          Serial.print(DirEntry);
-          
-          // add enough spaces to align output
-          for ( ; n <= 20; n++) Serial.print(" ");
-          
-          if(DirContent[offset].isDir) Serial.print("DIR \t");
-          else Serial.print("FILE\t");   
-                  
+        Serial.print(DirEntry);
+        
+        // add enough spaces to align output
+        for ( ; n <= 20; n++) Serial.print(" ");
+        
+        if(DirContent[offset].isDir) {
+          Serial.println("DIR \t--");
+        }
+        else { 
+          Serial.print("FILE\t");   
+        
           // Get size of file
           int32_t sizeOfFile = myLog.size(DirEntry);  
           Serial.println(sizeOfFile);
         }
-
-        // reset character counter in directory entry
-        n = 0;   
-
-        offset++;
-    
-        if (offset == MAX_DIR_ENTRY) {
-          Serial.println("WARNING : can not add more entrys in array\n");
-          offset--;
-        }
       }
+
+      // reset character counter in directory entry
+      n = 0;   
+
+      offset++;
+  
+      if (offset == MAX_DIR_ENTRY) {
+        Serial.println("WARNING : can not add more entrys in array\n");
+        ret = false;
+        offset--;
+      }
+    }
+
+    if (n == MAXFILENAME){
+      Serial.println("WARNING : Directory entry name to long.\n");
+      ret = false;
+      n--;
     }
   }
   
@@ -412,12 +440,16 @@ bool list_files(bool show,bool root)
     Serial.println("Empty directory\r");
   }
   
-  return true;
+  return ret;
 }
 
 /*
  * change to a sub-directory
  * @parameter ind : offset in array is already known
+ * 
+ * @return
+ *  true : if all went OK
+ *  false: in case of error or cancel
  */
 bool change_dir(uint8_t ind)
 {
@@ -460,6 +492,10 @@ bool change_dir(uint8_t ind)
 /*
  * create a new file or directory in the current directory
  * @parameter dir : true is create a directory else file
+ *
+ * @return
+ *  true : if all went OK
+ *  false: in case of error or cancel
  */
 bool create_entry(bool dir)
 {
@@ -504,6 +540,10 @@ bool create_entry(bool dir)
 /*
  * remove file or directory
  * @param dir : true for directory
+ * 
+ * @return
+ *  true : if all went OK
+ *  false: in case of error or cancel
  */
 bool remove_entry(bool dir){
   
@@ -535,6 +575,22 @@ bool remove_entry(bool dir){
       Serial.print(DirContent[sel].name);
       Serial.println(F(" Not a valid Directory."));
       return false;
+    }
+    
+    // display any content in the directory
+    else {
+      
+      // move in directory
+      myLog.changeDirectory(DirContent[sel].name);
+
+      sprintf(TempDir,"%s%s/", RootDir, DirContent[sel].name);
+      sprintf(RootDir, "%s", TempDir);
+
+      // list content
+      list_files(true,false);
+
+      // got back and thus one level up
+      OneLevelUP(false);
     }
   }
   else {
@@ -582,6 +638,10 @@ bool remove_entry(bool dir){
  * @parameter Hex
  *  true  : display ASCII and HEX
  *  false : display ASCII
+ * 
+ * @return
+ *  true : if all went OK
+ *  false: in case of error or cancel
  */
 bool Read_file(bool hex)
 {
@@ -714,6 +774,10 @@ bool Read_file(bool hex)
 /*
  * Add / append content to a file
  * if the file does not exist it will be created
+ * 
+ * @return
+ *  true : if all went OK
+ *  false: in case of error or cancel
  */
 bool Append_file()
 {
@@ -815,6 +879,10 @@ bool Append_file()
 /*
  * Move one level up in directory structure
  * @parameter show : display content of directory after one level up
+ * 
+ * @return
+ *  true : if all went OK
+ *  false: in case of error or cancel
  */
 bool OneLevelUP(bool show)
 {
@@ -878,29 +946,61 @@ uint8_t DisplayArray(bool CheckFile)
   // display content of current directory
   for (offset = 0; offset < MAX_DIR_ENTRY; offset++) {
     
-    // end if array entries
+    // end of array entries
     if (! strlen(DirContent[offset].name)) break;
     
     Serial.print(offset);
     Serial.print("\t");
 
+    // check directory entry is from a file
     if (CheckFile) {
-      if (! DirContent[offset].isDir) {
-        Valid_entry = true;
-        Serial.println(DirContent[offset].name);
+     
+      if (DirContent[offset].isDir) {
+        Serial.println(F("\tDirectory. can not select"));
+        continue;
       }
-      else Serial.println(F("\tDirectory. can not select"));
     }
+    // check directory is from a directory
     else {
-      if ( DirContent[offset].isDir) {
-        Valid_entry = true;
-        Serial.println(DirContent[offset].name);
+      
+      if (! DirContent[offset].isDir) {
+        Serial.println(F("\tFile. can not select"));
+        continue;
       }
-      else Serial.println(F("\tFile. can not select"));
     }
+    
+    DisplayNameSize(DirContent[offset].name, DirContent[offset].isDir);
   }
   
   return(offset);
+}
+
+/*
+ * Add spaces after file name and add size if file
+ * @param dir
+ *   true : will not try to get size
+ *   false: will try to get size
+ */
+void DisplayNameSize(char *p, bool dir)
+{
+  // valid entry found
+  Valid_entry = true;
+
+  // determine number of spaces
+  uint8_t n = 20 - strlen(p);
+  
+  Serial.print(p);
+  
+  // add enough spaces to align output
+  while(n--) Serial.print(" ");
+
+  if(!dir){
+    // Get size of file
+    int32_t sizeOfFile = myLog.size(p);  
+    Serial.println(sizeOfFile);
+  }
+  else
+    Serial.println("--");
 }
 
 //==================================================================================================
@@ -910,7 +1010,7 @@ uint8_t DisplayArray(bool CheckFile)
 // construction only works ONCE. Performing the same a second time will not provide anything.
 // This special function has been written to take different approach.
 //
-// following assumptions:
+// Following assumptions:
 //
 // Standard Wire is used
 // Standard address is used
@@ -928,21 +1028,41 @@ void OpenLog_Dir_list(uint8_t *userBuffer, uint16_t bufferSize, String fileName)
 {
   uint16_t spotInBuffer = 0;
   uint16_t leftToRead = bufferSize; // Read up to the size of our buffer. We may go past EOF.
-  myLog.sendCommand(LIST_COMMAND, fileName);
+  bool EndOfDir = true;
   
+  myLog.sendCommand(LIST_COMMAND, fileName);
+
   // Upon completion Qwiic OpenLog will respond with the file contents. Master can request up to 32 bytes at a time.
   // Qwiic OpenLog will respond until it reaches the end of file then it will report zeros.
 
   while (leftToRead > 0)
   {
-    uint8_t toGet = I2C_BUFFER_LENGTH; // Request up to a 32 byte block
+    // assume this is a the last entry in directory or empty directory
+    EndOfDir = true;
+    
+    uint16_t toGet = I2C_BUFFER_LENGTH; // Request up to a 32 byte block
+    
     if (leftToRead < toGet)
       toGet = leftToRead; // Go smaller if that's all we have left
 
     OWIRE.requestFrom(DEV_ADDRR, toGet);
-    while (OWIRE.available())
-      userBuffer[spotInBuffer++] = OWIRE.read();
+    
+    while (OWIRE.available()){
+      userBuffer[spotInBuffer] = OWIRE.read();
 
+      // check for empty or last entry in directory (will be complete 0xff)
+      if (userBuffer[spotInBuffer] != 0xff && EndOfDir) EndOfDir = false;
+
+      //prevent overrun
+      if (spotInBuffer < bufferSize) spotInBuffer++;
+    }
+
+    // empty or last entry in directory detected
+    if (EndOfDir) {
+      while (spotInBuffer < bufferSize) userBuffer[spotInBuffer++] = 0xff;
+      return;
+    }
+    
     leftToRead -= toGet;
   }
 }

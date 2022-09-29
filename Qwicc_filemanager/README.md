@@ -3,20 +3,20 @@
 
 ## Background
 Wanted to created a sketch to handle the Sparkfun Qwicc Openlog module (DEV-15164) for reading and writing.
-It has been on library version V1.2.3 as well as V2.2.0. No change needed. But I would expect this to run on other boards as well
+It has been on library version V1.2.3 as well as V2.2.0. No change needed. But I would expect this to run on other boards as well. The V1.1 has been adjusted and tested with an ATMEGA as well. While this could also work on an UNO, the memory-size is causing limitations.
 
 <br> The Qwicc Openlog module is able to be connected with Wire from different boards to log data on a MicroSD card.
 You can access the MicroSD directly, but you need to use the Sparkfun library that communicates with the board. This filemanager is making use of that library.
 
 ## Usage
-* Adjust optionally the variables are line 34.
+* Adjust optionally the variables are line 40 in the sketch
 * select the right board and bootloader in the Arduino IDE
 * compile and upload
 * open the Serial monitor with 115200
 
 It will show :
 
-<br>QWICC OpenLog filemanager. (V1.0)
+<br>QWICC OpenLog filemanager. (V1.1)
 <br>Press Enter to continue.
 <br>
 <br>
@@ -63,6 +63,11 @@ The maximum file size to read is based on the buffer length. This can be set to 
 The Sketch is depending on the [Sparkfun library]( https://github.com/sparkfun/SparkFun_Qwiic_OpenLog_Arduino_Library).
 
 ## Versioning
+
+### Version 1.1 / September 2022
+ * A number of program and flow enhancements
+ * Changes applied to make this also work when connected to an ATmega
+
 ### Version 1.0 / March 2022
  * initial version for Qwicc OpenLog
 
@@ -73,4 +78,4 @@ The Sketch is depending on the [Sparkfun library]( https://github.com/sparkfun/S
 This project is licensed under the GNU GENERAL PUBLIC LICENSE 3.0
 
 ## Acknowledgments
-Part of the source code is based on the examples included.
+Part of the source code is based on the examples included in the original library
