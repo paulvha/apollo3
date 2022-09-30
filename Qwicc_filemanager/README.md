@@ -64,6 +64,9 @@ The Sketch is depending on the [Sparkfun library]( https://github.com/sparkfun/S
 
 ## Versioning
 
+### Version 1.2 / September 2022
+ * updated the approach to get the directory entries after discovering an issue in Artemis V2.xx Wire-library
+
 ### Version 1.1 / September 2022
  * A number of program and flow enhancements
  * Changes applied to make this also work when connected to an ATmega
