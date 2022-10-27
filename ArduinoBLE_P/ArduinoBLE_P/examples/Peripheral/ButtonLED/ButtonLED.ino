@@ -17,7 +17,7 @@
   This example code is in the public domain.
 */
 
-#include <ArduinoBLE.h>
+#include <ArduinoBLE_P.h>
 
 const int ledPin = LED_BUILTIN; // set ledPin to on-board LED
 const int buttonPin = 4; // set buttonPin to digital pin 4

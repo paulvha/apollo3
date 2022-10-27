@@ -4,18 +4,18 @@ Version 1.1 / February 2021 / paulvha
 
 -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
-Installation instruction to add the ArduinoBLE_P and Exactle Bluetooth stack to Sparkfun Library version 1.2.1.
+Installation instruction to add the ArduinoBLE_P and Exactle Bluetooth stack to Sparkfun Library version 1.2.3.
 
-INSTALL_DIR : directory where version 1.2.1 of the library is installed
+INSTALL_DIR : directory where version 1.2.3 of the library is installed
 
 ### The following data is included
 
 exactleP folder  	: contains the patched Bluetooth stack
-platform.new file      : updated platform.txt file needed for compile on Library 1.2.1
+platform.new file      : updated platform.txt file needed for compile on Library 1.2.3
 ArduinoBLE_P 		: example sketches + library
 
 ########################################################################
-### copy the ExactLE Bluetooth stack  !!!!!! ONLY NEEDED FOR 1.2.1 #####
+### copy the ExactLE Bluetooth stack  !!!!!! ONLY NEEDED FOR 1.2.3 #####
 ########################################################################
 
 IF YOU HAD A PREVIOUS FUNCTION, MAKE SURE TO REPLACE AS THE
@@ -31,7 +31,7 @@ exactleP
 utils
 
 ################################################################################
-# Apply changes to the compiler instructions  !!!!!! ONLY NEEDED FOR 1.2.1 #####
+# Apply changes to the compiler instructions  !!!!!! ONLY NEEDED FOR 1.2.3 #####
 ################################################################################
 You have 2 options.
 
@@ -40,7 +40,7 @@ You have 2 options.
 -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 Goto to INSTALL_DIR
 make a copy of platform.txt : e.g. mv platform.txt platform.org
-Now copy the platform.new (part of this package) cp platform.new  platform.txt
+Now copy the platform.new (part of this package) e.g. cp platform.new  platform.txt
 ## end option 1 #####
 
 -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=

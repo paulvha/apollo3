@@ -16,7 +16,7 @@
   This example code is in the public domain.
 */
 
-#include <ArduinoBLE.h>
+#include <ArduinoBLE_P.h>
 
 BLEService ledService("19B10000-E8F2-537E-4F6C-D104768A1214"); // create service
 
@@ -28,7 +28,7 @@ const int ledPin = LED_BUILTIN; // pin to use for the LED
 void setup() {
   Serial.begin(9600);
   while (!Serial);
-  
+
   pinMode(ledPin, OUTPUT); // use the LED pin as an output
 
   // begin initialization

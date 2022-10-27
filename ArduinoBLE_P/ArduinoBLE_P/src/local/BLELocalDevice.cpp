@@ -169,6 +169,17 @@ void BLELocalDevice::end()
 #endif
 }
 
+int BLELocalDevice::UpdateMtu()
+{
+    return ATT.UpdateMtu();
+}
+
+uint8_t BLELocalDevice::ReadMtu()
+{
+    return ATT.ReadMtu();
+}
+
+
 void BLELocalDevice::poll()
 {
   HCI.poll();

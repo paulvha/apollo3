@@ -68,7 +68,10 @@ public:
   void end();       // {paulvha}
 
   BLEDevice central();
-
+/////////////////////////////////////////////////////
+virtual uint16_t UpdateMtu();
+virtual uint16_t ReadMtu();
+/////////////////////////////////////////////////////
   bool handleNotify(uint16_t handle, const uint8_t* value, int length);
   bool handleInd(uint16_t handle, const uint8_t* value, int length);
 

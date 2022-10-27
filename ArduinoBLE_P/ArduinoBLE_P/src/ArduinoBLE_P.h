@@ -22,7 +22,7 @@
 
 #include "local/BLELocalDevice.h"
 #include "BLEProperty.h"
-#include "BLEStringCharacteristic.h"
-#include "BLETypedCharacteristics.h"
+//#include "BLEStringCharacteristic.h"
+//#include "BLETypedCharacteristics.h"
 
 #endif

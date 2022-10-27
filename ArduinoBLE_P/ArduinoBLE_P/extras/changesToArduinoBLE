@@ -50,6 +50,22 @@ a menu structure interaction and sending the BME280 sensor data.
 # MANY different BUGS fixes applied
 =============================================
 
+In ArduinoBLE/src/uility/HCI.CPP fix a bug to prevent loosing data.// recvbuffer overflow # 214
+
+void HCIClass::poll(unsigned long timeout) between :
+ byte b = HCITransport.read();
+ _recvBuffer[_recvIndex++] = b;
+ 
+ add a check on receive buffer :
+    
+    if (_recvIndex >= sizeof(_recvBuffer)) { 
+        _recvIndex = 0;
+        if (_debug) {
+            _debug->println("_recvBuffer overflow");
+        }
+    }
+    _recvBuffer[_recvIndex++] = b;
+
 In ArduinoBLE/src/uility/ATT.CPP fix a bug with incorrect definition of handle.
    In routine handleNotifyOrInd() around line 1379
    change : uint8_t handle = handleNotifyOrInd->handle;

@@ -15,7 +15,7 @@
   This example code is in the public domain.
 */
 
-#include <ArduinoBLE.h>
+#include <ArduinoBLE_P.h>
 
  // BLE Battery Service
 BLEService batteryService("180F");
@@ -93,6 +93,8 @@ void loop() {
 void updateBatteryLevel() {
   /* Read the current voltage level on the A0 analog input pin.
      This is used here to simulate the charge level of a battery.
+
+     Depending on your board you need to select a different pin
   */
   int battery = analogRead(A0);
   int batteryLevel = map(battery, 0, 1023, 0, 100);

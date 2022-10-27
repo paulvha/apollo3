@@ -1,12 +1,11 @@
 # ArduinoBLE_P - special for 1.2.1  (paulvha / February 2021)
 
-This is based on ArduinoBLE 1.1.3, but adjusted for Sparkfun library 1.2.1
-next to that a number of changes have been applied (see extras folder)
+# Update October 2022: update and tested on V1.2.3
+This is based on ArduinoBLE 1.1.3, but adjusted for Sparkfun library V1.2.3 next to that a number of changes have been applied. (see extras folder)
 For installation instruction also see extras folder.
 
 A peripheral example10 has been added with a menu structure and sending sensor data(BME280)
 A central example10 has been added to work with the peripheral example10
-
 
 [![Compile Examples Status](https://github.com/arduino-libraries/ArduinoBLE/workflows/Compile%20Examples/badge.svg)](https://github.com/arduino-libraries/ArduinoBLE/actions?workflow=Compile+Examples) [![Spell Check Status](https://github.com/arduino-libraries/ArduinoBLE/workflows/Spell%20Check/badge.svg)](https://github.com/arduino-libraries/ArduinoBLE/actions?workflow=Spell+Check)
 

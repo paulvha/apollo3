@@ -8,12 +8,12 @@
 #ifndef _BLE_BRIDGE_H_
 #define _BLE_BRIDGE_H_
 
-#include <ArduinoBLE.h>
+#include <ArduinoBLE_P.h>
 #include <Arduino.h>
 
 //*****************************************************************************
 //
-// Settings 
+// Settings
 //
 //*****************************************************************************
 

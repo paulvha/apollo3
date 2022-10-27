@@ -642,6 +642,46 @@ void ATTClass::error(uint16_t connectionHandle, uint8_t dlen, uint8_t data[])
     _pendingResp.length = dlen + 1;
   }
 }
+///////////////////////////////////////////////////////// paulvha
+// request maximum MTU for all connections
+uint16_t ATTClass::UpdateMtu()
+{
+  uint8_t response[5];
+
+  for (int i = 0; i < ATT_MAX_PEERS; i++) {
+
+   if (_peers[i].connectionHandle == 0xffff) continue;
+
+   int cnt = mtuReq(_peers[i].connectionHandle, _maxMtu, response);
+
+   // length is 3
+   if (cnt == 3) {
+
+    // return the new (agreed) MTU
+    if (response[0] == ATT_OP_MTU_RESP){
+       return (response[2] << 8 | response[1]);
+    }
+   }
+  }
+
+  return 0;
+}
+
+// read MTU for the first connection
+uint16_t ATTClass::ReadMtu()
+{
+  for (int i = 0; i < ATT_MAX_PEERS; i++) {
+    if (_peers[i].connectionHandle == 0xffff) {
+      continue;
+    }
+
+    return _peers[i].mtu;
+  }
+
+  return 0;
+}
+///////////////////////////////////////////////////////////
+
 
 void ATTClass::mtuReq(uint16_t connectionHandle, uint8_t dlen, uint8_t data[])
 {

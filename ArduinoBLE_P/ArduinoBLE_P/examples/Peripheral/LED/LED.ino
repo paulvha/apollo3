@@ -15,7 +15,7 @@
   This example code is in the public domain.
 */
 
-#include <ArduinoBLE.h>
+#include <ArduinoBLE_P.h>
 
 BLEService ledService("19B10000-E8F2-537E-4F6C-D104768A1214"); // BLE LED Service
 

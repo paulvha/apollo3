@@ -65,6 +65,11 @@ int writeBdAddr();
   BLEDevice central();
   BLEDevice available();
 
+/////////////////////////////////////////////////////
+virtual int UpdateMtu();
+virtual uint8_t ReadMtu();
+/////////////////////////////////////////////////////
+
   void setEventHandler(BLEDeviceEvent event, BLEDeviceEventHandler eventHandler);
 
   void setAdvertisingInterval(uint16_t advertisingInterval);

@@ -2,8 +2,6 @@
 
 # Copyright (c) 2019 SparkFun Electronics
 
-# SPECIAL FOR INSTALLING EXACTLE ON SPARKFUN APOLLO3 LIBRARY VERSION 1.2.1
-
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
@@ -25,10 +23,7 @@
 name=SparkFun Apollo3
 version=0.1.0
 
-######################################################
-# INCLUDES PATCHES FOR EXACTLE ON 1.2.1
-# VERSION 1.0 / PAULVHA
-######################################################
+
 ## Extra Flags (can be overridden in platform.local.txt)
 compiler.extra_flags.cpp=
 compiler.extra_flags.c=
@@ -37,11 +32,13 @@ compiler.extra_flags.ld=
 compiler.extra_flags.ar=
 compiler.extra_flags.axf2bin=
 
+
 ## Paths
 ap3core.path={runtime.platform.path}/cores/{build.core}
 ap3variant.path={build.variant.path}
 ap3core.ambiq_sdk.path={ap3core.path}/am_sdk_ap3
-################ enables exactle / paulvha 
+
+## added paulvha
 ap3core.exactle.path={ap3core.path}/am_sdk_ap3/exactleP
 
 ## Core Includes
@@ -51,7 +48,7 @@ includes.cmsis="-I{ap3core.ambiq_sdk.path}/CMSIS/AmbiqMicro/Include" "-I{ap3core
 includes.core="-I{ap3core.path}/ard_sup" "-I{ap3core.path}/ard_sup/ard_supers" {includes}
 includes.variant={build.includes}
 
-################ enables exactle / paulvha 
+## added paulvha
 includes.exactle="-I{ap3core.exactle.path}/ws-core/sw/wsf/ambiq" "-I{ap3core.exactle.path}/ws-core/sw/wsf/include"  "-I{ap3core.exactle.path}/ws-core/sw/util" "-I{ap3core.exactle.path}/ws-core/include" "-I{ap3core.exactle.path}/sw/hci/ambiq/apollo3"  "-I{ap3core.exactle.path}/sw/hci/include" "-I{ap3core.exactle.path}/sw/hci/ambiq"
 
 ## Precompiled Libraries
@@ -61,13 +58,15 @@ libs.cmsis=
 libs.core=
 libs.variant={build.libs}
 
-## Defines
-################ enables tracing / paulvha 
-defines.extra=-DWSF_TRACE_ENABLED -DCORDIO_ZERO_COPY_HCI
 
+## Defines
+defines.extra=
 defines.hw=-DF_CPU={build.f_cpu}
 defines.arduino=-DARDUINO={runtime.ide.version} -DARDUINO_{build.board} -DARDUINO_ARCH_{build.arch}
 defines.variant={build.defs}
+
+## added paulvha
+defines.extra=-DWSF_TRACE_ENABLED  -DCORDIO_ZERO_COPY_HCI
 
 ## Compiler and Toolchain
 compiler.path={runtime.tools.arm-none-eabi-gcc-8-2018-q4-major.path}/bin
@@ -85,18 +84,21 @@ compiler.warning_flags.default=
 compiler.warning_flags.more=-Wall
 compiler.warning_flags.all=-Wall -Wextra
 
+
 compiler.flags.common_cpp_c_S={build.extra_flags} -c -g -MMD
 compiler.flags.common_cpp_c=-mcpu={build.mcu} -mthumb -mfloat-abi=hard -fdata-sections -Os
 compiler.flags.cpp={compiler.flags.common_cpp_c_S} {compiler.flags.common_cpp_c} {compiler.extra_flags.cpp} -ffunction-sections  {compiler.warning_flags} -std=gnu++11 -fno-threadsafe-statics -nostdlib --param max-inline-insns-single=500 -fno-rtti -fno-exceptions
-compiler.flags.c={compiler.flags.common_cpp_c_S} {compiler.flags.common_cpp_c} {compiler.extra_flags.c} --function-sections -mfpu=fpv4-sp-d16 -std=gnu11 -Wall 
+compiler.flags.c={compiler.flags.common_cpp_c_S} {compiler.flags.common_cpp_c} {compiler.extra_flags.c} --function-sections -mfpu=fpv4-sp-d16 -std=gnu11 -Wall
 compiler.flags.S={compiler.flags.common_cpp_c_S} {compiler.extra_flags.S} -x assembler-with-cpp
 compiler.flags.ld={compiler.extra_flags.ld} "-L{ap3core.ambiq_sdk.path}/CMSIS/ARM/Lib/ARM" -larm_cortexM4lf_math -mthumb -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard  -static -Wl,--gc-sections,--entry,Reset_Handler -Wl,--start-group -lm -lc -lgcc -Wl,--end-group -fno-exceptions -nostdlib --specs=nano.specs -t -lstdc++ -lc -lnosys -lm
 compiler.flags.ar=rcs {compiler.extra_flags.ar}
 compiler.flags.axf2bin={compiler.extra_flags.axf2bin} -O binary
-################# added includes.exactle / paulvha
-includes.all={includes.variant} {includes.core} {includes.ambiq_sdk} {includes.cmsis} {includes.exactle} {includes.extra} 
+
+## changed / added paulvha
+includes.all={includes.variant} {includes.core} {includes.ambiq_sdk} {includes.ambiq_sdk} {includes.cmsis} {includes.extra} {includes.exactle}
 defines.all={defines.variant} {defines.hw} {defines.arduino} {defines.extra}
-libs.all={archive_file_path} {libs.extra} {libs.ambiq_sdk} {libs.cmsis} {libs.core} {libs.variant} {libs.extra}
+libs.all="{archive_file_path}" {libs.extra} {libs.ambiq_sdk} {libs.cmsis} {libs.core} {libs.variant} {libs.extra}
+
 
 ## Arduino Patterns
 

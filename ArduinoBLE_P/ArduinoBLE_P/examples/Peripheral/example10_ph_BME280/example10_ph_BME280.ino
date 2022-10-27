@@ -1,13 +1,13 @@
 /*
-********************************************************************************** 
+**********************************************************************************
 * Short description
 **********************************************************************************
   This is a BLE peripheral implementation that can receive messages from a
   central and sent data out using Notify. For many of the sensor implementation it will
   be sufficient, easy to use and will allow a very light weight central implementation.
- 
-  It will require a good working function of ArduinoBLE. 
-  For Sparkfun Apollo3 library 1.2.1 a special patched ArduinoBLe (lower case e) and 
+
+  It will require a good working function of ArduinoBLE.
+  For Sparkfun Apollo3 library 1.2.1 a special patched ArduinoBLe (lower case e) and
   ExactLE package needs to be installed
 
   February 2021 / paulvha / version 1.0
@@ -17,7 +17,7 @@
  *** hardware connect
  ************************************************************************************
 = BME280
-  
+
   This has been tested with an Adafruit BME280. Parts of the code below are coming from
   Sparkfun BME280 library: https://github.com/sparkfun/SparkFun_BME280_Arduino_Library
   The expected I2C address is 0x77.
@@ -29,45 +29,45 @@
     SDI         SDA
 
    OR (depending on your BME280 board and connected to QWiic)
-    
+
    BME280       I2C
     VIN         3v3
-    3V3(OUT)         
+    3V3(OUT)
     GND         GND
     SCK         SCL
     SDO
     SDI         SDA
     CS
 
-    
-********************************************************************************** 
-!! BEFORE YOU START!! 
+
+**********************************************************************************
+!! BEFORE YOU START!!
 !! In case you use the default ArduinoBLE and you want to change the BDADDR !!!!!
 !! This change has already been applied on ArduinoBLe
 **********************************************************************************
 
-Before you can compile it requires a SMALL CHANGE  in ArduinoBLE/src/uility/HCI.h. 
+Before you can compile it requires a SMALL CHANGE  in ArduinoBLE/src/uility/HCI.h.
 
 Around line 80 you will find :
 
-private : 
-int sendCommand(uint16_t opcode, uint8_t plen = 0, void* parameters = NULL); 
+private :
+int sendCommand(uint16_t opcode, uint8_t plen = 0, void* parameters = NULL);
 
-Now move the sendCommand() to the line ABOVE private, into the public area so we can call 
+Now move the sendCommand() to the line ABOVE private, into the public area so we can call
 this function from the sketch:
 
-int sendCommand(uint16_t opcode, uint8_t plen = 0, void* parameters = NULL); 
+int sendCommand(uint16_t opcode, uint8_t plen = 0, void* parameters = NULL);
 private:
 
-    
-********************************************************************************** 
+
+**********************************************************************************
 * USAGE
 **********************************************************************************
 
   Use Example10_central_BME280 to read complete BME280 information
 
   For debug :
-  
+
   This example demonstrates basic BLE server (peripheral) functionality for the Apollo3 boards.
   How to use this example:
     - Install the nRF Connect app on your mobile device (must support BLE bluetooth)
@@ -81,7 +81,7 @@ private:
       - Generic Attribute
       - Unknown Service (UUID ending on 1014)
     - click on "Unknown Service"
-    - it will show: 
+    - it will show:
       -Unknown Characteristic (UUID starting 19b10011)
       -Unknown Characteristic (UUID starting 19b10012)
       -Descriptors
@@ -91,7 +91,7 @@ private:
      - Descriptors : Notifications enable
 
     - click on the up arrow next to unknown characteristic (UUID starting 19b10011)
-    
+
     - enter value 07 + send : will show values of the BME280 at unknown characteristic (UUID starting 19b10012)
       it will flash as the data is sent in mutiple packages and only the last package is shown like  (0x) 30, 30, "00")
 */
@@ -133,7 +133,7 @@ uint8_t AltitudeInMeter = 1;
 uint8_t TempInCelsius = 1;
 
 // after interval in seconds between sending an update
-#define SENDINTERVAL  30 
+#define SENDINTERVAL  30
 
 // BME280 detected
 bool BME280_Detected = false;
@@ -142,7 +142,7 @@ bool BME280_Detected = false;
 // BLE settings
 ////////////////////////////////////////////////////////////////////////////
 
-#include <ArduinoBLE.h>
+#include <ArduinoBLE_P.h>
 #include "utility/HCI.h"    // needed for sendcommand
 
 // MAX Up to 29 characters for BLE name
@@ -201,7 +201,7 @@ void setup() {
 #ifdef BLE_Debug
   BLE.debug(SERIAL_PORT);         // enable display HCI commands
 #endif
-  
+
   // begin initialization
   if (!BLE.begin()) {
     SERIAL_PORT.println(F("starting BLE failed!\r"));
@@ -234,7 +234,7 @@ void setup() {
 
   // start advertising
   BLE.advertise();
-  
+
   ///////////////////////////////////////////////////
   // BME280 INIT
   ///////////////////////////////////////////////////
@@ -270,10 +270,10 @@ void loop() {
   if (BME280rCharacteristic.written()) {
     CentralRequestReceived();
   }
-  
+
   // if allowed to send BME280 update and connected.
   if (EnableSend && BLE.connected()) {
-    
+
     // Interval for reading & sending BME280
     if (--Interval == 0 ){
       CreateSendData();
@@ -297,20 +297,20 @@ void loop() {
 void handle_input(char c)
 {
   if (c == '\r') return;    // skip CR
-        
+
   if (c != '\n') {          // act on linefeed
     input[inpcnt++] = c;
     if (inpcnt < 9 ) return;
   }
-  
+
   input[inpcnt] = 0x0;
-  
+
   handle_cmd((uint8_t) atoi(input));
-  
+
   BLE.poll();       // keep BLE alive
-    
+
   display_menu();
-  
+
   // reset keyboard buffer
   inpcnt = 0;
 }
@@ -333,8 +333,8 @@ void display_menu()
 enum key_input{
   REQUEST_METERS = 1,
   REQUEST_FEET,
-  REQUEST_CELSIUS, 
-  REQUEST_FRHEIT, 
+  REQUEST_CELSIUS,
+  REQUEST_FRHEIT,
   REQUEST_STOP,
   REQUEST_START,
   REQUEST_NOW
@@ -342,7 +342,7 @@ enum key_input{
 
 // could be entered on peripheral or central
 void handle_cmd(uint8_t req)
-{  
+{
   switch (req)
   {
     case REQUEST_METERS:
@@ -369,19 +369,19 @@ void handle_cmd(uint8_t req)
         SERIAL_PORT.print(F("Stop sending\r\n"));
         EnableSend = false;
         break;
-    
+
     case REQUEST_START:
         SERIAL_PORT.print(F("(re)Start sending\r\n"));
         EnableSend = true;
         Interval = 1;     // send at next turn
         break;
-    
+
     case REQUEST_NOW:
         SERIAL_PORT.print(F("Send now\r\n"));
         CreateSendData();
         Interval = SENDINTERVAL; // next one after SENDINTERVAL if enabled
         break;
-        
+
     default:
         SERIAL_PORT.printf("Unknown request, %d\r\n", req);
         break;
@@ -396,17 +396,17 @@ void CentralRequestReceived()
 {
   int len = BME280rCharacteristic.valueLength();
   uint8_t buf[20];
-  
+
   if (len > 20) len = 20;
-  
+
   // obtain received value(s)
   BME280rCharacteristic.readValue(buf, len);
- 
+
 #ifdef SKETCH_SHOW_DATA
   SERIAL_PORT.print(F("Received command with length: "));
   SERIAL_PORT.print(len);
   SERIAL_PORT.print("\r\n");
-      
+
   for (int i = 0 ; i< len ; i++) {
     SERIAL_PORT.print(" 0x");
     SERIAL_PORT.print(buf[i], HEX);
@@ -415,7 +415,7 @@ void CentralRequestReceived()
 #endif
 
   // only ONE byte is expected for this solution
-  handle_cmd(buf[0]); 
+  handle_cmd(buf[0]);
 }
 
 /**
@@ -442,7 +442,7 @@ void CreateSendData()
   else p.altitude = mySensor.readFloatAltitudeFeet();
 
   p.meter = AltitudeInMeter;
-  
+
 #ifdef SKETCH_SHOW_DATA
 
   SERIAL_PORT.print(F("\r\nTemperature\t"));
@@ -462,25 +462,25 @@ void CreateSendData()
   SERIAL_PORT.print(p.altitude);
   if (p.meter) SERIAL_PORT.println(F(" Meter\r"));
   else SERIAL_PORT.println(F(" Feet\r"));
-  
+
 #endif
-  
+
   SendReplyCentral((uint8_t *) &p, sizeof(struct data_to_exchange));
 }
-  
+
 /**
  * sent a data message to the central/host
  *
  * Format received data :
  * buf =  data to be sent
  * len  = length of data
- * 
+ *
  * We have a challenge that the characteristic is a STRING format, so we can not
- * have a value 0x0 in the data to be sent. Hence we convert all 
+ * have a value 0x0 in the data to be sent. Hence we convert all
  * the values to ascii and send as ascii characters.
  * Of course we have to do the opposite on the central side
- * 
- * As we send over notify the max length is the MTU-length(often the default 23) 
+ *
+ * As we send over notify the max length is the MTU-length(often the default 23)
  * 3 bytes are used for handles so we keep it to max 20
  * Of course we have to do the opposite on the central side
  */
@@ -489,12 +489,12 @@ bool SendReplyCentral(uint8_t *buf, uint8_t len)
   String ToSend = "";   // string to send
   int i, j;             // conversion counter
   char c[5];            // conversion
-  
+
   if (!BLE.connected()) {
     SERIAL_PORT.print(F("Error: Not connected \r\n"));
-    return(false);    
+    return(false);
   }
- 
+
   ToSend.concat((char) (len* 2)); // first byte of new message in the total data length
 
   // convert to ascii and add to string
@@ -502,36 +502,37 @@ bool SendReplyCentral(uint8_t *buf, uint8_t len)
     sprintf(c,"%02X",buf[i]);
     ToSend.concat(c);
     j += 2;
-    
+
     // As we send over notify the max length is the MTU (often 23)
     // 3 bytes are used for handles so we keep it to max 20
-    if (j > 18) { 
+    if (j > 18) {
       BME280sCharacteristic.writeValue(ToSend);
       ToSend = "";
       j=0;
     }
   }
-  
+
   // send last packet (if pending)
   if (j != 0) BME280sCharacteristic.writeValue(ToSend);
-  
+
   return(true);
 }
 
-/* 
+/*
  * Most of the Apollo3 chips have the same bluetooth address
  * this will allow you to change that.
- * 
+ *
  * See top of sketch for change to apply to make this work !!!!
- * 
+ *
  * Write new address with vendor specific command
  */
 bool WriteNewBdAddr()
 {
+  return(true);
   // NATIONZ
-  int result = HCI.sendCommand(0xFC32, 6, BLEMacAddress);
-  
-  if (result == 0) return true;
+  //int result = HCI.sendCommand(0xFC32, 6, BLEMacAddress);
 
-  return false;
+  //if (result == 0) return true;
+
+//  return false;
 }
