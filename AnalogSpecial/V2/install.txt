@@ -1,0 +1,38 @@
+INSTALLATION INSTRUCTIONS FOR APOLLO3 LIBRARY 2.2.1
+=====================================================
+
+This addon implements analogReadTurbo(), analogReadFast(),analogReadSingleFast() for reading multiple ADC pins and a single pin.
+
+Attached 2 files
+
+CommonAnalog.cpp
+Common.h
+
+
+******** INSTALLATION ****************************
+
+On my linux system in the folder :  ~/.arduino15/packages/SparkFun/hardware/apollo3/2.2.1/cores/arduino/mbed-bridge/core-extend
+On Windows I would expect <userdir>\AppData\Local\Arduino15\packages\Sparkfun\hardware\apollo3\2.2.1\cores\arduino\mbed-bridge\core-extend
+
+Make a safety copy of : Common.h to a place outside this library (rename will fail compile !!)
+copy the new Common.h from this package to this folder
+
+On my linux system in the folder : ~/.arduino15/packages/SparkFun/hardware/apollo3/2.2.1/cores/arduino/sdk/core-implement
+On Windows I would expect <userdir>\AppData\Local\Arduino15\packages\Sparkfun\hardware\apollo3\2.2.1\cores\arduino\sdk\core-implement
+
+Make a safety copy of : CommonAnalog.cpp to a place outside this library (rename will fail compile !!)
+copy the new CommonAnalog.cpp from this package to this folder
+
+Now test one of the examples_V2.
+
+****** DISCLAIMER **********************************
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Version 1.0 / November 2022 / Paulvha

@@ -15,7 +15,7 @@ Bluez bluetooth stack : http://www.bluez.org/download/
 
 ### Arduino
 ArduinoBLE and (optional) BME280
-Apollo3 Sparkfun library version (at least) 2.0.1
+Apollo3 Sparkfun library version (at least) 2.2.1
 
 ## Software installation
 Obtain the zip and install like any other for the Arduino
@@ -27,6 +27,11 @@ Please see the description in the top of the sketch
 For the Linux client software use the --help or -h option
 
 ## Versioning
+
+### version 3.14 / November 2022
+ * updated BLE for version 1.2.3 (ArduinoBLE_P)
+ * added Ubuntu central for BLE  (ArduinoBLE_P)
+ * added fast analog in Analog Special
 
 ### version 3.13 / April 2022
  * updated MicroSD Filemanager for more MicroMod processors
