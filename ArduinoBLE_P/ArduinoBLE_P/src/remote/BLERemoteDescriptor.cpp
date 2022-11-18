@@ -59,7 +59,6 @@ uint8_t BLERemoteDescriptor::operator[] (int offset) const
 
 int BLERemoteDescriptor::writeValue(const uint8_t value[], int length)
 {
-
   if (!ATT.connected(_connectionHandle)) {
     return false;
   }
@@ -75,7 +74,7 @@ int BLERemoteDescriptor::writeValue(const uint8_t value[], int length)
   if (_value == NULL) {
     // realloc failed
     return 0;
-  }
+  }  
 
   uint8_t resp[4];
   int respLength = ATT.writeReq(_connectionHandle, _handle, value, length, resp);
@@ -124,7 +123,7 @@ bool BLERemoteDescriptor::read()
     return false;
   }
 
-  memcpy(_value, &resp[1], _valueLength);
+  memcpy(_value, &resp[1], _valueLength); 
 
   return true;
 }

@@ -1,6 +1,7 @@
-ArduinoBLE ?.?.? - ????.??.??
-2022.10.28
-added support for Apollo3 Libray V 1.2.3
+ArduinoBLE_P 3.3.2 - 2022.11.06 / paulvha
+* based on ArduinoBLE version 1.3.2
+* fixed known bugs that had not been corrected in 1.3.2
+* applied changes and added files to support for Apollo3 Library V1.2.3
 
 ArduinoBLE 1.1.7 - 2021.02.15
 bug fixes and added support for Apollo3 Library 1.2.1

@@ -111,7 +111,7 @@ bool PerformScan()
 
   unsigned long st = millis();
 
-  // start scanning for AMDTP peripheral
+  // start scanning for peripheral
   BLE.scanForUuid(BME280_SERVICE);
 
   while(1) {

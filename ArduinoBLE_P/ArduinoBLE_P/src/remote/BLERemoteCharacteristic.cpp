@@ -24,11 +24,12 @@
 #include "BLERemoteCharacteristic.h"
 
 BLERemoteCharacteristic::BLERemoteCharacteristic(const uint8_t uuid[], uint8_t uuidLen, uint16_t connectionHandle,
-                                                  uint16_t startHandle, uint8_t properties, uint16_t valueHandle) :
+                                                  uint16_t startHandle, uint16_t permissions, uint16_t valueHandle) :
   BLERemoteAttribute(uuid, uuidLen),
   _connectionHandle(connectionHandle),
   _startHandle(startHandle),
-  _properties(properties),
+  _properties((uint8_t)(permissions & 0x00FF)),
+  _permissions((uint8_t)((permissions & 0xFF00)>>8)),
   _valueHandle(valueHandle),
   _value(NULL),
   _valueLength(0),
@@ -43,7 +44,7 @@ BLERemoteCharacteristic::~BLERemoteCharacteristic()
   for (unsigned int i = 0; i < descriptorCount(); i++) {
     BLERemoteDescriptor* d = descriptor(i);
 
-    if (d->release() <= 0) {
+    if (d->release() == 0) {
       delete d;
     }
   }
@@ -85,7 +86,7 @@ uint8_t BLERemoteCharacteristic::operator[] (int offset) const
   return 0;
 }
 
-int BLERemoteCharacteristic::writeValue(const uint8_t value[], int length)
+int BLERemoteCharacteristic::writeValue(const uint8_t value[], int length, bool withResponse)
 {
   if (!ATT.connected(_connectionHandle)) {
     return false;
@@ -104,7 +105,7 @@ int BLERemoteCharacteristic::writeValue(const uint8_t value[], int length)
     return 0;
   }
 
-  if (_properties & BLEWrite) {
+  if ((_properties & BLEWrite) && withResponse) {
     uint8_t resp[4];
     int respLength = ATT.writeReq(_connectionHandle, _valueHandle, value, length, resp);
 
@@ -133,9 +134,9 @@ int BLERemoteCharacteristic::writeValue(const uint8_t value[], int length)
   return 0;
 }
 
-int BLERemoteCharacteristic::writeValue(const char* value)
+int BLERemoteCharacteristic::writeValue(const char* value, bool withResponse)
 {
-  return writeValue((uint8_t*)value, strlen(value));
+  return writeValue((uint8_t*)value, strlen(value), withResponse);
 }
 
 bool BLERemoteCharacteristic::valueUpdated()

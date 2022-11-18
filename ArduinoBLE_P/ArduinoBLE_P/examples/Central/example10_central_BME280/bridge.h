@@ -8,6 +8,7 @@
 #ifndef _BLE_BRIDGE_H_
 #define _BLE_BRIDGE_H_
 
+// CHANGE ArduinoBLE_P TO ArduinoBLE WHEN USING VERSION 2.X OF SPARKFUN LIBRARY
 #include <ArduinoBLE_P.h>
 #include <Arduino.h>
 

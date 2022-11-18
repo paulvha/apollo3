@@ -9,7 +9,7 @@
 * DEPENDENCIES
 *********************************************************************
   It will require a good working function of ArduinoBLE. 
-  For Sparkfun Apollo3 library 1.2.1 a special patched ArduinoBLe (lower case e) and 
+  For Sparkfun Apollo3 library V1.2.3 a special patched ArduinoBLE_P and 
   ExactLE package needs to be installed
 
   You might get a warning
@@ -30,6 +30,10 @@
   
   Version 1.0 / February 2021 / paulvha
   -initial version
+
+  Version 2.0 / November 2022 / paulvha
+  -update characteristic from string to byte
+  - added magicnumber check
 */
 
 /***********************************************************************/
@@ -46,6 +50,10 @@ struct data_to_exchange{
   uint8_t celsius;     // if true temperature is celsius, else fahrenheit
 } p;
 
+// To improve synchronization there are 2 checks:
+#define MAGICNUM 0XCF      // should be byte 0 in new message
+#define MAGICLEN sizeof(p) // should be byte 1 (length) in new message
+
 //*********************************************************************
 //*  NO CHANGES NEEDED BEYOND THIS POINT
 //*********************************************************************
@@ -55,7 +63,6 @@ struct data_to_exchange{
 uint8_t receiveBuf[MAXRECEIVEBUF];// hand off data buffer from Bluetooth to user level
 uint16_t ReceiveBufLen;           // length of data received in buffer
 bool RespReceive = false;         // indicator new data in buffer
-uint8_t StructBuf[sizeof(struct data_to_exchange)];
 
 void setup() {
 
@@ -103,6 +110,7 @@ void display_menu()
   SERIAL_PORT.println(F("5.  Request STOP sending data\r"));
   SERIAL_PORT.println(F("6.  Request (re)START sending data\r"));
   SERIAL_PORT.println(F("7.  Request NOW sending data\r"));
+  SERIAL_PORT.println(F("8.  Disconnect from peripheral\r"));
 }
 
 /*
@@ -116,7 +124,8 @@ enum key_input{
   REQUEST_FRHEIT, 
   REQUEST_STOP,
   REQUEST_START,
-  REQUEST_NOW
+  REQUEST_NOW,
+  DISCONNECT_NOW
 };
 
 //***************************************************************
@@ -151,9 +160,13 @@ void handle_input(char c)
     case REQUEST_START:
     case REQUEST_NOW:
         SERIAL_PORT.print(F("Sending request\r\n"));
+        buf[0] = buf[0] + '0';  // send as ascii
         SendReplyPeripheral(buf, 1);
         break;
-    
+    case DISCONNECT_NOW:
+        SERIAL_PORT.println(F("Disconnect request\r"));
+        stopconnect();
+        break;    
     default:
         SERIAL_PORT.print(F("Unknown request: 0x"));
         SERIAL_PORT.println(buf[0], HEX);
@@ -165,6 +178,32 @@ void handle_input(char c)
   // reset keyboard buffer
   inpcnt = 0;
 }
+
+/**
+ * called when locally disconnect performed
+ * will wait for <enter> before reconnecting
+ */
+void stopconnect()
+{
+  BLE.disconnect();
+  
+  // clear any pending
+    while (SERIAL_PORT.available()) {
+    SERIAL_PORT.read();
+    delay(100);
+  }
+  
+  SERIAL_PORT.println(F("Press <enter> to reconnect\r"));
+
+  // wait for enter
+  while (! SERIAL_PORT.available());
+
+  // clear buffer
+  while (SERIAL_PORT.available()) {
+    SERIAL_PORT.read();
+    delay(100);
+  }
+}  
 
 //*****************************************************************************
 //
@@ -202,27 +241,27 @@ void SendReplyPeripheral(uint8_t *buf, uint16_t len)
 void HandlePeripheralResp(const uint8_t *buf, uint16_t len)
 {
   static uint16_t RespOffset = 0;
-  uint8_t i;
+  uint8_t i = 0;                // offset to start copy data
   
   // If start of a brand new message, it might be split across different packets
   if (RespOffset == 0) {
-    ReceiveBufLen = buf[0];    // first byte of new message is length
-    i = 1;                     // offset to start copy data
+    // check for correct packet start
+    if (buf[0] != MAGICNUM || buf[1] != MAGICLEN ) return;
+
+    ReceiveBufLen = buf[1];    // second byte of new message is length
+    i = 2;                     // offset to start copy data
     
 #ifdef BLE_SHOW_DATA 
     SERIAL_PORT.print(F("Total Data length in this message = "));
     SERIAL_PORT.print(ReceiveBufLen);
     SERIAL_PORT.print("\r\n");
-#endif
-   
   }
-  else
-    i = 0;                    // offset to start copy data
-  
-#ifdef BLE_SHOW_DATA 
+ 
   SERIAL_PORT.print(F("Current packet len = "));
   SERIAL_PORT.print(len);
   SERIAL_PORT.print("\r\n");
+#else
+  }
 #endif
 
   // copy data of this packet in the receive buffer
@@ -234,7 +273,7 @@ void HandlePeripheralResp(const uint8_t *buf, uint16_t len)
   }
   
   // did we receive the complete message. +1 because of length byte at start
-  if (RespOffset + 1> ReceiveBufLen) {
+  if (RespOffset + 1 > ReceiveBufLen) {
     RespReceive = true;       // indicate message received
     RespOffset = 0;           // reset for next message
   }
@@ -243,8 +282,6 @@ void HandlePeripheralResp(const uint8_t *buf, uint16_t len)
 //*****************************************************************************
 //
 // Handle / display responds received from the peripheral
-// as the data on an String-characteristic we can NOT have a 0x0 in the data
-// as such all is sent as ascii and we need to transform that back
 //
 //*****************************************************************************
 void HandleResp()
@@ -257,25 +294,8 @@ void HandleResp()
   }
   SERIAL_PORT.println();
 #endif
-
-  int i, j;
   
-  // change ascii back to uint8_t
-  for ( i = 0,  j = 0; i < ReceiveBufLen; i++,j++){
-
-    if (receiveBuf[i] > 0x39) StructBuf[j] = receiveBuf[i] - 0x37;
-    else StructBuf[j] = receiveBuf[i] - 0x30;
-
-    StructBuf[j] = StructBuf[j] << 4;
-    i++;
-       
-    if (receiveBuf[i] > 0x39) StructBuf[j] |= receiveBuf[i] - 0x37;
-    else StructBuf[j] |= receiveBuf[i] - 0x30;
-    
-    //SERIAL_PORT.println(StructBuf[j], HEX);
-  }
-  
-  display_BME280(StructBuf, sizeof(struct data_to_exchange));
+  display_BME280(receiveBuf, sizeof(struct data_to_exchange));
 
   RespReceive = false;
 }

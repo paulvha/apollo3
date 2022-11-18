@@ -17,13 +17,18 @@
   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-#if defined(ARDUINO_ARCH_MBED)
+#if defined(ARDUINO_ARCH_MBED) && !defined(TARGET_NANO_RP2040_CONNECT)
+
+#include <Arduino.h>
+#include <mbed.h>
 
 #include <driver/CordioHCITransportDriver.h>
 #include <driver/CordioHCIDriver.h>
 
-#include <Arduino.h>
-#include <mbed.h>
+#if defined(ARDUINO_PORTENTA_H7_M4) || defined(ARDUINO_PORTENTA_H7_M7) || defined(ARDUINO_NICLA_VISION)
+#include "ble/BLE.h"
+#include <events/mbed_events.h>
+#endif
 
 // Parts of this file are based on: https://github.com/ARMmbed/mbed-os-cordio-hci-passthrough/pull/2
 // With permission from the Arm Mbed team to re-license
@@ -42,47 +47,42 @@
 
 #include "HCICordioTransport.h"
 
-extern ble::vendor::cordio::CordioHCIDriver& ble_cordio_get_hci_driver();
+#if (MBED_VERSION > MBED_ENCODE_VERSION(6, 2, 0))
+#define BLE_NAMESPACE ble
+#else
+#define BLE_NAMESPACE ble::vendor::cordio
+#endif
 
-// hookup to apollo3 target code
-namespace ble {
-  namespace vendor {
-    namespace cordio {
-      struct CordioHCIHook {
-          static CordioHCIDriver& getDriver() {     // get the pointer to HCI driver (AP3CordioHCIDriver.cpp)
-              return ble_cordio_get_hci_driver();
-          }
+extern BLE_NAMESPACE::CordioHCIDriver& ble_cordio_get_hci_driver();
 
-          static CordioHCITransportDriver& getTransportDriver() {
-              return getDriver()._transport_driver;
-          }
-
-          static void setDataReceivedHandler(void (*handler)(uint8_t*, uint8_t)) {
-              getTransportDriver().set_data_received_handler(handler);
-          }
-      };
+namespace BLE_NAMESPACE {
+  struct CordioHCIHook {
+    static CordioHCIDriver& getDriver() {
+      return ble_cordio_get_hci_driver();
     }
-  }
+
+    static CordioHCITransportDriver& getTransportDriver() {
+      return getDriver()._transport_driver;
+    }
+
+    static void setDataReceivedHandler(void (*handler)(uint8_t*, uint8_t)) {
+      getTransportDriver().set_data_received_handler(handler);
+    }
+  };
 }
 
-using ble::vendor::cordio::CordioHCIHook;
-
-volatile bool GoSleep = false;    // added paulvha
+using BLE_NAMESPACE::CordioHCIHook;
 
 #if CORDIO_ZERO_COPY_HCI
 extern uint8_t *SystemHeapStart;
 extern uint32_t SystemHeapSize;
 
-// init WSF buffers
-void init_wsf(ble::vendor::cordio::buf_pool_desc_t& buf_pool_desc) { //
+void init_wsf(BLE_NAMESPACE::buf_pool_desc_t& buf_pool_desc) {
     static bool init = false;
 
-    // if init has bee done return
     if (init) {
       return;
     }
-
-    //indicate init has been done
     init = true;
 
     // use the buffer for the WSF heap
@@ -98,12 +98,12 @@ void init_wsf(ble::vendor::cordio::buf_pool_desc_t& buf_pool_desc) { //
     // Raise assert if not enough memory was allocated
     MBED_ASSERT(bytes_used != 0);
 
-    // paulvha : this will never happen if bytes_used was NOT zero..  !!!!
     SystemHeapStart += bytes_used;
     SystemHeapSize -= bytes_used;
 
     WsfTimerInit();
 }
+
 
 extern "C" void wsf_mbed_ble_signal_event(void)
 {
@@ -113,7 +113,6 @@ extern "C" void wsf_mbed_ble_signal_event(void)
 
 static void bleLoop()
 {
-
 #if CORDIO_ZERO_COPY_HCI
     uint64_t last_update_us = 0;
     mbed::LowPowerTimer timer;
@@ -122,15 +121,7 @@ static void bleLoop()
 
     while (true) {
 
-        if (GoSleep) {    // added paulvha
-            timer.stop();
-            //Serial.print("SLEEP\n");
-            rtos::ThisThread::flags_wait_any(0x02); // wait for signal
-            //Serial.print("WAKE\n");
-            timer.start();
-        }
-
-        last_update_us += (uint64_t) timer.read_high_resolution_us();
+        last_update_us += (uint64_t) timer.elapsed_time().count();
         timer.reset();
 
         uint64_t last_update_ms = (last_update_us / 1000);
@@ -152,7 +143,7 @@ static void bleLoop()
             }
         }
 
-        uint64_t time_spent = (uint64_t) timer.read_high_resolution_us();
+        uint64_t time_spent = (uint64_t) timer.elapsed_time().count();;
 
         /* don't bother sleeping if we're already past tick */
         if (sleep && (WSF_MS_PER_TICK * 1000 > time_spent)) {
@@ -163,7 +154,7 @@ static void bleLoop()
             wait_time_us = wait_time_us % 1000;
 
             if (wait_time_ms) {
-              rtos::ThisThread::sleep_for(wait_time_ms);
+              rtos::ThisThread::sleep_for(mbed::chrono::milliseconds_u32(wait_time_ms));
             }
 
             if (wait_time_us) {
@@ -179,11 +170,11 @@ static void bleLoop()
 }
 
 static rtos::EventFlags bleEventFlags;
-static rtos::Thread bleLoopThread;
+static rtos::Thread* bleLoopThread = NULL;
 
 
 HCICordioTransportClass::HCICordioTransportClass() :
-  _begun(false) // not begun yet
+  _begun(false)
 {
 }
 
@@ -191,48 +182,69 @@ HCICordioTransportClass::~HCICordioTransportClass()
 {
 }
 
+#if defined(ARDUINO_PORTENTA_H7_M4) || defined(ARDUINO_PORTENTA_H7_M7) || defined(ARDUINO_NICLA_VISION)
+events::EventQueue eventQueue(10 * EVENTS_EVENT_SIZE);
+void scheduleMbedBleEvents(BLE::OnEventsToProcessCallbackContext *context) {
+  eventQueue.call(mbed::Callback<void()>(&context->ble, &BLE::processEvents));
+}
+
+void completeCallback(BLE::InitializationCompleteCallbackContext *context) {
+  eventQueue.break_dispatch();
+}
+#endif
+
 int HCICordioTransportClass::begin()
 {
   _rxBuf.clear();
 
 #if CORDIO_ZERO_COPY_HCI
-
-// now get the buffers from AP3CordioHCIDriver.cpp in target
-  ble::vendor::cordio::buf_pool_desc_t bufPoolDesc = CordioHCIHook::getDriver().get_buffer_pool_description();
-  init_wsf(bufPoolDesc); // line 73 above
+  BLE_NAMESPACE::buf_pool_desc_t bufPoolDesc = CordioHCIHook::getDriver().get_buffer_pool_description();
+  init_wsf(bufPoolDesc);
 #endif
 
-  CordioHCIHook::getDriver().initialize();           // initialize CordioHCIDRiver >> AP3CordioHCITransportDriver >> HciDrvHandlerInit(handler)
+#if defined(ARDUINO_PORTENTA_H7_M4) || defined(ARDUINO_PORTENTA_H7_M7) || defined(ARDUINO_NICLA_VISION)
+  BLE &ble = BLE::Instance();
+  ble.onEventsToProcess(scheduleMbedBleEvents);
 
- // CordioHCIHook::getDriver().start_reset_sequence(); // start_reset_sequence in CordioHCIDRiver >> HciResetCmd() in dual_chip/hci_cmd.c (is sending request !!)
+  ble.init(completeCallback);
+  eventQueue.dispatch(10000);
 
-  if (GoSleep) {
-      bleLoopThread.flags_set(0x02);  // restart scheduler (paulvha)
-      GoSleep = false;
+  if (!ble.hasInitialized()){
+    return 0;
   }
-  else
-    bleLoopThread.start(bleLoop);     // start WSF sheduler
+#else
+  CordioHCIHook::getDriver().initialize();
+#endif
 
-  CordioHCIHook::setDataReceivedHandler(HCICordioTransportClass::onDataReceived); // set on data received is called
+  if (bleLoopThread == NULL) {
+    bleLoopThread = new rtos::Thread();
+    bleLoopThread->start(bleLoop);
+  }
 
-  _begun = true;                    // all is ready to go
+  CordioHCIHook::setDataReceivedHandler(HCICordioTransportClass::onDataReceived);
+
+  _begun = true;
 
   return 1;
 }
 
 void HCICordioTransportClass::end()
 {
-  //bleLoopThread.terminate();      // once terminated you can NOT restart (paulvha)
-  GoSleep = true;                   // set WSF sheduler to sleep (paulvha)
+  if (bleLoopThread != NULL) {
+    bleLoopThread->terminate();
+    delete bleLoopThread;
+    bleLoopThread = NULL;
+  }
+
+#if !defined(ARDUINO_PORTENTA_H7_M4) && !defined(ARDUINO_PORTENTA_H7_M7) && !defined(ARDUINO_NICLA_VISION)
   CordioHCIHook::getDriver().terminate();
+#endif
 
   _begun = false;
 }
 
-// check for data in the RXbuf
 void HCICordioTransportClass::wait(unsigned long timeout)
 {
-  // if already data available return
   if (available()) {
     return;
   }
@@ -241,25 +253,21 @@ void HCICordioTransportClass::wait(unsigned long timeout)
   bleEventFlags.wait_all(0x01, timeout, true);
 }
 
-// check for data in the RXbuffer
 int HCICordioTransportClass::available()
 {
   return _rxBuf.available();
 }
 
-// peek for first data in RXbuffer
 int HCICordioTransportClass::peek()
 {
   return _rxBuf.peek();
 }
 
-// read from RXbuffer data
 int HCICordioTransportClass::read()
 {
   return _rxBuf.read_char();
 }
 
-// write data to BLE
 size_t HCICordioTransportClass::write(const uint8_t* data, size_t length)
 {
   if (!_begun) {
@@ -270,15 +278,13 @@ size_t HCICordioTransportClass::write(const uint8_t* data, size_t length)
   uint8_t packetType   = data[0];
 
 #if CORDIO_ZERO_COPY_HCI
-  uint8_t* packet = (uint8_t*) WsfMsgAlloc(max(packetLength, MIN_WSF_ALLOC));
+  uint8_t* packet = (uint8_t*)WsfMsgAlloc(max(packetLength, MIN_WSF_ALLOC));
 
   if (packet == NULL) {
-     Serial.println("HCICordioTransportClass::write");  // paulvha
+     Serial.println("HCICordioTransportClass::write");  // {paulvha}
      Serial.println("Could not obtain memory");
      return(0);
   }
-
-  // NO CHECK THAT PACKET MEMORY GOT ALLOCATED ???
   memcpy(packet, &data[1], packetLength);
 
   return CordioHCIHook::getTransportDriver().write(packetType, packetLength, packet);
@@ -287,14 +293,11 @@ size_t HCICordioTransportClass::write(const uint8_t* data, size_t length)
 #endif
 }
 
-// store received data in the _rxBuf
-// paulvha this can cause issues in hci_drv_apollo3.c around line 926
-// it is assuming that all data has been used. This is a real bad error in the
-// ArduinoBLE design as it will not tell it failed.. VOID !!
-// _rxbuf is a ring buffer 256
 void HCICordioTransportClass::handleRxData(uint8_t* data, uint8_t len)
 {
   if (_rxBuf.availableForStore() < len) {
+    // drop!
+    //return;
     yield();
   }
 
@@ -307,10 +310,10 @@ void HCICordioTransportClass::handleRxData(uint8_t* data, uint8_t len)
 
 HCICordioTransportClass HCICordioTransport;
 HCITransportInterface& HCITransport = HCICordioTransport;
-// call back from lower stacklevel calls function above
+
 void HCICordioTransportClass::onDataReceived(uint8_t* data, uint8_t len)
 {
   HCICordioTransport.handleRxData(data, len);
 }
 
-#endif // defined(ARDUINO_ARCH_MBED)
+#endif

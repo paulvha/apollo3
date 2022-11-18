@@ -33,7 +33,6 @@ BLEDevice::BLEDevice() :
   memset(_address, 0x00, sizeof(_address));
 }
 
-// called during discouvery/ scanning for device
 BLEDevice::BLEDevice(uint8_t addressType, uint8_t address[6]) :
   _addressType(addressType),
   _advertisementTypeMask(0),
@@ -73,7 +72,6 @@ bool BLEDevice::disconnect()
   return ATT.disconnect(_addressType, _address);
 }
 
-// get address
 String BLEDevice::address() const
 {
   char result[18];
@@ -184,6 +182,70 @@ String BLEDevice::advertisedServiceUuid(int index) const
   }
 
   return serviceUuid;
+}
+
+bool BLEDevice::hasAdvertisementData() const
+{
+  return (_eirDataLength > 0);
+}
+
+int BLEDevice::advertisementDataLength() const
+{
+  return _eirDataLength;
+}
+
+int BLEDevice::advertisementData(uint8_t value[], int length) const
+{
+  if (length > _eirDataLength) length = _eirDataLength;
+
+  if (length) {
+    memcpy(value, _eirData, length);
+  }
+
+  return length;
+}
+
+bool BLEDevice::hasManufacturerData() const
+{
+  return (manufacturerDataLength() > 0);
+}
+
+int BLEDevice::manufacturerDataLength() const
+{
+  int length = 0;
+
+  for (int i = 0; i < _eirDataLength;) {
+    int eirLength = _eirData[i++];
+    int eirType = _eirData[i++];
+
+    if (eirType == 0xFF) {
+      length = (eirLength - 1);
+      break;
+    }
+
+    i += (eirLength - 1);
+  }
+
+  return length;
+}
+
+int BLEDevice::manufacturerData(uint8_t value[], int length) const
+{
+  for (int i = 0; i < _eirDataLength;) {
+    int eirLength = _eirData[i++];
+    int eirType = _eirData[i++];
+
+    if (eirType == 0xFF) {
+      if (length > (eirLength - 1)) length = (eirLength - 1);
+
+      memcpy(value, &_eirData[i], length);
+      break;
+    }
+
+    i += (eirLength - 1);
+  }
+
+  return length;
 }
 
 int BLEDevice::rssi()

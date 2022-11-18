@@ -138,10 +138,10 @@
 //#define MICROMOD_MAINB_APOLLO3           // Micromod mainboard& MM Artemis (WRL-16401)
 //#define MICROMOD_MMDLCB_APOLLO3          // Micromod data logger carrier board & MM Artemis (WRL-16401)
 
-#define MICROMOD_MAINB_NRF52840          // Micromod mainboard with MM nRF52840 (WRL-16984)
+//#define MICROMOD_MAINB_NRF52840          // Micromod mainboard with MM nRF52840 (WRL-16984)
 //#define MICROMOD_MMDLCB_NRF52840         // Micromod data logger carrier board with MM nRF52840 (WRL-16984)
 
-//#define MICROMOD_MAINB_ESP32             // Micromod mainboard with MM ESP32 (WRL-16781)
+#define MICROMOD_MAINB_ESP32             // Micromod mainboard with MM ESP32 (WRL-16781)
 //#define MICROMOD_MMDLCB_ESP32            // Micromod data logger carrier board with MM ESP32 (WRL-16781)      
 
 // =================================== Global Defines ========================================
@@ -160,7 +160,7 @@ const int sdPowerDownDelay = 100;           // Delay for this many ms before tur
 const byte PIN_MICROSD_CHIP_SELECT = SPI_CS;// CS (chip select IOM)
 #endif // MICROMOD_MMDLCB_APOLLO3
 
-#if (defined MICROMOD_MMDLCB_NRF52840) || defined (MICROMOD_MMDLCB_ESP32)
+#if defined MICROMOD_MMDLCB_NRF52840 || defined MICROMOD_MMDLCB_ESP32
 #define MICROMOD_MMDLCB
 const byte PIN_MICROSD_POWER = G1;          // LDO power
 const int sdPowerDownDelay = 100;           // Delay for this many ms before turning off the SD card power
@@ -171,7 +171,7 @@ const byte PIN_MICROSD_CHIP_SELECT = SS;    // CS (chip select IOM)  G0 = header
 const byte PIN_MICROSD_CHIP_SELECT = G4;    // CS (chip select IOM)
 #endif // MICROMOD_MAINB_APOLLO3
 
-#if (defined MICROMOD_MAINB_NRF52840) || defined (MICROMOD_MAINB_ESP32)
+#if defined MICROMOD_MAINB_NRF52840 || defined MICROMOD_MAINB_ESP32
 const byte PIN_MICROSD_CHIP_SELECT = G4;    // CS (chip select IOM)
 #endif //MICROMOD_MAINB_NRF52840 & MICROMOD_MAINB_ESP32
 
@@ -243,6 +243,8 @@ void setup() {
 #if defined (MICROMOD_MAINB_NRF52840) || defined(MICROMOD_MMDLCB_NRF52840)
   Serial.print(F("nRF52840")); 
 #elif defined (MICROMOD_MAINB_ESP32) || defined (MICROMOD_MMDLCB_ESP32)
+  Serial.print(PIN_MICROSD_CHIP_SELECT);
+  Serial.print(" ");
   Serial.print(F("ESP32")); 
 #else
   Serial.print(F("Artemis"));

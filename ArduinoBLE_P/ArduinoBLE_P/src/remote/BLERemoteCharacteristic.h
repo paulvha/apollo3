@@ -29,17 +29,18 @@
 
 class BLERemoteCharacteristic : public BLERemoteAttribute {
 public:
-  BLERemoteCharacteristic(const uint8_t uuid[], uint8_t uuidLen, uint16_t connectionHandle, uint16_t startHandle, uint8_t properties, uint16_t valueHandle);
+  BLERemoteCharacteristic(const uint8_t uuid[], uint8_t uuidLen, uint16_t connectionHandle, uint16_t startHandle, uint16_t permissions, uint16_t valueHandle);
   virtual ~BLERemoteCharacteristic();
 
   uint8_t properties() const;
+  uint8_t permissions() const;
 
   const uint8_t* value() const;
   int valueLength() const;
   uint8_t operator[] (int offset) const;
 
-  int writeValue(const uint8_t value[], int length);
-  int writeValue(const char* value);
+  int writeValue(const uint8_t value[], int length, bool withResponse = true);
+  int writeValue(const char* value, bool withResponse = true);
 
   bool valueUpdated();
   bool updatedValueRead();
@@ -66,6 +67,7 @@ private:
   uint16_t _connectionHandle;
   uint16_t _startHandle;
   uint8_t _properties;
+  uint8_t _permissions;
   uint16_t _valueHandle;
 
   uint8_t* _value;

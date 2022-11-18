@@ -29,26 +29,15 @@
 #ifndef BT_REG_ON
 #define BT_REG_ON PJ_12
 #endif
+#elif defined(ARDUINO_NICLA_VISION)
+#ifndef BT_REG_ON
+#define BT_REG_ON PF_14
 #endif
-
-/**
- * @brief Print debug message if enabled (new in 1.3.10)
- *
- */
-static char prfbuf[256];
-void BLELocalDevice::DebugPrintf(const char *pcFmt, ...)
-{
-  if ( !EnableDebugPrintf) return;
-  va_list pArgs;
-  va_start(pArgs, pcFmt);
-  vsprintf(prfbuf, pcFmt, pArgs);
-  va_end(pArgs);
-
-  Serial.print(prfbuf);
-}
+#endif
 
 BLELocalDevice::BLELocalDevice()
 {
+  _advertisingData.setFlags(BLEFlagsGeneralDiscoverable | BLEFlagsBREDRNotSupported);
 }
 
 BLELocalDevice::~BLELocalDevice()
@@ -57,14 +46,12 @@ BLELocalDevice::~BLELocalDevice()
 
 int BLELocalDevice::begin()
 {
-
-#if defined(ARDUINO_SAMD_MKRWIFI1010) || defined(ARDUINO_AVR_UNO_WIFI_REV2) || defined(ARDUINO_SAMD_NANO_33_IOT)
+#if defined(ARDUINO_SAMD_MKRWIFI1010) || defined(ARDUINO_AVR_UNO_WIFI_REV2) || defined(ARDUINO_SAMD_NANO_33_IOT) || defined(ARDUINO_NANO_RP2040_CONNECT)
   // reset the NINA in BLE mode
   pinMode(SPIWIFI_SS, OUTPUT);
   pinMode(NINA_RESETN, OUTPUT);
 
   digitalWrite(SPIWIFI_SS, LOW);
-
 #endif
 
 #if defined(ARDUINO_SAMD_MKRWIFI1010) || defined(ARDUINO_AVR_UNO_WIFI_REV2)
@@ -72,19 +59,16 @@ int BLELocalDevice::begin()
   delay(100);
   digitalWrite(NINA_RESETN, LOW);
   delay(750);
-
-#elif defined(ARDUINO_SAMD_NANO_33_IOT)
+#elif defined(ARDUINO_SAMD_NANO_33_IOT) || defined(ARDUINO_NANO_RP2040_CONNECT)
   // inverted reset
   digitalWrite(NINA_RESETN, LOW);
   delay(100);
   digitalWrite(NINA_RESETN, HIGH);
   delay(750);
-
-#elif defined(ARDUINO_PORTENTA_H7_M4) || defined(ARDUINO_PORTENTA_H7_M7)
+#elif defined(ARDUINO_PORTENTA_H7_M4) || defined(ARDUINO_PORTENTA_H7_M7) || defined(ARDUINO_NICLA_VISION)
   // BT_REG_ON -> HIGH
   pinMode(BT_REG_ON, OUTPUT);
   digitalWrite(BT_REG_ON, HIGH);
-
 #endif
 
 
@@ -98,26 +82,22 @@ int BLELocalDevice::begin()
 
   // set CTS as input
   pinMode(NINA_CTS, INPUT);
-
 #endif
 
-// depending on -DARDUINO_ARCH_MBED it will select Cordio or Serial transport
-// for Apollo3 on -DARDUINO_ARCH_MBED it is set and thus HCICordioTransport.cpp in target
-// that in turn will connect to the AP3CordioHCIDriver.cpp in target
-
   if (!HCI.begin()) {
-    DebugPrintf("HCI begin failed\n");
     end();
     return 0;
   }
+
+  delay(100);
 
   if (HCI.reset() != 0) {
     end();
-    DebugPrintf("HCI reset failed\n");
+
     return 0;
   }
-  // give reset time to settle
-  delay(1000);
+
+  delay(1000);      // paulvha
 
   uint8_t hciVer;
   uint16_t hciRev;
@@ -126,25 +106,79 @@ int BLELocalDevice::begin()
   uint16_t lmpSubVer;
 
   if (HCI.readLocalVersion(hciVer, hciRev, lmpVer, manufacturer, lmpSubVer) != 0) {
-    DebugPrintf("HCI local version failed\n");
     end();
     return 0;
   }
 
   if (HCI.setEventMask(0x3FFFFFFFFFFFFFFF) != 0) {
-    DebugPrintf("HCI set eventmask failed\n");
+    end();
+    return 0;
+  }
+  if (HCI.setLeEventMask(0x00000000000003FF) != 0) {
     end();
     return 0;
   }
 
-  uint16_t pktLen;          // NOT USED ANYWHERE
-  uint8_t maxPkt;           // NOT USED ANYWHERE
-
+  uint16_t pktLen;
+  uint8_t maxPkt;
+  // these values will be stored in HCI.cpp
   if (HCI.readLeBufferSize(pktLen, maxPkt) != 0) {
-    DebugPrintf("HCI buffers failed\n");
     end();
     return 0;
   }
+
+  /// The HCI should allow automatic address resolution.
+
+  // // If we have callbacks to remember bonded devices:
+  // if(HCI._getIRKs!=0){
+  //   uint8_t nIRKs = 0;
+  //   uint8_t** BADDR_Type = new uint8_t*;
+  //   uint8_t*** BADDRs = new uint8_t**;
+  //   uint8_t*** IRKs = new uint8_t**;
+  //   uint8_t* memcheck;
+
+
+  //   if(!HCI._getIRKs(&nIRKs, BADDR_Type, BADDRs, IRKs)){
+  //     Serial.println("error");
+  //   }
+  //   for(int i=0; i<nIRKs; i++){
+  //     Serial.print("Baddr type: ");
+  //     Serial.println((*BADDR_Type)[i]);
+  //     Serial.print("BADDR:");
+  //     for(int k=0; k<6; k++){
+  //       Serial.print(", 0x");
+  //       Serial.print((*BADDRs)[i][k],HEX);
+  //     }
+  //     Serial.println();
+  //     Serial.print("IRK:");
+  //     for(int k=0; k<16; k++){
+  //       Serial.print(", 0x");
+  //       Serial.print((*IRKs)[i][k],HEX);
+  //     }
+  //     Serial.println();
+
+  //     // save this
+  //     uint8_t zeros[16];
+  //     for(int k=0; k<16; k++) zeros[15-k] = 0;
+
+  //     // HCI.leAddResolvingAddress((*BADDR_Type)[i],(*BADDRs)[i],(*IRKs)[i], zeros);
+
+  //     delete[] (*BADDRs)[i];
+  //     delete[] (*IRKs)[i];
+  //   }
+  //   delete[] (*BADDR_Type);
+  //   delete BADDR_Type;
+  //   delete[] (*BADDRs);
+  //   delete BADDRs;
+  //   delete[] (*IRKs);
+  //   delete IRKs;
+
+  //   memcheck = new uint8_t[1];
+  //   Serial.print("nIRK location: 0x");
+  //   Serial.println((int)memcheck,HEX);
+  //   delete[] memcheck;
+
+  // }
 
   GATT.begin();
 
@@ -160,25 +194,13 @@ void BLELocalDevice::end()
 #if defined(ARDUINO_SAMD_MKRWIFI1010) || defined(ARDUINO_AVR_UNO_WIFI_REV2)
   // disable the NINA
   digitalWrite(NINA_RESETN, HIGH);
-#elif defined(ARDUINO_SAMD_NANO_33_IOT)
+#elif defined(ARDUINO_SAMD_NANO_33_IOT) || defined(ARDUINO_NANO_RP2040_CONNECT)
   // disable the NINA
   digitalWrite(NINA_RESETN, LOW);
-#elif defined(ARDUINO_PORTENTA_H7_M4) || defined(ARDUINO_PORTENTA_H7_M7)
-  // BT_REG_ON -> LOW
+#elif defined(ARDUINO_PORTENTA_H7_M4) || defined(ARDUINO_PORTENTA_H7_M7) || defined(ARDUINO_NICLA_VISION)
   digitalWrite(BT_REG_ON, LOW);
 #endif
 }
-
-int BLELocalDevice::UpdateMtu()
-{
-    return ATT.UpdateMtu();
-}
-
-uint8_t BLELocalDevice::ReadMtu()
-{
-    return ATT.ReadMtu();
-}
-
 
 void BLELocalDevice::poll()
 {
@@ -195,6 +217,16 @@ bool BLELocalDevice::connected() const
   HCI.poll();
 
   return ATT.connected();
+}
+
+/*
+ * Whether there is at least one paired device
+ */
+bool BLELocalDevice::paired()
+{
+  HCI.poll();
+
+  return ATT.paired();
 }
 
 bool BLELocalDevice::disconnect()
@@ -224,29 +256,57 @@ int BLELocalDevice::rssi()
   return 127;
 }
 
-void BLELocalDevice::setAdvertisedServiceUuid(const char* advertisedServiceUuid)
+bool BLELocalDevice::setAdvertisedServiceUuid(const char* advertisedServiceUuid)
 {
-  GAP.setAdvertisedServiceUuid(advertisedServiceUuid);
+  return _advertisingData.setAdvertisedServiceUuid(advertisedServiceUuid);
 }
 
-void BLELocalDevice::setAdvertisedService(const BLEService& service)
+bool BLELocalDevice::setAdvertisedService(const BLEService& service)
 {
-  setAdvertisedServiceUuid(service.uuid());
+  return setAdvertisedServiceUuid(service.uuid());
 }
 
-void BLELocalDevice::setManufacturerData(const uint8_t manufacturerData[], int manufacturerDataLength)
+bool BLELocalDevice::setAdvertisedServiceData(uint16_t uuid, const uint8_t data[], int length)
 {
-  GAP.setManufacturerData(manufacturerData, manufacturerDataLength);
+  return _advertisingData.setAdvertisedServiceData(uuid, data, length);
 }
 
-void BLELocalDevice::setManufacturerData(const uint16_t companyId, const uint8_t manufacturerData[], int manufacturerDataLength)
+bool BLELocalDevice::setManufacturerData(const uint8_t manufacturerData[], int manufacturerDataLength)
 {
-  GAP.setManufacturerData(companyId, manufacturerData, manufacturerDataLength);
+  return _advertisingData.setManufacturerData(manufacturerData, manufacturerDataLength);
 }
 
-void BLELocalDevice::setLocalName(const char *localName)
+bool BLELocalDevice::setManufacturerData(const uint16_t companyId, const uint8_t manufacturerData[], int manufacturerDataLength)
 {
-  GAP.setLocalName(localName);
+  return _advertisingData.setManufacturerData(companyId, manufacturerData, manufacturerDataLength);
+}
+
+bool BLELocalDevice::setLocalName(const char *localName)
+{
+  return _scanResponseData.setLocalName(localName);
+}
+
+void BLELocalDevice::setAdvertisingData(BLEAdvertisingData& advertisingData)
+{
+  _advertisingData = advertisingData;
+  if (!_advertisingData.hasFlags()) {
+    _advertisingData.setFlags(BLEFlagsGeneralDiscoverable | BLEFlagsBREDRNotSupported);
+  }
+}
+
+void BLELocalDevice::setScanResponseData(BLEAdvertisingData& scanResponseData)
+{
+  _scanResponseData = scanResponseData;
+}
+
+BLEAdvertisingData& BLELocalDevice::getAdvertisingData()
+{
+  return _advertisingData;
+}
+
+BLEAdvertisingData& BLELocalDevice::getScanResponseData()
+{
+  return _scanResponseData;
 }
 
 void BLELocalDevice::setDeviceName(const char* deviceName)
@@ -266,7 +326,10 @@ void BLELocalDevice::addService(BLEService& service)
 
 int BLELocalDevice::advertise()
 {
-  return GAP.advertise();
+  _advertisingData.updateData();
+  _scanResponseData.updateData();
+  return GAP.advertise( _advertisingData.data(), _advertisingData.dataLength(),
+                        _scanResponseData.data(), _scanResponseData.dataLength());
 }
 
 void BLELocalDevice::stopAdvertise()
@@ -332,6 +395,11 @@ void BLELocalDevice::setConnectionInterval(uint16_t minimumConnectionInterval, u
   L2CAPSignaling.setConnectionInterval(minimumConnectionInterval, maximumConnectionInterval);
 }
 
+void BLELocalDevice::setSupervisionTimeout(uint16_t supervisionTimeout)
+{
+  L2CAPSignaling.setSupervisionTimeout(supervisionTimeout);
+}
+
 void BLELocalDevice::setConnectable(bool connectable)
 {
   GAP.setConnectable(connectable);
@@ -342,16 +410,53 @@ void BLELocalDevice::setTimeout(unsigned long timeout)
   ATT.setTimeout(timeout);
 }
 
+/*
+ * Control whether pairing is allowed or rejected
+ * Use true/false or the Pairable enum
+ */
+void BLELocalDevice::setPairable(uint8_t pairable)
+{
+  L2CAPSignaling.setPairingEnabled(pairable);
+}
+
+/*
+ * Whether pairing is currently allowed
+ */
+bool BLELocalDevice::pairable()
+{
+  return L2CAPSignaling.isPairingEnabled();
+}
+
+void BLELocalDevice::setGetIRKs(int (*getIRKs)(uint8_t* nIRKs, uint8_t** BADDR_type, uint8_t*** BADDRs, uint8_t*** IRKs)){
+  HCI._getIRKs = getIRKs;
+}
+void BLELocalDevice::setGetLTK(int (*getLTK)(uint8_t* BADDR, uint8_t* LTK)){
+  HCI._getLTK = getLTK;
+}
+void BLELocalDevice::setStoreLTK(int (*storeLTK)(uint8_t*, uint8_t*)){
+  HCI._storeLTK = storeLTK;
+}
+void BLELocalDevice::setStoreIRK(int (*storeIRK)(uint8_t*, uint8_t*)){
+  HCI._storeIRK = storeIRK;
+}
+void BLELocalDevice::setDisplayCode(void (*displayCode)(uint32_t confirmationCode)){
+  HCI._displayCode = displayCode;
+}
+void BLELocalDevice::setBinaryConfirmPairing(bool (*binaryConfirmPairing)()){
+  HCI._binaryConfirmPairing = binaryConfirmPairing;
+}
+
 void BLELocalDevice::debug(Stream& stream)
 {
-  EnableDebugPrintf = true;
   HCI.debug(stream);
 }
 
 void BLELocalDevice::noDebug()
 {
-  EnableDebugPrintf = false;
   HCI.noDebug();
 }
 
-BLELocalDevice BLE;
+#if !defined(FAKE_BLELOCALDEVICE)
+BLELocalDevice BLEObj;
+BLELocalDevice& BLE = BLEObj;
+#endif

@@ -1,12 +1,12 @@
 #######################################
-# Syntax Coloring Map For ArduinoBLE
+# Syntax Coloring Map For ArduinoBLE_P
 #######################################
 
 #######################################
 # Datatypes (KEYWORD1)
 #######################################
 
-ArduinoBLE	KEYWORD1
+ArduinoBLE_P	KEYWORD1
 BLE	KEYWORD1
 
 BLEDevice	KEYWORD1

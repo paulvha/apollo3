@@ -30,9 +30,9 @@ BLERemoteDevice::~BLERemoteDevice()
 
 void BLERemoteDevice::addService(BLERemoteService* service)
 {
-  service->retain();        // increase reference count
+  service->retain();
 
-  _services.add(service);   // add to list BLELinkedList..
+  _services.add(service);
 }
 
 unsigned int BLERemoteDevice::serviceCount() const
@@ -50,10 +50,10 @@ void BLERemoteDevice::clearServices()
   for (unsigned int i = 0; i < serviceCount(); i++) {
     BLERemoteService* s = service(i);
 
-    if (s->release() <= 0) {        // decrease reference count and maybe delete RemoteAttribute.
+    if (s->release() == 0) {
       delete s;
     }
   }
 
-  _services.clear();        // remove from services BLELinkedList
+  _services.clear();
 }

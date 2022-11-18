@@ -7,11 +7,17 @@
   be sufficient, easy to use and will allow a very light weight central implementation.
 
   It will require a good working function of ArduinoBLE.
-  For Sparkfun Apollo3 library 1.2.1 a special patched ArduinoBLe (lower case e) and
-  ExactLE package needs to be installed
+  For Sparkfun Apollo3 library V1.2.3 a special patched ArduinoBLE_P (P = patched) and
+  ExactLE package needs to be installed. See installation instructions
 
   February 2021 / paulvha / version 1.0
   - initial release
+
+  November 2022 / paulvha / version 1.0.1
+  - changed the sending to bytes instead of string
+  - added synchronisation byte
+  - added connect and disconnect event
+
 
 /************************************************************************************
  *** hardware connect
@@ -43,7 +49,7 @@
 **********************************************************************************
 !! BEFORE YOU START!!
 !! In case you use the default ArduinoBLE and you want to change the BDADDR !!!!!
-!! This change has already been applied on ArduinoBLe
+!! This change has already been applied on ArduinoBLE_P
 **********************************************************************************
 
 Before you can compile it requires a SMALL CHANGE  in ArduinoBLE/src/uility/HCI.h.
@@ -96,16 +102,11 @@ private:
       it will flash as the data is sent in mutiple packages and only the last package is shown like  (0x) 30, 30, "00")
 */
 
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
-// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 
 /***********************************************************************/
@@ -122,6 +123,9 @@ struct data_to_exchange{
   uint8_t celsius;     // if true temperature is celsius, else fahrenheit
 } p;
 
+// To improve synchronization there are 2 checks MAGICNUM in byte 0 and length in byte 1
+#define MAGICNUM 0XCF  // should be byte 0 in new message
+
 ////////////////////////////////////////////////////////////////////////////
 // BME280 setting
 ////////////////////////////////////////////////////////////////////////////
@@ -132,6 +136,9 @@ uint8_t AltitudeInMeter = 1;
 // sent temperature in Celsius (1) or Fahrenheit (0)
 uint8_t TempInCelsius = 1;
 
+// FIRST interval in seconds after connect
+#define FIRST_SENDINTERVAL  10
+
 // after interval in seconds between sending an update
 #define SENDINTERVAL  30
 
@@ -141,7 +148,7 @@ bool BME280_Detected = false;
 ////////////////////////////////////////////////////////////////////////////
 // BLE settings
 ////////////////////////////////////////////////////////////////////////////
-
+// CHANGE ArduinoBLE_P TO ArduinoBLE WHEN USING VERSION 2.X OF SPARKFUN LIBRARY
 #include <ArduinoBLE_P.h>
 #include "utility/HCI.h"    // needed for sendcommand
 
@@ -159,7 +166,7 @@ BLEService BME280Service("19B10010-E8F2-537E-4F6C-D104768A1214");
 BLEByteCharacteristic BME280rCharacteristic("19B10011-E8F2-537E-4F6C-D104768A1214", BLERead | BLEWrite);
 
 // create characteristic and allow remote device to get notifications (SEND max 100 bytes)
-BLEStringCharacteristic BME280sCharacteristic("19B10012-E8F2-537E-4F6C-D104768A1214", BLERead | BLENotify, 100);
+BLECharacteristic BME280sCharacteristic("19B10012-E8F2-537E-4F6C-D104768A1214", BLERead | BLENotify, 100);
 
 ////////////////////////////////////////////////////////////////////////////
 // program setting
@@ -168,8 +175,8 @@ BLEStringCharacteristic BME280sCharacteristic("19B10012-E8F2-537E-4F6C-D104768A1
 // define serial
 #define SERIAL_PORT Serial
 
-// enable sketch debug (remove comments)
-//#define SKETCH_SHOW_DATA
+// enable sketch data (disable : comment out)
+#define SKETCH_SHOW_DATA
 
 // enable HCI layer debug (remove comments)
 //#define BLE_Debug
@@ -184,7 +191,7 @@ BLEStringCharacteristic BME280sCharacteristic("19B10012-E8F2-537E-4F6C-D104768A1
 #include "SparkFunBME280.h"
 BME280 mySensor;
 
-uint16_t Interval = 1;              // send when requested the first time
+uint16_t Interval = FIRST_SENDINTERVAL;  // send first data x seconds after connect
 bool     EnableSend = true;         // start sending unless requested to stop
 char     input[10];                 // keyboard input buffer
 int      inpcnt = 0;                // keyboard input buffer length
@@ -199,7 +206,7 @@ void setup() {
   // BLE INIT
   ///////////////////////////////////////////////////
 #ifdef BLE_Debug
-  BLE.debug(SERIAL_PORT);         // enable display HCI commands
+  BLE.debug(SERIAL_PORT);         // enable display HCI commands on ArduinoBLE_P
 #endif
 
   // begin initialization
@@ -211,14 +218,16 @@ void setup() {
   // set the local name peripheral advertises
   BLE.setLocalName(BLE_PERIPHERAL_NAME);
 
-  // set new address
-  // THIS MIGHT FAIL AS IT NEEDS AN ADJUSTMENT IN THE DEFAULT ArduinoBLE
-  // SEE TOP OF SKETCH
-  // THE CHANGE HAS ALREADY BEEN APPLIED IN ArduinoBLe (lower case e)
+  // set new BLE address
+  // THIS MIGHT FAIL AS IT NEEDS AN ADJUSTMENT IN THE DEFAULT ArduinoBLE :SEE TOP OF SKETCH
+  // THE CHANGE HAS ALREADY BEEN APPLIED IN ArduinoBLE_P
+  // commented out by default.
+/*
   if (! WriteNewBdAddr()){
     SERIAL_PORT.println(F("Failed to set new Device Address!\r"));
     while (1);
   }
+*/
 
   // set the UUID for the service this peripheral advertises:
   BLE.setAdvertisedService(BME280Service);
@@ -231,6 +240,9 @@ void setup() {
   BLE.addService(BME280Service);
 
   BME280rCharacteristic.writeValue(0);
+
+  BLE.setEventHandler(BLEConnected, blePeripheralConnectHandler);
+  BLE.setEventHandler(BLEDisconnected, blePeripheralDisconnectHandler);
 
   // start advertising
   BLE.advertise();
@@ -251,8 +263,8 @@ void setup() {
   SERIAL_PORT.println(F("Ready to go ...\r"));
   String address1 = BLE.address();
   SERIAL_PORT.print(F("local address "));  SERIAL_PORT.print(address1);
-  SERIAL_PORT.print(F("\r\nlocal name ")); SERIAL_PORT.print(BLE_PERIPHERAL_NAME);
-  SERIAL_PORT.print("\r\n");
+  SERIAL_PORT.print(F("\r\nlocal name '")); SERIAL_PORT.print(BLE_PERIPHERAL_NAME);
+  SERIAL_PORT.print("'\r\n");
 }
 
 void loop() {
@@ -307,7 +319,7 @@ void handle_input(char c)
 
   handle_cmd((uint8_t) atoi(input));
 
-  BLE.poll();       // keep BLE alive
+  BLE.poll();             // keep BLE alive
 
   display_menu();
 
@@ -331,7 +343,7 @@ void display_menu()
  */
 
 enum key_input{
-  REQUEST_METERS = 1,
+  REQUEST_METERS = 0x1,
   REQUEST_FEET,
   REQUEST_CELSIUS,
   REQUEST_FRHEIT,
@@ -377,7 +389,7 @@ void handle_cmd(uint8_t req)
         break;
 
     case REQUEST_NOW:
-        SERIAL_PORT.print(F("Send now\r\n"));
+        SERIAL_PORT.print(F("Sending BME280 info now\r\n"));
         CreateSendData();
         Interval = SENDINTERVAL; // next one after SENDINTERVAL if enabled
         break;
@@ -390,7 +402,7 @@ void handle_cmd(uint8_t req)
 
 /*
  * This routine is called when data has been received from the host / central
- * we only expect 1 BYTE.. but have a buffer for 20
+ * we only expect 1 BYTE.. but have a buffer for 20.. who knows in the future
  */
 void CentralRequestReceived()
 {
@@ -402,7 +414,8 @@ void CentralRequestReceived()
   // obtain received value(s)
   BME280rCharacteristic.readValue(buf, len);
 
-#ifdef SKETCH_SHOW_DATA
+/** set to 1 to enable debug */
+#if (0)
   SERIAL_PORT.print(F("Received command with length: "));
   SERIAL_PORT.print(len);
   SERIAL_PORT.print("\r\n");
@@ -415,7 +428,7 @@ void CentralRequestReceived()
 #endif
 
   // only ONE byte is expected for this solution
-  handle_cmd(buf[0]);
+  handle_cmd(buf[0] - '0');  // ascii to hex
 }
 
 /**
@@ -471,49 +484,40 @@ void CreateSendData()
 /**
  * sent a data message to the central/host
  *
- * Format received data :
+ * Format data :
  * buf =  data to be sent
  * len  = length of data
  *
- * We have a challenge that the characteristic is a STRING format, so we can not
- * have a value 0x0 in the data to be sent. Hence we convert all
- * the values to ascii and send as ascii characters.
- * Of course we have to do the opposite on the central side
- *
  * As we send over notify the max length is the MTU-length(often the default 23)
  * 3 bytes are used for handles so we keep it to max 20
- * Of course we have to do the opposite on the central side
+ * Of course we have to do the opposite on the central side to combine
  */
 bool SendReplyCentral(uint8_t *buf, uint8_t len)
 {
-  String ToSend = "";   // string to send
+  uint8_t ToSend[25];
   int i, j;             // conversion counter
-  char c[5];            // conversion
 
   if (!BLE.connected()) {
-    SERIAL_PORT.print(F("Error: Not connected \r\n"));
+    SERIAL_PORT.print(F("Error: Not connected (anymore)\r\n"));
     return(false);
   }
 
-  ToSend.concat((char) (len* 2)); // first byte of new message in the total data length
+  ToSend[0] = MAGICNUM; // magicnumber to improve synchronisation
+  ToSend[1] = len;      // second byte of new message in the total data length
 
-  // convert to ascii and add to string
-  for (i = 0, j = 1; i < len ; i++){
-    sprintf(c,"%02X",buf[i]);
-    ToSend.concat(c);
-    j += 2;
-
+  // send in blocks
+  for (i = 0, j = 2; i < len ; i++){
+    ToSend[j++] = buf[i];
     // As we send over notify the max length is the MTU (often 23)
-    // 3 bytes are used for handles so we keep it to max 20
-    if (j > 18) {
-      BME280sCharacteristic.writeValue(ToSend);
-      ToSend = "";
+    // 3 bytes are used for handle so we keep it to max 20
+    if (j == 20) {
+      BME280sCharacteristic.writeValue(ToSend, j);
       j=0;
     }
   }
 
   // send last packet (if pending)
-  if (j != 0) BME280sCharacteristic.writeValue(ToSend);
+  if (j != 0) BME280sCharacteristic.writeValue(ToSend,j);
 
   return(true);
 }
@@ -528,11 +532,29 @@ bool SendReplyCentral(uint8_t *buf, uint8_t len)
  */
 bool WriteNewBdAddr()
 {
-  return(true);
   // NATIONZ
-  //int result = HCI.sendCommand(0xFC32, 6, BLEMacAddress);
+  int result = HCI.sendCommand(0xFC32, 6, BLEMacAddress);
 
-  //if (result == 0) return true;
+  if (result == 0) return true;
 
-//  return false;
+  return false;
+}
+
+/**
+ * called when central connects
+ */
+void blePeripheralConnectHandler(BLEDevice central) {
+  // central connected event handler
+  Serial.print("Connected event, central: ");
+  Serial.println(central.address());
+}
+
+/**
+ * called when central disconnects
+ */
+void blePeripheralDisconnectHandler(BLEDevice central) {
+  // central disconnected event handler
+  Serial.print("Disconnected event, central: ");
+  Serial.println(central.address());
+  Interval = FIRST_SENDINTERVAL;      // reset
 }

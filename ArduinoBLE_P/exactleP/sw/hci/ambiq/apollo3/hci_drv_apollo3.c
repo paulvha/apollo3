@@ -154,8 +154,8 @@ hci_drv_write_t;
 //
 //*****************************************************************************
 
-// BLE module handle
-void *BLE;
+// BLE module handle  (changed to BLE_P due to conflict with BLE in BLELocalDevice.cpp)
+void *BLE_P;
 
 //fixme: set the BLE MAC address to a special value
 uint8_t g_BLEMacAddress[6] = {0x01,0x02,0x03,0x04,0x05,0x06};
@@ -333,9 +333,9 @@ HciDrvRadioBoot(bool bColdBoot)
 {
     uint32_t ui32NumXtalRetries = 0;
 
-
     g_ui32NumBytes     = 0;
     g_consumed_bytes   = 0;
+
 #if !defined(AM_DEBUG_BLE_TIMING) && defined(ELLISYS_HCI_LOG_SUPPORT)
     am_hal_gpio_pincfg_t pincfg = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     pincfg.uFuncSel = 6;
@@ -392,8 +392,8 @@ HciDrvRadioBoot(bool bColdBoot)
     uint32_t ui32Status = AM_HAL_STATUS_FAIL;
     while (ui32Status != AM_HAL_STATUS_SUCCESS)
     {
-        ERROR_CHECK_VOID(am_hal_ble_initialize(0, &BLE));
-        ERROR_CHECK_VOID(am_hal_ble_power_control(BLE, AM_HAL_BLE_POWER_ACTIVE));
+        ERROR_CHECK_VOID(am_hal_ble_initialize(0, &BLE_P));
+        ERROR_CHECK_VOID(am_hal_ble_power_control(BLE_P, AM_HAL_BLE_POWER_ACTIVE));
 
         am_hal_ble_config_t sBleConfig =
         {
@@ -421,7 +421,7 @@ HciDrvRadioBoot(bool bColdBoot)
             .bUseDefaultPatches = true,
         };
 
-        ERROR_CHECK_VOID(am_hal_ble_config(BLE, &sBleConfig));
+        ERROR_CHECK_VOID(am_hal_ble_config(BLE_P, &sBleConfig));
         //
         // Delay 1s for 32768Hz clock stability. This isn't required unless this is
         // our first run immediately after a power-up.
@@ -433,7 +433,7 @@ HciDrvRadioBoot(bool bColdBoot)
         //
         // Attempt to boot the radio.
         //
-        ui32Status = am_hal_ble_boot(BLE);
+        ui32Status = am_hal_ble_boot(BLE_P);
 
         //
         // Check our status.
@@ -451,8 +451,8 @@ HciDrvRadioBoot(bool bColdBoot)
             // If the radio is running, but the clock looks bad, we can try to
             // restart.
             //
-            ERROR_CHECK_VOID(am_hal_ble_power_control(BLE, AM_HAL_BLE_POWER_OFF));
-            ERROR_CHECK_VOID(am_hal_ble_deinitialize(BLE));
+            ERROR_CHECK_VOID(am_hal_ble_power_control(BLE_P, AM_HAL_BLE_POWER_OFF));
+            ERROR_CHECK_VOID(am_hal_ble_deinitialize(BLE_P));
 
             //
             // We won't restart forever. After we hit the maximum number of
@@ -469,8 +469,8 @@ HciDrvRadioBoot(bool bColdBoot)
         }
         else
         {
-            ERROR_CHECK_VOID(am_hal_ble_power_control(BLE, AM_HAL_BLE_POWER_OFF));
-            ERROR_CHECK_VOID(am_hal_ble_deinitialize(BLE));
+            ERROR_CHECK_VOID(am_hal_ble_power_control(BLE_P, AM_HAL_BLE_POWER_OFF));
+            ERROR_CHECK_VOID(am_hal_ble_deinitialize(BLE_P));
             //
             // If the radio failed for some reason other than 32K Clock
             // instability, we should just report the failure and return.
@@ -483,18 +483,18 @@ HciDrvRadioBoot(bool bColdBoot)
     //
     // Set the BLE TX Output power to 0dBm.
     //
-    am_hal_ble_tx_power_set(BLE, 0x8);
+    am_hal_ble_tx_power_set(BLE_P, 0x8);
 
     //
     // Enable interrupts for the BLE module.
     //
 #if USE_NONBLOCKING_HCI
-    am_hal_ble_int_clear(BLE, (AM_HAL_BLE_INT_CMDCMP |
+    am_hal_ble_int_clear(BLE_P, (AM_HAL_BLE_INT_CMDCMP |
                                AM_HAL_BLE_INT_DCMP |
                                AM_HAL_BLE_INT_BLECIRQ |
                                AM_HAL_BLE_INT_BLECSSTAT));
 
-    am_hal_ble_int_enable(BLE, (AM_HAL_BLE_INT_CMDCMP |
+    am_hal_ble_int_enable(BLE_P, (AM_HAL_BLE_INT_CMDCMP |
                                 AM_HAL_BLE_INT_DCMP |
                                 AM_HAL_BLE_INT_BLECIRQ |
                                 AM_HAL_BLE_INT_BLECSSTAT));
@@ -503,21 +503,21 @@ HciDrvRadioBoot(bool bColdBoot)
 #else
     if (APOLLO3_GE_B0)
     {
-        am_hal_ble_int_clear(BLE, (AM_HAL_BLE_INT_BLECIRQN |
+        am_hal_ble_int_clear(BLE_P, (AM_HAL_BLE_INT_BLECIRQN |
                                    AM_HAL_BLE_INT_BLECSSTATN));
 
-        am_hal_ble_int_enable(BLE, (AM_HAL_BLE_INT_BLECIRQN |
+        am_hal_ble_int_enable(BLE_P, (AM_HAL_BLE_INT_BLECIRQN |
                                     AM_HAL_BLE_INT_BLECSSTATN));
     }
 #endif
 
 #else
 
-    am_hal_ble_int_clear(BLE, (AM_HAL_BLE_INT_CMDCMP |
+    am_hal_ble_int_clear(BLE_P, (AM_HAL_BLE_INT_CMDCMP |
                                AM_HAL_BLE_INT_DCMP |
                                AM_HAL_BLE_INT_BLECIRQ));
 
-    am_hal_ble_int_enable(BLE, (AM_HAL_BLE_INT_CMDCMP |
+    am_hal_ble_int_enable(BLE_P, (AM_HAL_BLE_INT_CMDCMP |
                                 AM_HAL_BLE_INT_DCMP |
                                 AM_HAL_BLE_INT_BLECIRQ));
 #endif
@@ -552,11 +552,11 @@ HciDrvRadioShutdown(void)
 
     NVIC_DisableIRQ(BLE_IRQn);
 
-    ERROR_CHECK_VOID(am_hal_ble_power_control(BLE, AM_HAL_BLE_POWER_OFF));
+    ERROR_CHECK_VOID(am_hal_ble_power_control(BLE_P, AM_HAL_BLE_POWER_OFF));
 
     while ( PWRCTRL->DEVPWREN_b.PWRBLEL );
 
-    ERROR_CHECK_VOID(am_hal_ble_deinitialize(BLE));
+    ERROR_CHECK_VOID(am_hal_ble_deinitialize(BLE_P));
 
     g_ui32NumBytes   = 0;
     g_consumed_bytes = 0;
@@ -590,7 +590,7 @@ update_wake(void)
          (BLEIFn(0)->BSTATUS_b.SPISTATUS == 0) &&
          (BLE_IRQ_CHECK() == false))
     {
-        am_hal_ble_wakeup_set(BLE, 1);
+        am_hal_ble_wakeup_set(BLE_P, 1);
 
         //
         // If we've set wakeup, but IRQ came up at the same time, we should
@@ -598,7 +598,7 @@ update_wake(void)
         //
         if (BLE_IRQ_CHECK() == true)
         {
-            am_hal_ble_wakeup_set(BLE, 0);
+            am_hal_ble_wakeup_set(BLE_P, 0);
         }
     }
 
@@ -751,14 +751,14 @@ HciDrvIntService(void)
     //
     // Read and clear the interrupt status.
     //
-    uint32_t ui32Status = am_hal_ble_int_status(BLE, true);
-    am_hal_ble_int_clear(BLE, ui32Status);
+    uint32_t ui32Status = am_hal_ble_int_status(BLE_P, true);
+    am_hal_ble_int_clear(BLE_P, ui32Status);
 
 #if USE_NONBLOCKING_HCI
     //
     // Handle any DMA or Command Complete interrupts.
     //
-    am_hal_ble_int_service(BLE, ui32Status);
+    am_hal_ble_int_service(BLE_P, ui32Status);
 
     //
     // If this was a BLEIRQ interrupt, attempt to start a read operation. If it
@@ -773,7 +773,7 @@ HciDrvIntService(void)
         //
         //WsfTimerStop(&g_WakeTimer);
         CRITICAL_PRINT("IRQ Drop\n");
-        am_hal_ble_wakeup_set(BLE, 0);
+        am_hal_ble_wakeup_set(BLE_P, 0);
 
         //
         // Prepare to read a message.
@@ -794,7 +794,7 @@ HciDrvIntService(void)
             hci_drv_write_t *psWriteBuffer = am_hal_queue_peek(&g_sWriteQueue);
 
             ui32WriteStatus =
-                am_hal_ble_nonblocking_hci_write(BLE,
+                am_hal_ble_nonblocking_hci_write(BLE_P,
                                                  AM_HAL_BLE_RAW,
                                                  psWriteBuffer->pui32Data,
                                                  psWriteBuffer->ui32Length,
@@ -909,7 +909,7 @@ hciDrvReadCallback(uint8_t *pui8Data, uint32_t ui32Length, void *pvContext)
     //
     if ( !am_hal_queue_empty(&g_sWriteQueue) )
     {
-        am_hal_ble_wakeup_set(BLE, 1);
+        am_hal_ble_wakeup_set(BLE_P, 1);
     }
 
 #endif // TASK_LEVEL_DELAYS
@@ -1012,7 +1012,7 @@ HciDrvHandler(wsfEventMask_t event, wsfMsgHdr_t *pMsg)
             // Is the BLE core asking for a read? If so, do that now.
             //
             g_ui32NumBytes = 0;
-            ui32ErrorStatus = am_hal_ble_blocking_hci_read(BLE, (uint32_t*)g_pui32ReadBuffer, &g_ui32NumBytes);
+            ui32ErrorStatus = am_hal_ble_blocking_hci_read(BLE_P, (uint32_t*)g_pui32ReadBuffer, &g_ui32NumBytes);
 
             if (g_ui32NumBytes > HCI_DRV_MAX_RX_PACKET)
             {
@@ -1123,7 +1123,7 @@ HciDrvHandler(wsfEventMask_t event, wsfMsgHdr_t *pMsg)
            //     am_hal_debug_gpio_set(BLE_DEBUG_TRACE_07);
                 hci_drv_write_t *psWriteBuffer = am_hal_queue_peek(&g_sWriteQueue);
 
-                ui32ErrorStatus = am_hal_ble_blocking_hci_write(BLE,
+                ui32ErrorStatus = am_hal_ble_blocking_hci_write(BLE_P,
                                                                 AM_HAL_BLE_RAW,
                                                                 psWriteBuffer->pui32Data,
                                                                 psWriteBuffer->ui32Length);
@@ -1260,7 +1260,7 @@ HciDrvHandler(wsfEventMask_t event, wsfMsgHdr_t *pMsg)
             // Is the BLE core asking for a read? If so, do that now.
             //
             g_ui32NumBytes = 0;
-            ui32ErrorStatus = am_hal_ble_blocking_hci_read(BLE, (uint32_t*)g_pui32ReadBuffer, &g_ui32NumBytes);
+            ui32ErrorStatus = am_hal_ble_blocking_hci_read(BLE_P, (uint32_t*)g_pui32ReadBuffer, &g_ui32NumBytes);
 
             if (g_ui32NumBytes > HCI_DRV_MAX_RX_PACKET)
             {
@@ -1362,7 +1362,7 @@ HciDrvHandler(wsfEventMask_t event, wsfMsgHdr_t *pMsg)
                //  am_hal_debug_gpio_set(BLE_DEBUG_TRACE_07);
                 hci_drv_write_t *psWriteBuffer = am_hal_queue_peek(&g_sWriteQueue);
 
-                ui32ErrorStatus = am_hal_ble_blocking_hci_write(BLE,
+                ui32ErrorStatus = am_hal_ble_blocking_hci_write(BLE_P,
                                                                 AM_HAL_BLE_RAW,
                                                                 psWriteBuffer->pui32Data,
                                                                 psWriteBuffer->ui32Length);
@@ -1443,15 +1443,15 @@ HciVsA3_SetRfPowerLevelEx(txPowerLevel_t txPowerlevel)
     switch (txPowerlevel) {
 
         case TX_POWER_LEVEL_MINUS_10P0_dBm:
-            am_hal_ble_tx_power_set(BLE,0x04);
+            am_hal_ble_tx_power_set(BLE_P,0x04);
             return true;
             break;
         case TX_POWER_LEVEL_0P0_dBm:
-            am_hal_ble_tx_power_set(BLE,0x08);
+            am_hal_ble_tx_power_set(BLE_P,0x08);
             return true;
             break;
         case TX_POWER_LEVEL_PLUS_3P0_dBm:
-            am_hal_ble_tx_power_set(BLE,0x0F);
+            am_hal_ble_tx_power_set(BLE_P,0x0F);
             return true;
             break;
         default:
@@ -1475,7 +1475,7 @@ HciVsA3_SetRfPowerLevelEx(txPowerLevel_t txPowerlevel)
 void
 HciVsA3_ConstantTransmission(uint8_t txchannel)
 {
-    am_util_ble_set_constant_transmission_ex(BLE, txchannel);
+    am_util_ble_set_constant_transmission_ex(BLE_P, txchannel);
 }
 
 
@@ -1494,7 +1494,7 @@ HciVsA3_ConstantTransmission(uint8_t txchannel)
 void
 HciVsA3_CarrierWaveMode(uint8_t txchannel)
 {
-    am_util_ble_transmitter_control_ex(BLE, txchannel);
+    am_util_ble_transmitter_control_ex(BLE_P, txchannel);
 }
 
 /*************************************************************************************************/
@@ -1511,7 +1511,7 @@ HciVsA3_CarrierWaveMode(uint8_t txchannel)
 void
 HciDrvBleSleepSet(bool enable)
 {
-    am_hal_ble_sleep_set(BLE, enable);
+    am_hal_ble_sleep_set(BLE_P, enable);
 }
 
 //*****************************************************************************

@@ -16,7 +16,7 @@ You can access the MicroSD directly, but you need to use the Sparkfun library th
 
 It will show :
 
-<br>QWICC OpenLog filemanager. (V1.1)
+<br>QWICC OpenLog filemanager. (V1.2)
 <br>Press Enter to continue.
 <br>
 <br>

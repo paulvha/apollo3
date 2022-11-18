@@ -1,23 +1,9 @@
 Changes Applied for ArduinoBLE_P (P from Patched)
 
-This version of ArduinoBLE can work on Sparkfun library 2.0.x as well as Library 1.2.1
-The original ArduinoBLE was version 1.1.3 now version 3.1.3
+This version of ArduinoBLE can work on Sparkfun library 2.0.x as well as Library 1.2.3
+The original ArduinoBLE was version 1.3.2 now version 3.3.2
 
-========================
-#Enable changing BDADDR
-========================
-Before you can compile it requires a SMALL CHANGE  in ArduinoBLE/src/uility/HCI.h.
 
-Around line 80 you will find :
-
-private :
-int sendCommand(uint16_t opcode, uint8_t plen = 0, void* parameters = NULL);
-
-Now move the sendCommand() to the line ABOVE private, into the public area so we can call
-this function from the sketch:
-
-int sendCommand(uint16_t opcode, uint8_t plen = 0, void* parameters = NULL);
-private:
 
 =================================
 #Enable working on Sparkfun 1.2.1
@@ -50,45 +36,19 @@ a menu structure interaction and sending the BME280 sensor data.
 # MANY different BUGS fixes applied
 =============================================
 
-In ArduinoBLE/src/uility/HCI.CPP fix a bug to prevent loosing data.// recvbuffer overflow # 214
-
-void HCIClass::poll(unsigned long timeout) between :
- byte b = HCITransport.read();
- _recvBuffer[_recvIndex++] = b;
- 
- add a check on receive buffer :
-    
-    if (_recvIndex >= sizeof(_recvBuffer)) { 
-        _recvIndex = 0;
-        if (_debug) {
-            _debug->println("_recvBuffer overflow");
-        }
-    }
-    _recvBuffer[_recvIndex++] = b;
-
-In ArduinoBLE/src/uility/ATT.CPP fix a bug with incorrect definition of handle.
-   In routine handleNotifyOrInd() around line 1379
-   change : uint8_t handle = handleNotifyOrInd->handle;
-   to     : uint16_t handle = handleNotifyOrInd->handle;
-
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 In ArduinoBLE/src/uility/HCICordioTransport.CPP fix a bug to prevent loosing data.
-   In routine handleRxData() around line 284
+   In routine handleRxData() around line 294
    change :     return;
    to     :     yield();
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-In ArduinoBLE/src/uility/HCICordioTransport.CPP fix a bug of using non-initialized Cordio routines
-   In routine begin() around line 196
-   change :      CordioHCIHook::getDriver().start_reset_sequence();
-   to     :      // CordioHCIHook::getDriver().start_reset_sequence(); //(comment out !!)
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 In ArduinoBLE/src/uility/HCICordioTransport.CPP fix a bug that will block sleep
 
 4 changes to be applied:
 
-   1) In global space around line 70
+   1) In global space around line 75
    ADD : volatile bool GoSleep = false;    // added {paulvha}
 ................................................................
    2) In routine bleLoop() around line 121
@@ -168,7 +128,7 @@ In ArduinoBLE/src/uility/HCI.CPP fix a crash after disconnect when working as Ce
 
     ....................................................
     
-    2) In leSetScanResponseData() around line 232
+    2) In leSetScanResponseData() around line 350
     
     AFTER : 
          memcpy(leScanResponseData.data, data, length);
@@ -179,7 +139,7 @@ In ArduinoBLE/src/uility/HCI.CPP fix a crash after disconnect when working as Ce
       
     ....................................................
     
-    3) In handleEventPkt() around line 603
+    3) In handleEventPkt() around line 835
     
     CHANGE : 
          HCI.leSetAdvertiseEnable(0x01);
@@ -191,12 +151,11 @@ In ArduinoBLE/src/uility/HCI.CPP fix a crash after disconnect when working as Ce
 
 In ArduinoBLE/src/local/BLELocalDevice.CPP fix a bug to give time to settle after reset()
 
-   In routine begin() around line 118
+   In routine begin() around line 99
    AFTER:
 
     if (HCI.reset() != 0) {
      end();
-     DebugPrintf("HCI reset failed\n");
      return 0;
     }
 
@@ -205,7 +164,7 @@ In ArduinoBLE/src/local/BLELocalDevice.CPP fix a bug to give time to settle afte
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In ArduinoBLE/src/local/BLELocalCharacteristic.CPP fix a bug Peripheral device notifies subscribed Central of characteristic value change written by central
+In ArduinoBLE/src/local/BLELocalCharacteristic.CPP fix a bug When we use ArduinoBLE (1.1.3) as Peripheral device it notifies subscribed Central of characteristic value change, even if the write came from Central itself.
 Issue :https://github.com/arduino-libraries/ArduinoBLE/issues/144
 
   In routine writeValue() around line 113
@@ -254,7 +213,7 @@ void ATTClass::end()
 }
 
 ..................................................................
-2) In In ArduinoBLE/src/uility/ATT.h around line 67
+2) In In ArduinoBLE/src/uility/ATT.h around line 84
 
 AFTER:
   bool disconnect();
@@ -265,50 +224,20 @@ ADD:
 ..................................................................
 3) In ArduinoBLE/src/local/BLELocalDevice.CPP
 
-In void BLELocalDevice::end(), around line 156
+In void BLELocalDevice::end(), around line 188
 AFTER :
   GATT.end();
   
 ADD:
   ATT.end();        // {paulvha}
   
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-In ArduinoBLE/src/local/BLELocalCharacteristic.CPP fix a bug where .end needs a clean up in ATT to prevent memory leaks
 
-In BLELocalCharacteristic::BLELocalCharacteristic() aroud line 47
-
-BEFORE :
-	_descriptors.add(cccd);
-ADD:    
-	cccd->retain(); // {paulvha}
-	
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-In ArduinoBLE/src/uility/GATT.CPP fix a bug where .end needs a clean up in GATT to prevent memory leaks
-
-In void GATTClass::addService(BLELocalService* service) around line 138
-
-BEFORE:
-	_attributes.add(characteristic);
-ADD:
-	characteristic->retain();  // IMPORTANT: call this again since we are adding it twice {paulvha}
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-In ArduinoBLE/src/uility/GATT.CPP fix a bug where .end needs a clean up in GATT to prevent memory leaks	
-
-In void GATTClass::end() around line 64
-
-CHANGE : _attributes.clear();
-
-TO : clearAttributes(); // call this instead of _attributes.clear(); {paulvha}
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+...................................................................................
 
 In ArduinoBLE/src/uility/HCI.CPP fix issue with memory allocation warning
 4 changes
 
-1) In int HCIClass::sendAclPkt() around line 449
+1) In int HCIClass::sendAclPkt() around line 641
 
 CHANGE:
   uint8_t txBuffer[sizeof(aclHdr) + plen];
@@ -317,7 +246,7 @@ TO:
 
 ...................................................................................
 
-2) In int HCIClass::sendAclPkt() around line 461
+2) In int HCIClass::sendAclPkt() around line 658
 
 AFTER:
   HCITransport.write(txBuffer, sizeof(aclHdr) + plen);
@@ -326,7 +255,7 @@ ADD:
 
 ...................................................................................
 
-3) In int HCIClass::sendCommand() around line 497
+3) In int HCIClass::sendCommand() around line 691
 
 CHANGE:
   uint8_t txBuffer[sizeof(aclHdr) + plen];
@@ -335,16 +264,68 @@ TO:
 
 ...................................................................................
 
-4) In int HCIClass::sendCommand() around line 509
+4) In int HCIClass::sendCommand() around line 709
 
 AFTER:
   HCITransport.write(txBuffer, sizeof(pktHdr) + plen);
 ADD:
   free(txbuffer);  // issue fixed {paulvha}
 
-...................................................................................
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In ArduinoBLE/src/BLEAdvertisingData.CPP fix issue with incorrect AD field setting
+https://github.com/arduino-libraries/ArduinoBLE/issues/239
+
+in function addAdvertisedServiceUuid()
+
+change:  advField = BLEFieldIncompleteAdvertisedService128;
+to advField = BLEFieldCompleteAdvertisedService128;
+
+change:  advField = BLEFieldIncompleteAdvertisedService16;
+to advField = BLEFieldCompleteAdvertisedService16;
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Fix for multiple callback on BLEread when the value that was written before is 
+larger than the MTU size. 1 change
 
 
+ArduinoBLE/src/local/BLELocalCharacteristic.cpp
 
+CHANGE readValue() to :
 
+void BLELocalCharacteristic::readValue(BLEDevice device, uint16_t offset, uint8_t value[], int length)
+{
+  // setting to TRUE at BEGINNING will force a call BLERead to enable overwrite the current value.  (set with a previous writeValue())
+  // setting to FALSE at BEGINNING, it will first send the current value.  (set with a previous writeValue())
 
+  // once the complete value has been send, with the following readValue() call it will
+  // call BLERead to overwrite the current value. { Nov 22 paulvha}
+  static bool AllWasReadBefore = true;
+
+  // if the complete previous value was read before, allowed it to be updated
+  if (AllWasReadBefore) {
+
+     // allow call back (if set)
+     if (_eventHandlers[BLERead]) {
+          _eventHandlers[BLERead](device, BLECharacteristic(this));
+     }
+
+     AllWasReadBefore = false;
+  }
+
+  // copy the value
+  memcpy(value, _value + offset, length);
+
+  // check complete message has been read
+  if (offset + length >= _valueLength) {
+     AllWasReadBefore = true;
+  }
+
+ // Serial.print("read: ");
+ // Serial.print(length);
+ // Serial.print(" offset: ");
+ // Serial.print(offset);
+ // Serial.print(" AllWasReadBefore ");
+ // Serial.println(AllWasReadBefore);
+}
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

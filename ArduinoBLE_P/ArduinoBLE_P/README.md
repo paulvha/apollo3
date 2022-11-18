@@ -1,11 +1,21 @@
-# ArduinoBLE_P - special for 1.2.1  (paulvha / February 2021)
+# ArduinoBLE_P - November 2022: update and tested on V1.2.3
 
-# Update October 2022: update and tested on V1.2.3
-This is based on ArduinoBLE 1.1.3, but adjusted for Sparkfun library V1.2.3 next to that a number of changes have been applied. (see extras folder)
-For installation instruction also see extras folder.
+This is based on ArduinoBLE 1.3.2, but adjusted for Sparkfun library V1.2.3. Next to that a number of changes have been applied. (see doc folder). For installation instruction see Doc-folder.
 
-A peripheral example10 has been added with a menu structure and sending sensor data(BME280)
-A central example10 has been added to work with the peripheral example10
+## examples have been added with a menu structure:
+
+### example10_ph_bme280 / example10_central_bme280
+In this setup an BME280 temperature, humidity and pressure sensor is connected to the peripheral. On regular intervals  it will send updated information on notify characteristic. This central has a menu to request data now, change the parameters of the data and stop sending data.
+
+### example11_ph_RW / example11_central_RW
+In this setup there are 4 characteristic. Two String characteristics (one reading to and one reading from), and two characteristics (one reading to and one reading from) for binary data. The central can send and read, same for the peripheral.
+
+### example12_ph_RW_Notify / example12_central_RW_Notify
+In this setup a large data message is split in multiple blocks exchanged using a flow control. There are 3 characteristics: one for peripheral to send the large data message, one for the central to send commands and feedback and one for notify.
+The notify is used by the peripheral to send command and feedback and as such also indicate to the central that a next block is ready to be read.
+
+Next to a central in the Arduino IDE environment there is also an central in the ubuntu/linux environment.
+
 
 [![Compile Examples Status](https://github.com/arduino-libraries/ArduinoBLE/workflows/Compile%20Examples/badge.svg)](https://github.com/arduino-libraries/ArduinoBLE/actions?workflow=Compile+Examples) [![Spell Check Status](https://github.com/arduino-libraries/ArduinoBLE/workflows/Spell%20Check/badge.svg)](https://github.com/arduino-libraries/ArduinoBLE/actions?workflow=Spell+Check)
 

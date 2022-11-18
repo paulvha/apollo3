@@ -22,71 +22,102 @@
 
 #include "BLEDevice.h"
 #include "BLEService.h"
+#include "BLEAdvertisingData.h"
+
+enum Pairable {
+  NO = 0,
+  YES = 1,
+  ONCE = 2,
+};
 
 class BLELocalDevice {
 public:
   BLELocalDevice();
   virtual ~BLELocalDevice();
 
-  int begin();
-  void end();
-void AssignBDAddress(uint8_t * customer_unique_bd_address);
-int writeBdAddr();
-  void poll();
-  void poll(unsigned long timeout);
+  virtual int begin();
+  virtual void end();
 
-  bool connected() const;
-  bool disconnect();
+  virtual void poll();
+  virtual void poll(unsigned long timeout);
 
-  String address() const;
+  virtual bool connected() const;
+  virtual bool disconnect();
 
- int rssi();
+  virtual String address() const;
 
-  void setAdvertisedServiceUuid(const char* advertisedServiceUuid);
-  void setAdvertisedService(const BLEService& service);
-  void setManufacturerData(const uint8_t manufacturerData[], int manufacturerDataLength);
-  void setManufacturerData(const uint16_t companyId, const uint8_t manufacturerData[], int manufacturerDataLength);
-  void setLocalName(const char *localName);
+  virtual int rssi();
 
-  void setDeviceName(const char* deviceName);
-  void setAppearance(uint16_t appearance);
+  virtual bool setAdvertisedServiceUuid(const char* advertisedServiceUuid);
+  virtual bool setAdvertisedService(const BLEService& service);
+  virtual bool setAdvertisedServiceData(uint16_t uuid, const uint8_t data[], int length);
+  virtual bool setManufacturerData(const uint8_t manufacturerData[], int manufacturerDataLength);
+  virtual bool setManufacturerData(const uint16_t companyId, const uint8_t manufacturerData[], int manufacturerDataLength);
+  virtual bool setLocalName(const char *localName);
 
-  void addService(BLEService& service);
+  virtual void setAdvertisingData(BLEAdvertisingData& advertisingData);
+  virtual void setScanResponseData(BLEAdvertisingData& scanResponseData);
 
-  int advertise();
-  void stopAdvertise();
+  virtual void setDeviceName(const char* deviceName);
+  virtual void setAppearance(uint16_t appearance);
 
-  int scan(bool withDuplicates = false);
-  int scanForName(String name, bool withDuplicates = false);
-  int scanForUuid(String uuid, bool withDuplicates = false);
-  int scanForAddress(String address, bool withDuplicates = false);
-  void stopScan();
+  virtual void addService(BLEService& service);
 
-  BLEDevice central();
-  BLEDevice available();
+  virtual int advertise();
+  virtual void stopAdvertise();
 
-/////////////////////////////////////////////////////
-virtual int UpdateMtu();
-virtual uint8_t ReadMtu();
-/////////////////////////////////////////////////////
+  virtual int scan(bool withDuplicates = false);
+  virtual int scanForName(String name, bool withDuplicates = false);
+  virtual int scanForUuid(String uuid, bool withDuplicates = false);
+  virtual int scanForAddress(String address, bool withDuplicates = false);
+  virtual void stopScan();
 
-  void setEventHandler(BLEDeviceEvent event, BLEDeviceEventHandler eventHandler);
+  virtual BLEDevice central();
+  virtual BLEDevice available();
 
-  void setAdvertisingInterval(uint16_t advertisingInterval);
-  void setConnectionInterval(uint16_t minimumConnectionInterval, uint16_t maximumConnectionInterval);
-  void setConnectable(bool connectable);
+  virtual void setAdvertisingInterval(uint16_t advertisingInterval);
+  virtual void setConnectionInterval(uint16_t minimumConnectionInterval, uint16_t maximumConnectionInterval);
+  virtual void setSupervisionTimeout(uint16_t supervisionTimeout);
+  virtual void setConnectable(bool connectable); 
 
-  void setTimeout(unsigned long timeout);
+  virtual void setEventHandler(BLEDeviceEvent event, BLEDeviceEventHandler eventHandler);
 
-  void debug(Stream& stream);
+  virtual void setTimeout(unsigned long timeout);
 
-  void noDebug();
+  virtual void debug(Stream& stream);
+  virtual void noDebug();
+  
+  virtual void setPairable(uint8_t pairable);
+  virtual bool pairable();
+  virtual bool paired();
+
+  // address - The mac to store
+  // IRK - The IRK to store with this mac
+  virtual void setStoreIRK(int (*storeIRK)(uint8_t* address, uint8_t* IRK));
+  // nIRKs      - the number of IRKs being provided.
+  // BDAddrType - an array containing the type of each address (0 public, 1 static random)
+  // BDAddrs    - an array containing the list of addresses
+  virtual void setGetIRKs(int (*getIRKs)(uint8_t* nIRKs, uint8_t** BDAddrType, uint8_t*** BDAddrs, uint8_t*** IRKs));
+  // address - the address to store [6 bytes]
+  // LTK - the LTK to store with this mac [16 bytes]
+  virtual void setStoreLTK(int (*storeLTK)(uint8_t* address, uint8_t* LTK));
+  // address - The mac address needing its LTK
+  // LTK - 16 octet LTK for the mac address
+  virtual void setGetLTK(int (*getLTK)(uint8_t* address, uint8_t* LTK));
+
+  virtual void setDisplayCode(void (*displayCode)(uint32_t confirmationCode));
+  virtual void setBinaryConfirmPairing(bool (*binaryConfirmPairing)());
+  uint8_t BDaddress[6];
+  
+protected:
+  virtual BLEAdvertisingData& getAdvertisingData();
+  virtual BLEAdvertisingData& getScanResponseData();
 
 private:
-    void DebugPrintf(const char *pcFmt, ...);
-    bool EnableDebugPrintf = false;
+  BLEAdvertisingData _advertisingData;
+  BLEAdvertisingData _scanResponseData;
 };
 
-extern BLELocalDevice BLE;
+extern BLELocalDevice& BLE;
 
 #endif

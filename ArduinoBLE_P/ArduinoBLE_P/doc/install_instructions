@@ -1,21 +1,21 @@
 -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
-Version 1.1 / February 2021 / paulvha
+Version 1.1 / November 2022 / paulvha
 
 -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
-Installation instruction to add the ArduinoBLE_P and Exactle Bluetooth stack to Sparkfun Library version 1.2.1.
+Installation instruction to add the ArduinoBLE_P and Exactle Bluetooth stack to Sparkfun Library version 1.2.3.
 
-INSTALL_DIR : directory where version 1.2.1 of the library is installed
+INSTALL_DIR : directory where version V1.2.3 of the Sparkfun library is installed
 
 ### The following data is included
 
 exactleP folder  	: contains the patched Bluetooth stack
-platform.new file      : updated platform.txt file needed for compile on Library 1.2.1
+platform.new file       : updated platform.txt file needed for compile on Library 1.2.3
 ArduinoBLE_P 		: example sketches + library
 
 ########################################################################
-### copy the ExactLE Bluetooth stack  !!!!!! ONLY NEEDED FOR 1.2.1 #####
+### copy the ExactLE Bluetooth stack  !!!!!! ONLY NEEDED FOR V1.2.3 #####
 ########################################################################
 
 IF YOU HAD A PREVIOUS FUNCTION, MAKE SURE TO REPLACE AS THE
@@ -31,7 +31,7 @@ exactleP
 utils
 
 ################################################################################
-# Apply changes to the compiler instructions  !!!!!! ONLY NEEDED FOR 1.2.1 #####
+# Apply changes to the compiler instructions  !!!!!! ONLY NEEDED FOR V1.2.3 #####
 ################################################################################
 You have 2 options.
 
@@ -71,8 +71,8 @@ Now save the changes in the file.
 # install UPDATED ArduinoBLE_P library
 ##########################################################
 
-In case you have already installed ArduinoBLE, remove that first. The ArduinoBLE_P for Apollo3 1.2.1 has changes to make
-it work on Exactle, but it will also work on version 2.0.X and has a number of known buf fixes applied
+In case you have already installed ArduinoBLE, No need to remove that first. 
+The ArduinoBLE_P for Apollo3 V1.2.3 has changes to mak it work on Exactle, but it will also work on version 2.2.X and has a number of known bug fixes applied. In that case you need to change the include from ArduinoBLE_P to ArduinoBLE
 
 Start Arduino IDE
 Select from menu sketch-> Include Library -> Add .ZIP library
