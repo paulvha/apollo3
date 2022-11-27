@@ -1,9 +1,10 @@
 /*
   QWICC OpenLog filemanager
 
-  This sketch allows you to access the SD card on a Sparkfun Qwicc Openlog module (DEV-15164). 
-  It has been tested on Artemis/Apollo3 V1.2.3 and library version 2.2.1. It has also be tested on ATmega 2560. 
-    
+  This sketch allows you to access the SD card on a Sparkfun Qwicc Openlog module (DEV-15164).
+  It has been tested on Artemis/Apollo3 V1.2.3 and library version 2.2.1.
+  It has also be tested on ATmega 2560 (V1.2) and an Arduino Uno (V1.3).
+
   By: Paulvha@hotmail.com
   initial date: March, 2022
 
@@ -19,23 +20,34 @@
 
     =========================== Versioning ===============================
 
+  V1.3                                / November 2022
+  updated to add SMALLFOOTPRINT so it works on an Arduino UNO as well.
+
+  QWICC     UNO
+  Red       3v3
+  Black     GND
+  Blue      A4 / SDA
+  Yellow    A5 / SCL
+
+  MAKE SURE TO UNCOMMENT THE LINE  '#define SMALLFOOTPRINT 1' IN user defines below
+
   V1.2                                / September 2022
   updated the approach to get the directory entries after discovering the issue in Artemis V2.xx Wire-library
-    
+
   V1.1                                / September 2022
   Changed some the subroutines for enhancements and a better flow
   Made adjustments so the program now also works with Sparkfun Qwicc Openlog module (DEV-15164) connected to an ATmega
- 
+
   QWICC    ATMEGA
   Red       3v3
   Black     GND
   Blue      SDA
   Yellow    SCL
-  
+
   v1.0                                / March 2022
   Initial version
   This has been tested on a Sparkfun Qwicc Openlog module (DEV-15164) connected to an Artemis ATP.
-  
+
 */
 
 #include <Wire.h>
@@ -43,10 +55,25 @@
 
 //======================== user defines ==================================
 
-#define MAXFILENAME   14                    // maximum length file or directory name (size is hardcoded in Openlog source)   
+// in case of an MCU board with small memory(like UNO) uncomment
+// in default setup the SMALLFOOTPRINT is using 50% of program storage / 75% of dynamic memory
+//#define SMALLFOOTPRINT 1
+
+#ifdef SMALLFOOTPRINT  // like UNO or Arduino Nano
+
+#define MAXFILENAME   14                    // maximum length file or directory name (size is hardcoded in Openlog source, do not change)
+#define MAX_DIR_ENTRY 30                    // maximum entries in a current directory
+#define BUFLEN        300                   // max length to read content (adjust to your board capacity)
+#define SUBLEVELS     4                     // the number of directory to go "down" with change directory
+
+#else // ATMEGA / Artemis boards
+
+#define MAXFILENAME   14                    // maximum length file or directory name (size is hardcoded in Openlog source)
 #define MAX_DIR_ENTRY 100                   // maximum entries in a current directory
 #define BUFLEN        3000                  // max length to read content (adjust to your board capacity)
 #define SUBLEVELS     5                     // the number of directory to go "down" with change directory
+
+#endif
 
 //======================== Global Variables ==============================
 
@@ -76,18 +103,18 @@ bool Valid_entry = false;                   // was valid entry was shown during 
 void setup()
 {
   Serial.begin(115200);
-  while (!Serial); 
-  Serial.println(F("QWICC OpenLog filemanager. (V1.2)\nPress Enter to continue."));
+  while (!Serial);
+  Serial.println(F("QWICC OpenLog filemanager. (V1.3)\nPress Enter to continue."));
   GetFileName();
-  
+
   Wire.begin();
   Wire.setClock(100000);
-  
+
   if ( !myLog.begin()){                   // Open connection to QWICC OpenLog
     Serial.println(F("QWICC OpenLog filemanager could not be initialised. freeze."));
     while(1);
   }
-  
+
   // read root directory into buffer
   list_files(false, true);
 }
@@ -112,7 +139,7 @@ void loop()
 
   // blocking input
   if (GetEntryNum(true) == -1) return;
-  
+
   switch (sel) {
      case 0:   // ignore zero
       break;
@@ -121,10 +148,10 @@ void loop()
       break;
     case 2:
       change_dir(0);
-      break;      
+      break;
     case 3:
       create_entry(true);
-      break;   
+      break;
     case 4:
       create_entry(false);
       break;
@@ -154,29 +181,29 @@ void loop()
       Serial.println(F("Bye. Have a great day.\nPress 'reset' to restart."));
       while(1);
       break;
-      
+
     default:
       Serial.print(F("Invalid input 0x"));
       Serial.println(sel, HEX);
   }
 }
 
-/* Read an entry number 
- *   
+/* Read an entry number
+ *
  * return
  *  sel     result is also stored in global variable sel.
  *  -1      invalid input or quit
- *  
- *  @parameter ext = true will also allow input as : 
+ *
+ *  @parameter ext = true will also allow input as :
  *  ls = list                  => 1
  *  cd = change directory      => 2
  *  ro = return to root        => 5
  *  rf = remove file           => 6
- *  rd = remove directory      => 7 
+ *  rd = remove directory      => 7
  *  up = one level up          => 8
  *  ad = display ascii         => 9
  *  hd = display hex and ascii => 10
- *  ap = append to file        => 11   
+ *  ap = append to file        => 11
  */
 int GetEntryNum(bool ext)
 {
@@ -187,15 +214,15 @@ int GetEntryNum(bool ext)
   while (!Serial.available());
   char c = '0';
   sel = 0;
-   
+
   while (c != '\r' && c != '\n') {
 
     if (c == 'q' || c == 'Q') return(-1);
-    
+
     // allow extended input
     if (ext) {
-      
-      if (c == 'l'|| c == 'c'|| c == 'r'|| c == 'u' ||c == 'a'|| c == 'h') 
+
+      if (c == 'l'|| c == 'c'|| c == 'r'|| c == 'u' ||c == 'a'|| c == 'h')
         ABR_input = c;
 
       else if (c == 's' &&  ABR_input == 'l') // list
@@ -206,7 +233,7 @@ int GetEntryNum(bool ext)
 
       else if (c == 'o' &&  ABR_input == 'r') // change to root directory
         sel = 5;
-        
+
       else if (c == 'p' &&  ABR_input == 'u') // move to parent directory
         sel = 8;
 
@@ -215,33 +242,33 @@ int GetEntryNum(bool ext)
 
       else if (c == 'd' &&  ABR_input == 'h') // display file content in HEX and ASCII
         sel = 10;
-        
+
       else if (c == 'f' &&  ABR_input == 'r') // remove file
         sel = 6;
-      
+
       else if (c == 'd' &&  ABR_input == 'r') // remove directory
         sel = 7;
-        
+
       else if (c == 'p' &&  ABR_input == 'a') // Append file
         sel = 11;
-        
+
       else
         ABR_input = '0';
 
       if (sel != 0 && ABR_input != '0') goto idone;
     }
-    
+
     // number input
     if (ABR_input == '0') {
-    
+
       if (c >= '0' && c <= '9') {
         sel = sel * 10;
         sel = sel + (c - '0');
       }
-      else 
+      else
          goto invalid;
     }
- 
+
     delay(10);
     c = Serial.read();
 
@@ -253,7 +280,7 @@ int GetEntryNum(bool ext)
     else
       Serial.print(c);
   }
-  
+
 idone:
   Serial.println();
   return(sel);
@@ -290,7 +317,7 @@ uint8_t GetFileName()
 {
   flush();
   offset = 0;
-  
+
   // wait for input
   while(!Serial.available()) yield();
   char c = Serial.read();
@@ -301,9 +328,9 @@ uint8_t GetFileName()
     while (! Serial.available()) yield();
     c = Serial.read();
   }
-  
+
   Serial.println();
-   
+
   fname[offset] = 0x0;
 
   return(offset);
@@ -315,7 +342,7 @@ uint8_t GetFileName()
 void flush()
 {
   delay(100);
-   
+
   while (Serial.available()) {
     Serial.read();
     delay(50);
@@ -324,33 +351,33 @@ void flush()
 
 /*
  * list a directory content
- *   
+ *
  * @param show :
  *  true : show the detected directory content
  *  false : only store the content
- * 
+ *
  * @param root :
  *  true  : start of root directory
  *  false : start at current directory
  *
  * @return
  *  return true if all went well, false if there was an error/warning
- *  
+ *
  */
 bool list_files(bool show,bool root)
-{  
+{
   offset = 0;                     // where to store next directory entry
   bool NoEntryDetected = true;    // detect empty directory
   bool ret = true;                // return true if all went well, false if there was an error/warning
-  
+
   if (root) {
     ROOT;                         // rewind to root
-    sprintf(RootDir,"%s","/");  
+    sprintf(RootDir,"%s","/");
   }
 
   // empty wire buffer, needed for Wire on V2.x.x (bug) to remove pending Wire buffer
   while (Wire.available()) Wire.read();
-  
+
   myLog.searchDirectory("*");
 
   String fileName = myLog.getNextDirectoryItem();
@@ -362,7 +389,7 @@ bool list_files(bool show,bool root)
     NoEntryDetected = false;
 
     uint8_t filelength = fileName.length();
-    
+
     // remove '/' which was added to indicate directory
     if (fileName[filelength -1] == '/'){
       DirContent[offset].isDir = true;
@@ -381,8 +408,8 @@ bool list_files(bool show,bool root)
     // add entry in array
     for (uint8_t i = 0 ; i != filelength; i++) {
       DirContent[offset].name[i] = fileName[i];
-      DirContent[offset].name[i + 1] = 0x0; 
-    }  
+      DirContent[offset].name[i + 1] = 0x0;
+    }
 
     offset++;
 
@@ -400,42 +427,42 @@ bool list_files(bool show,bool root)
 
   // display information
   if (show) {
-    
+
     if ( NoEntryDetected) {
       Serial.println(F("Empty directory\r"));
     }
     else {
       Serial.print(F("\nContent for "));
       Serial.println(RootDir);
-  
+
       for (uint8_t ind = 0; ind < offset; ind++) {
-        
+
         Serial.print(DirContent[ind].name);
-        
+
         // add enough spaces to align output
         for (uint8_t n = strlen(DirContent[ind].name) ; n <= 20; n++) Serial.print(" ");
-        
+
         if(DirContent[ind].isDir) {
           Serial.println("DIR \t--");
         }
-        else { 
-          Serial.print("FILE\t");   
-        
+        else {
+          Serial.print("FILE\t");
+
           // Get size of file
-          int32_t sizeOfFile = myLog.size(DirContent[ind].name);  
+          int32_t sizeOfFile = myLog.size(DirContent[ind].name);
           Serial.println(sizeOfFile);
         }
       }
     }
   }
-  
+
   return ret;
 }
 
 /*
  * change to a sub-directory
  * @parameter ind : offset in array is already known
- * 
+ *
  * @return
  *  true : if all went OK
  *  false: in case of error or cancel
@@ -443,27 +470,27 @@ bool list_files(bool show,bool root)
 bool change_dir(uint8_t ind)
 {
   if (ind == 0) {
-    
+
     // display directories
     offset = DisplayArray(false);
-    
+
     if (! Valid_entry) {
       Serial.println(F("NO valid directory found."));
       return false;
     }
-    
+
     Serial.println(F("Which directory NUMBER do you want to select ? q = quit "));
-    
+
     if (GetEntryNum(false) == -1) return false;
-  
+
     if (sel > offset -1) {
       Serial.println(F("Invalid selection."));
       return false;
     }
   }
   else
-    sel = ind; 
- 
+    sel = ind;
+
   if (! DirContent[sel].isDir) {
     Serial.println(F("Not a valid directory."));
     return false;
@@ -474,7 +501,7 @@ bool change_dir(uint8_t ind)
 
   sprintf(TempDir,"%s%s/", RootDir, DirContent[sel].name);
   sprintf(RootDir, "%s", TempDir);
-   
+
   return(list_files(true,false));
 }
 
@@ -496,14 +523,14 @@ bool create_entry(bool dir)
     Serial.print(F("Enter the name of the file to create. Only enter is abort. "));
 
   if (GetFileName() == 0) return true;
-  
-  // check it exists 
+
+  // check it exists
   long sizeOfFile = myLog.size(fname);
 
   if (sizeOfFile > -1) {
     Serial.println(F("Already exists"));
     return false;
-  } 
+  }
 
   if (dir) {
     if ( ! myLog.makeDirectory((String) fname)) {
@@ -522,20 +549,20 @@ bool create_entry(bool dir)
       Serial.println(F("File has been created."));
     }
   }
-  
+
   return(list_files(true,false));
 }
 
 /*
  * remove file or directory
  * @param dir : true for directory
- * 
+ *
  * @return
  *  true : if all went OK
  *  false: in case of error or cancel
  */
 bool remove_entry(bool dir){
-  
+
   uint32_t ret;
 
   // display directories
@@ -550,9 +577,9 @@ bool remove_entry(bool dir){
     Serial.println(F("Which directory NUMBER do you want to select to remove? q = quit "));
   else
     Serial.println(F("Which file NUMBER do you want to select to remove? q = quit "));
-  
+
   if (GetEntryNum(false) == -1) return false;
-    
+
   if (sel > offset -1) {
     Serial.println(F("Invalid selection."));
     return false;
@@ -565,10 +592,10 @@ bool remove_entry(bool dir){
       Serial.println(F(" Not a valid Directory."));
       return false;
     }
-    
+
     // display any content in the directory
     else {
-      
+
       // move in directory
       myLog.changeDirectory(DirContent[sel].name);
 
@@ -583,12 +610,12 @@ bool remove_entry(bool dir){
     }
   }
   else {
-  
+
     if (DirContent[sel].isDir) {
       Serial.print(DirContent[sel].name);
       Serial.println(F(" Not a valid file."));
       return false;
-    } 
+    }
   }
 
   // double check
@@ -599,18 +626,18 @@ bool remove_entry(bool dir){
   flush();
 
   while (! Serial.available()) yield();
-  
+
   if (Serial.read() != 'Y') {
     Serial.println(F("Cancel remove (TIP : use capital Y if you want to remove)"));
     flush();
     return true;
   }
-  
+
   if (dir) ret = myLog.removeDirectory((String) DirContent[sel].name);
-  else     ret = myLog.removeFile((String) DirContent[sel].name);  
+  else     ret = myLog.removeFile((String) DirContent[sel].name);
 
   if (ret == 0) {
-    Serial.print(F("Error during removing: ")); 
+    Serial.print(F("Error during removing: "));
     Serial.println(DirContent[sel].name);
   }
   else {
@@ -627,7 +654,7 @@ bool remove_entry(bool dir){
  * @parameter Hex
  *  true  : display ASCII and HEX
  *  false : display ASCII
- * 
+ *
  * @return
  *  true : if all went OK
  *  false: in case of error or cancel
@@ -637,29 +664,29 @@ bool Read_file(bool hex)
    uint8_t j, i = 0;
    char bufhex[40];
    uint16_t fs;
-   
+
   // display content of current directory
   offset = DisplayArray(true);
-  
+
   if (! Valid_entry) {
     Serial.println(F("NO valid entry found."));
     return false;
   }
-  
+
   Serial.println(F("Which file NUMBER do you want to select to read ? q = quit "));
 
-  if (GetEntryNum(false) == -1) return false;   
+  if (GetEntryNum(false) == -1) return false;
 
   if (sel > offset -1) {
     Serial.println(F("Invalid selection."));
     return false;
   }
-  
+
   if (DirContent[sel].isDir) {
     Serial.println(F("Not a valid file."));
     return false;
   }
-  
+
   // Get size of file
   int32_t sizeOfFile = myLog.size(DirContent[sel].name);
 
@@ -676,7 +703,7 @@ bool Read_file(bool hex)
     Serial.print(F(" ("));
     Serial.print(sizeOfFile);
     Serial.println(F(" bytes)"));
-    
+
     if (sizeOfFile > BUFLEN) {
       Serial.println(F("WARNING filesize is larger than buffer size."));
       Serial.print(F("For now this is a limitation and thus the maximum buffer size is used: "));
@@ -685,7 +712,7 @@ bool Read_file(bool hex)
       delay(1000);
     }
     else fs = sizeOfFile;
-     
+
     myLog.read((uint8_t *)buf, fs, DirContent[sel].name); // Load with contents of myFile
 
     for (uint16_t y = 0 ; y < fs ; y++)
@@ -693,17 +720,17 @@ bool Read_file(bool hex)
       char ch = buf[y];
 
       if (hex) {
-        
+
         if(ch < 0x10) Serial.print("0");
-        
+
         Serial.print(ch, HEX);
         bufhex[i++] = ch;
 
         Serial.print(" ");
-        
+
         if (i == 30) {
            for (j = i ; j < 40; j++) Serial.print(" ");
-          
+
           for(j = 0 ; j < i ; j++) {
             if (bufhex[j] > 0x1f) Serial.print(bufhex[j]);
             else Serial.print(".");
@@ -713,7 +740,7 @@ bool Read_file(bool hex)
         }
       }
       else {
-        
+
         if (ch == '\r' || ch == '\n') {
           Serial.print(ch);
           i = 0;
@@ -722,7 +749,7 @@ bool Read_file(bool hex)
           if (ch > 0x1f) Serial.print(ch);
           else Serial.print("?");
           Serial.print(" ");
-      
+
           if (i++ > 70) {
             Serial.println("\r");
             i = 0;
@@ -730,22 +757,22 @@ bool Read_file(bool hex)
         }
       }
     }
-  
+
     // do we need to still display last line ASCII info
     if (hex && i != 0) {
-      
+
       // complete HEX entry
       for(j = i ; j < 30 ; j++)  Serial.print("   ");  // 3 spaces each entry
-      
+
       // include space
       for (j ; j < 40; j++) Serial.print(" ");
-      
+
       // display rest for line
       for( j = 0 ; j < i ; j++){
         if (bufhex[j] > 0x1f) Serial.print(bufhex[j]);
         else Serial.print(".");
       }
-      
+
       Serial.println("\r");
 
     }
@@ -763,7 +790,7 @@ bool Read_file(bool hex)
 /*
  * Add / append content to a file
  * if the file does not exist it will be created
- * 
+ *
  * @return
  *  true : if all went OK
  *  false: in case of error or cancel
@@ -771,71 +798,71 @@ bool Read_file(bool hex)
 bool Append_file()
 {
   flush();
-  
+
   Serial.println(F("Do you want to append content to an EXISTING file ? (Y or N)"));
 
   // wait for input
   while (! Serial.available()) yield();
   char c = Serial.read();
   flush();
-  
+
   if (c == 'Y' || c == 'y') {
-    
+
     // display files
     offset = DisplayArray(true);
-    
+
     if (! Valid_entry) {
       Serial.println(F("NO valid file entry found."));
       return false;
-    } 
-    
+    }
+
     Serial.println(F("Which file NUMBER do you want to select to append ? q = quit "));
-  
-    if (GetEntryNum(false) == -1) return false;   
-  
+
+    if (GetEntryNum(false) == -1) return false;
+
     if (sel > offset -1) {
       Serial.println("Invalid selection.");
       return false;
     }
-    
+
     if (DirContent[sel].isDir) {
       Serial.print(DirContent[sel].name);
       Serial.println(F(" Not a valid file."));
       return false;
     }
-  
+
     // copy name
     sprintf(fname, "%s", DirContent[sel].name);
   }
-  
+
   else { // ask for the new filename
-  
+
     Serial.print(F("Enter the name of the file to create. Only ENTER is abort."));
-    
+
     uint8_t l = GetFileName();
-    
+
     if (l == 0) return true;
 
     if (l > 12) {
       Serial.println(F("Filename to long. Max 12 characters - 8.3"));
       return false;
     }
-    
-    // check it exists 
+
+    // check it exists
     long sizeOfFile = myLog.size(fname);
-  
+
     if (sizeOfFile > -1) {
       Serial.println(F("Already exists"));
       return false;
-    } 
+    }
   }
 
   // get content to add
   Serial.print(F("Type content to add in file. Only enter is abort. : "));
-  
+
   flush();
   offset = 0;
-  
+
   // wait for input
   while(!Serial.available()) yield();
   c = Serial.read();
@@ -846,19 +873,19 @@ bool Append_file()
     while (! Serial.available()) yield();
     c = Serial.read();
   }
-  
+
   Serial.println();
   buf[offset] = 0x0;
-  
+
   // if only enter
   if (offset == 0) return true;
 
   // do an append or create
   myLog.append(fname);
- 
+
   // do write
   myLog.println(buf);
-  
+
   // make sure it is written
   myLog.syncFile();
 
@@ -868,7 +895,7 @@ bool Append_file()
 /*
  * Move one level up in directory structure
  * @parameter show : display content of directory after one level up
- * 
+ *
  * @return
  *  true : if all went OK
  *  false: in case of error or cancel
@@ -887,23 +914,23 @@ bool OneLevelUP(bool show)
 
   // returning to root
   if (j == 0) {
-      if (show)  return(list_files(true,true)); 
+      if (show)  return(list_files(true,true));
       else       return(list_files(false,true));
   }
 
   // still level(s) directory down
   RootDir[s+1] = 0x0;
-  
+
   // go to root
   ROOT;
 
   // change directory down to the right level
   // start at pos 1 to skip leading /
   for (i = 1, j = 0; i < strlen(RootDir); i++) {
-    
+
     // end of a directory name
     if (RootDir[i] == '/' ){
-      
+
       // change directory
       fname[j] = 0x0;
       myLog.changeDirectory(fname);
@@ -915,8 +942,8 @@ bool OneLevelUP(bool show)
     }
   }
 
-  if (show)  return(list_files(true,false)); 
-  else       return(list_files(false,false)); 
+  if (show)  return(list_files(true,false));
+  else       return(list_files(false,false));
 }
 
 /*
@@ -924,20 +951,20 @@ bool OneLevelUP(bool show)
  * @parameter CheckFile
  *  true  : check this is a file
  *  false : check this is a directory
- *  
+ *
  *  @return
  *  number of entries in current directory
  */
 uint8_t DisplayArray(bool CheckFile)
 {
   Valid_entry = false;
-  
+
   // display content of current directory
   for (offset = 0; offset < MAX_DIR_ENTRY; offset++) {
-    
+
     // end of array entries
     if (! strlen(DirContent[offset].name)) break;
-    
+
     // check directory entry is from a file (else skip)
     if (CheckFile) {
       if (DirContent[offset].isDir) continue;
@@ -949,26 +976,26 @@ uint8_t DisplayArray(bool CheckFile)
 
     // valid entry found
     Valid_entry = true;
-    
+
     Serial.print(offset);
     Serial.print("\t");
 
     // determine number of spaces
     uint8_t n = 20 - strlen(DirContent[offset].name);
-    
+
     Serial.print(DirContent[offset].name);
-    
+
     // add enough spaces to align output
     while(n--) Serial.print(" ");
-  
+
     if(!DirContent[offset].isDir){
       // Get size of file
-      int32_t sizeOfFile = myLog.size(DirContent[offset].name);  
+      int32_t sizeOfFile = myLog.size(DirContent[offset].name);
       Serial.println(sizeOfFile);
     }
     else
       Serial.println("--");
   }
-  
+
   return(offset);
 }

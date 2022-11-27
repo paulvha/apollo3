@@ -28,6 +28,10 @@ For the Linux client software use the --help or -h option
 
 ## Versioning
 
+### version 3.15 / November 2022
+ * updated Qwicc filemanager
+ * added printf (solution to floating point printf)
+
 ### version 3.14 / November 2022
  * updated BLE for version 1.2.3 (ArduinoBLE_P)
  * added Ubuntu central for BLE  (ArduinoBLE_P)

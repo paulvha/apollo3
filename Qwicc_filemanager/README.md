@@ -16,7 +16,7 @@ You can access the MicroSD directly, but you need to use the Sparkfun library th
 
 It will show :
 
-<br>QWICC OpenLog filemanager. (V1.2)
+<br>QWICC OpenLog filemanager. (V1.3)
 <br>Press Enter to continue.
 <br>
 <br>
@@ -63,6 +63,9 @@ The maximum file size to read is based on the buffer length. This can be set to 
 The Sketch is depending on the [Sparkfun library]( https://github.com/sparkfun/SparkFun_Qwiic_OpenLog_Arduino_Library).
 
 ## Versioning
+
+### Version 1.3  / November 2022
+ * updated to add SMALLFOOTPRINT so it works on an Arduino UNO as well.
 
 ### Version 1.2 / September 2022
  * updated the approach to get the directory entries after discovering an issue in Artemis V2.xx Wire-library
