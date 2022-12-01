@@ -111,6 +111,7 @@ uint8_t BLELocalCharacteristic::operator[] (int offset) const
 
 int BLELocalCharacteristic::writeValue(const uint8_t value[], int length)
 {
+
   _valueLength = min(length, _valueSize);
   memcpy(_value, value, _valueLength);
 

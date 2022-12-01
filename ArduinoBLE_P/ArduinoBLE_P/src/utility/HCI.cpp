@@ -153,8 +153,8 @@ void HCIClass::poll(unsigned long timeout)
         if (_debug) {
           dumpPkt("HCI ACLDATA RX <- ", _recvIndex, _recvBuffer);
         }
-        else
-          delay(20);    // paulvha
+       // else
+       //   delay(30);    // if TOO many debug message on peripheral a delay is needed paulvha
 
 #ifdef ARDUINO_AVR_UNO_WIFI_REV2
         digitalWrite(NINA_RTS, HIGH);

@@ -10,9 +10,13 @@
   attributes and checks for the 4 characteristics to be available.
 
   There are 2 characteristics (one for reading, one for writing) for binary data exchange and
-  2 characteristics (one for reading, one for writing) for ASCII string exchange.
+  2 characteristics (one for reading, one for writing) for ASCII string exchange. Total 4 characteristics
 
   In each message received the first byte MUST be the MAGICNUM.
+
+  This sketch is menu driven. A central can instruct to receive a binary packet or an ASCII string value. 
+  Both have a fixed length. A central can also send a binary packet or an ASCII string value. 
+  Both have a fixed length.
 
   There are 3 tabs :
   RW_central_example11 : here is the user level data exchange performed

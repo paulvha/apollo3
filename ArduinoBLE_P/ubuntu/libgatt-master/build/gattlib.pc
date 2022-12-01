@@ -1,0 +1,11 @@
+prefix=
+exec_prefix=${prefix}
+includedir=${prefix}/include
+libdir=${exec_prefix}/lib
+
+Name: gattlib
+Description: 
+Requires: glib-2.0
+Version: 
+Cflags: -I${includedir}
+Libs: -L${libdir} -lgattlib

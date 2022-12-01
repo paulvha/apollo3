@@ -10,14 +10,14 @@
 ///////////////////////////////////////////////////////
 // BLE defines
 ///////////////////////////////////////////////////////
-const char BLE_PERIPHERAL_NAME[] = "R_W_Notify BLE";
+const char BLE_PERIPHERAL_NAME[] = "Example12 BLE";
 
-#define SERVICE "9e400001-b5a3-f393-e0a9-e50e24dcca9e"
+#define SERVICE "9e400001-b5a3-f393-e0a9-e12e24dcca9e"
 
 //  characteristic read, notify and write
-#define CHARACTERISTIC_R_UUID "9e400002-b5a3-f393-e0a9-e50e24dcca9e" // receive feedback
-#define CHARACTERISTIC_W_UUID "9e400003-b5a3-f393-e0a9-e50e24dcca9e" // Send data characteristic
-#define CHARACTERISTIC_N_UUID "9e400004-b5a3-f393-e0a9-e50e24dcca9e" // Notify characteristic
+#define CHARACTERISTIC_R_UUID "9e400002-b5a3-f393-e0a9-e12e24dcca9e" // receive feedback
+#define CHARACTERISTIC_W_UUID "9e400003-b5a3-f393-e0a9-e12e24dcca9e" // Send data characteristic
+#define CHARACTERISTIC_N_UUID "9e400004-b5a3-f393-e0a9-e12e24dcca9e" // Notify characteristic
 
 // handles
 BLECharacteristic RX_Char;

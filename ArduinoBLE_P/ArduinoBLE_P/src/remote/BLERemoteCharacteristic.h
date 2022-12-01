@@ -45,7 +45,7 @@ public:
   bool valueUpdated();
   bool updatedValueRead();
 
-  bool read();
+  bool read (int offset);      // changed paulvha
   bool writeCccd(uint16_t value);
 
   unsigned int descriptorCount() const;

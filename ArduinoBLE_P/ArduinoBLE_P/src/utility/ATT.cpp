@@ -371,6 +371,7 @@ void ATTClass::handleData(uint16_t connectionHandle, uint8_t dlen, uint8_t data[
       break;
 
     case ATT_OP_READ_RESP:
+    case ATT_OP_READ_BLOB_RESP:
       readResp(connectionHandle, dlen, data);
       break;
 
@@ -549,6 +550,7 @@ bool ATTClass::paired(uint16_t handle) const
   return false; // unknown handle
 }
 
+// special paulvha
 uint16_t ATTClass::mtu(uint16_t handle) const
 {
   for (int i = 0; i < ATT_MAX_PEERS; i++) {
@@ -695,11 +697,13 @@ void ATTClass::error(uint16_t connectionHandle, uint8_t dlen, uint8_t data[])
   }
 }
 
+// Remote request to exchange / increase MTU
+// remote is Client / Central, we are peripheral / server
 void ATTClass::mtuReq(uint16_t connectionHandle, uint8_t dlen, uint8_t data[])
 {
   uint16_t mtu = *(uint16_t*)data;
 
-  if (dlen != 2) {
+  if (dlen != 2 ) {
     sendError(connectionHandle, ATT_OP_MTU_REQ, 0x0000, ATT_ECODE_INVALID_PDU);
     return;
   }
@@ -723,6 +727,8 @@ void ATTClass::mtuReq(uint16_t connectionHandle, uint8_t dlen, uint8_t data[])
   HCI.sendAclPkt(connectionHandle, ATT_CID, sizeof(mtuResp), &mtuResp);
 }
 
+// OUR request to exchange / increase default MTU
+// we are Client / Central. peripheral / server should NOT perform this.
 int ATTClass::mtuReq(uint16_t connectionHandle, uint16_t mtu, uint8_t responseBuffer[])
 {
   struct __attribute__ ((packed)) {
@@ -733,6 +739,8 @@ int ATTClass::mtuReq(uint16_t connectionHandle, uint16_t mtu, uint8_t responseBu
   return sendReq(connectionHandle, &mtuReq, sizeof(mtuReq), responseBuffer);
 }
 
+// response on OUR request to exchange / increase default MTU
+// we are Client / Central. peripheral / server should NOT expect this.
 void ATTClass::mtuResp(uint16_t connectionHandle, uint8_t dlen, uint8_t data[])
 {
   uint16_t mtu = *(uint16_t*)data;
@@ -1002,21 +1010,28 @@ void ATTClass::readByGroupResp(uint16_t connectionHandle, uint8_t dlen, uint8_t 
 
 void ATTClass::readOrReadBlobReq(uint16_t connectionHandle, uint16_t mtu, uint8_t opcode, uint8_t dlen, uint8_t data[])
 {
+  // this is requesting a first read (if any more)
   if (opcode == ATT_OP_READ_REQ) {
     if (dlen != sizeof(uint16_t)) {
       sendError(connectionHandle, ATT_OP_READ_REQ, 0x0000, ATT_ECODE_INVALID_PDU);
       return;
     }
   } else {
+    // This expect to read the next data portion that would fit in the MTU AFTER a first read
     if (dlen != (sizeof(uint16_t) + sizeof(uint16_t))) {
       sendError(connectionHandle, ATT_OP_READ_BLOB_REQ, 0x0000, ATT_ECODE_INVALID_PDU);
       return;
     }
   }
+
   /// if auth error, hold the response in a buffer.
   bool holdResponse = false;
 
+  // obtain the characteristic handle to read from
   uint16_t handle = *(uint16_t*)data;
+
+  // if the opcode is to do a read request WITHOUT a starting offset
+  // offset is zero, else the offset to read the local data characteristic value with the offset that is provided AFTER the handle.
   uint16_t offset = (opcode == ATT_OP_READ_REQ) ? 0 : *(uint16_t*)&data[sizeof(handle)];
 
   if ((uint16_t)(handle - 1) > GATT.attributeCount()) {
@@ -1027,6 +1042,9 @@ void ATTClass::readOrReadBlobReq(uint16_t connectionHandle, uint16_t mtu, uint8_
   uint8_t response[mtu];
   uint16_t responseLength;
 
+  // add opcode
+  // this is a response to the FIRST read request, however it is expect that there is MORE
+  // to read, hence the request to read the NEXT blob of data
   response[0] = (opcode == ATT_OP_READ_REQ) ? ATT_OP_READ_RESP : ATT_OP_READ_BLOB_RESP;
   responseLength = 1;
 
@@ -1048,6 +1066,7 @@ void ATTClass::readOrReadBlobReq(uint16_t connectionHandle, uint16_t mtu, uint8_
   } else if (attributeType == BLETypeCharacteristic) {
     BLELocalCharacteristic* characteristic = (BLELocalCharacteristic*)attribute;
 
+    // if asked for the characteristic information
     if (characteristic->handle() == handle) {
       if (offset) {
         sendError(connectionHandle, opcode, handle, ATT_ECODE_ATTR_NOT_LONG);
@@ -1059,6 +1078,7 @@ void ATTClass::readOrReadBlobReq(uint16_t connectionHandle, uint16_t mtu, uint8_
 
       // add the value handle
       uint16_t valueHandle = characteristic->valueHandle();
+
       memcpy(&response[responseLength], &valueHandle, sizeof(valueHandle));
       responseLength += sizeof(valueHandle);
 
@@ -1066,7 +1086,7 @@ void ATTClass::readOrReadBlobReq(uint16_t connectionHandle, uint16_t mtu, uint8_
       uint8_t uuidLen = characteristic->uuidLength();
       memcpy(&response[responseLength], characteristic->uuidData(), uuidLen);
       responseLength += uuidLen;
-    } else {
+    } else {  // asks for the value of the characteristic
       if ((characteristic->properties() & BLERead) == 0) {
         sendError(connectionHandle, opcode, handle, ATT_ECODE_READ_NOT_PERM);
         return;
@@ -1078,6 +1098,7 @@ void ATTClass::readOrReadBlobReq(uint16_t connectionHandle, uint16_t mtu, uint8_
         sendError(connectionHandle, opcode, handle, ATT_ECODE_INSUFF_ENC);
       }
 
+      // value length on characteristic written
       uint16_t valueLength = characteristic->valueLength();
 
       if (offset >= valueLength) {
@@ -1119,8 +1140,9 @@ void ATTClass::readOrReadBlobReq(uint16_t connectionHandle, uint16_t mtu, uint8_
 
 void ATTClass::readResp(uint16_t connectionHandle, uint8_t dlen, uint8_t data[])
 {
-  if (connectionHandle == _pendingResp.connectionHandle && _pendingResp.op == ATT_OP_READ_RESP) {
-    _pendingResp.buffer[0] = ATT_OP_READ_RESP;
+  if (connectionHandle == _pendingResp.connectionHandle &&
+     ( _pendingResp.op == ATT_OP_READ_RESP || _pendingResp.op == ATT_OP_READ_BLOB_RESP)) { // changed paulvha
+    _pendingResp.buffer[0] = _pendingResp.op; // changed paulvha
     memcpy(&_pendingResp.buffer[1], data, dlen);
     _pendingResp.length = dlen + 1;
   }
@@ -1590,9 +1612,10 @@ void ATTClass::sendError(uint16_t connectionHandle, uint8_t opcode, uint16_t han
   HCI.sendAclPkt(connectionHandle, ATT_CID, sizeof(attError), &attError);
 }
 
-
+// We should only do this if we are Client or Central
 bool ATTClass::exchangeMtu(uint16_t connectionHandle)
 {
+
   uint8_t responseBuffer[_maxMtu];
 
   if (!mtuReq(connectionHandle, _maxMtu, responseBuffer)) {
@@ -1826,6 +1849,25 @@ int ATTClass::readReq(uint16_t connectionHandle, uint16_t handle, uint8_t respon
     uint8_t op;
     uint16_t handle;
   } readReq = { ATT_OP_READ_REQ, handle };
+
+  return sendReq(connectionHandle, &readReq, sizeof(readReq), responseBuffer);
+}
+
+
+/**
+ * added paulvha
+ *
+ * we are looking for more data from the characteristic than would fit in a single MTU-size
+ * This is send after readReq did not provide all the expected bytes due to MTU size.
+ *
+ */
+int ATTClass::readReqBlob(uint16_t connectionHandle, uint16_t handle, uint16_t offset, uint8_t responseBuffer[])
+{
+  struct __attribute__ ((packed)) {
+    uint8_t op;
+    uint16_t handle;
+    uint16_t offset;
+  } readReq = {ATT_OP_READ_BLOB_REQ, handle, offset };
 
   return sendReq(connectionHandle, &readReq, sizeof(readReq), responseBuffer);
 }

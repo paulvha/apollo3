@@ -329,3 +329,191 @@ void BLELocalCharacteristic::readValue(BLEDevice device, uint16_t offset, uint8_
  // Serial.println(AllWasReadBefore);
 }
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ Added possibility to obtain MTU
+ 
+ ArduinoBLE/src/local/BLELocalDevice.cpp
+ 
+ add function
+ 
+ uint16_t BLELocalDevice::readMTU()
+{
+
+  BLEDevice central = ATT.central();
+
+  if (central) {
+    return central.readMTU();
+  }
+
+  return 0;
+}
+
+ArduinoBLE/src/local/BLELocalDevice.h
+ in public add
+ 
+ virtual uint16_t readMTU(); //paulvha
+ 
+ 
+ ArduinoBLE/src/local/BLEDevice.cpp
+ 
+ add function 
+ 
+ // special paulvha
+uint16_t BLEDevice::readMTU()
+{
+  // get connectionhandle
+  uint16_t handle = ATT.connectionHandle(_addressType, _address);
+
+  if (handle == 0xffff){
+    Serial.println("Error during obtaining connection handle\n");
+    return 0;
+  }
+
+  return(ATT.mtu(handle));
+}
+
+ ArduinoBLE/src/local/BLEDevice.h
+
+  in public add
+ 
+ virtual uint16_t readMTU(); //paulvha
+ 
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  
+  
+  A central on ArduinoBLE is only reading whatever fits within a MTU.
+  Everything else is not asked, neglected. These changes enable the Central
+  to read all the necessary bytes.
+  
+  ArduinoBLE/src/utility/ATT.cpp
+  add
+  
+  /**
+ * added paulvha
+ *
+ * we are looking for more data from the characteristic than would fit in a single MTU-size
+ * This is send after readReq did not provide all the expected bytes due to MTU size.
+ *
+ */
+int ATTClass::readReqBlob(uint16_t connectionHandle, uint16_t handle, uint16_t offset, uint8_t responseBuffer[])
+{
+  struct __attribute__ ((packed)) {
+    uint8_t op;
+    uint16_t handle;
+    uint16_t offset;
+  } readReq = {ATT_OP_READ_BLOB_REQ, handle, offset };
+
+  return sendReq(connectionHandle, &readReq, sizeof(readReq), responseBuffer);
+}
+  
+ .............................................................................. 
+ ArduinoBLE/src/utility/ATT.h
+  add
+  
+    virtual int readReqBlob(uint16_t connectionHandle, uint16_t handle, uint16_t offset, uint8_t responseBuffer[]); // paulvha
+ ..............................................................................
+ 
+ ArduinoBLE/src/remote/BLERemoteCharacteristic.h
+ change
+   bool read ();
+ to
+   bool read (int offset);      // changed paulvha
+  ..............................................................................
+   
+ ArduinoBLE/src/remote/BLERemoteCharacteristic.cpp 
+ 
+ change bool read() function to
+ 
+ bool BLERemoteCharacteristic::read(int offset)
+{
+  if (!ATT.connected(_connectionHandle)) {
+    return false;
+  }
+
+  uint8_t resp[256];
+  int respLength;
+
+  // if first read attempt
+  if (! offset)
+    respLength = ATT.readReq(_connectionHandle, _valueHandle, resp);
+
+  // more data is expected
+  else
+    respLength = ATT.readReqBlob(_connectionHandle, _valueHandle, offset, resp);
+
+  if (!respLength) {
+    _valueLength = 0;
+    return false;
+  }
+
+  if (resp[0] == 0x01) {
+    // error
+    _valueLength = 0;
+    return false;
+  }
+
+  _valueLength = respLength - 1;
+  _value = (uint8_t*)realloc(_value, _valueLength);
+
+  if (_value == NULL) {
+    _valueLength = 0;
+    return false;
+  }
+
+  memcpy(_value, &resp[1], _valueLength);
+
+  return true;
+}
+
+ ..............................................................................
+ 
+ ArduinoBLE/src/BLECharateristic.cpp
+ change readValue() routine to:
+ 
+ /**
+ * @param value : place to store the received data
+ * @param length is the maximum length to obtain
+ *
+ * @return :
+ * this routine will return the number of bytes read and let the
+ * sketch decide whether that is enough.
+ *
+ * paulvha
+ */
+int BLECharacteristic::readValue(uint8_t value[], int length)
+{
+  int bytesRead = 0;
+  int offset = 0;
+
+  if (_local) {
+    bytesRead  = min(length, _local->valueLength());
+    memcpy(value, _local->value(), bytesRead);
+    return bytesRead;
+  }
+
+  if (_remote) {
+
+    // as long as we did not get all the bytes expected
+    while (offset < length) {
+
+      // trigger a read if the updated value (notification / indication)
+      // has already been read and the characteristic is readable
+      if (_remote->updatedValueRead() && canRead()) {
+
+        if (!_remote->read(offset)) {
+          // new read failed
+          return offset;
+        }
+      }
+
+      bytesRead = min(length, _remote->valueLength());
+
+      memcpy(value + offset, _remote->value() , bytesRead);
+
+      offset += bytesRead;
+    }
+  }
+
+  return offset;
+}   
+ 
+  ..............................................................................

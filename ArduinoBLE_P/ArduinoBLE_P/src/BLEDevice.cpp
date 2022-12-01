@@ -259,6 +259,23 @@ int BLEDevice::rssi()
   return _rssi;
 }
 
+// special paulvha
+uint16_t BLEDevice::readMTU()
+{
+  // get connectionhandle
+  uint16_t handle = ATT.connectionHandle(_addressType, _address);
+
+  if (handle == 0xffff){
+    Serial.println("Error during obtaining connection handle\n");
+    return 0;
+  }
+
+  // minus 1 as the first byte in an transfer uinit is the opcode
+  // minus 2 as a handle can be added
+  // thus minus 3
+  return(ATT.mtu(handle)-3);
+}
+
 bool BLEDevice::connect()
 {
   return ATT.connect(_addressType, _address);

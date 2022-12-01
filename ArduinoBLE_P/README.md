@@ -28,9 +28,13 @@ In case you also want the Ubuntu examples, see the README in the subfolder Ubunt
 
 ## Versioning
 
+### version 1.1.1 / November 2022
+ * added peripheral and central example13 and example14
+ * added central examples running on Ubuntu/Linux for example13 and example14
+
 ### version 1.1.0 / November 2022
  * added peripheral and central example11 and example12
- * added central examples running on Ubuntu/Linux for example10, example11 and example12
+ * added central examples running on Ubuntu/Linux for example20, example11 and example12
 
 ### version 1.0.1 / October 2022
  * updated files for Sparkfun library V1.2.3

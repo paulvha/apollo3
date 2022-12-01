@@ -266,6 +266,7 @@ int HCICordioTransportClass::peek()
 int HCICordioTransportClass::read()
 {
   return _rxBuf.read_char();
+
 }
 
 size_t HCICordioTransportClass::write(const uint8_t* data, size_t length)
@@ -295,10 +296,11 @@ size_t HCICordioTransportClass::write(const uint8_t* data, size_t length)
 
 void HCICordioTransportClass::handleRxData(uint8_t* data, uint8_t len)
 {
-  if (_rxBuf.availableForStore() < len) {
+  // patch #96 not loosing data
+  while (_rxBuf.availableForStore() < len) {
     // drop!
     //return;
-    yield();
+    yield();  // paulvha
   }
 
   for (int i = 0; i < len; i++) {

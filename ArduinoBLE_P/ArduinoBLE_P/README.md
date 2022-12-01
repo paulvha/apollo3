@@ -4,7 +4,7 @@ This is based on ArduinoBLE 1.3.2, but adjusted for Sparkfun library V1.2.3. Nex
 
 ## examples have been added with a menu structure:
 
-### example10_ph_bme280 / example10_central_bme280
+### example20_ph_bme280 / example20_central_bme280
 In this setup an BME280 temperature, humidity and pressure sensor is connected to the peripheral. On regular intervals  it will send updated information on notify characteristic. This central has a menu to request data now, change the parameters of the data and stop sending data.
 
 ### example11_ph_RW / example11_central_RW
@@ -13,6 +13,12 @@ In this setup there are 4 characteristic. Two String characteristics (one readin
 ### example12_ph_RW_Notify / example12_central_RW_Notify
 In this setup a large data message is split in multiple blocks exchanged using a flow control. There are 3 characteristics: one for peripheral to send the large data message, one for the central to send commands and feedback and one for notify.
 The notify is used by the peripheral to send command and feedback and as such also indicate to the central that a next block is ready to be read.
+
+### exampe13_MTU_test peripheral sketch: example13_ph_MTU_size
+This is using an enhancement in the ArduinoBLE_P to understand the impact of MTU size and how to read it.
+
+### exampe14_RW_N_MTU peripheral sketch: example14_ph_RW_notify_MTU
+This is the same as example12, but then using the agreed MTU as blocksize
 
 Next to a central in the Arduino IDE environment there is also an central in the ubuntu/linux environment.
 

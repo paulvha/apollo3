@@ -1,4 +1,5 @@
 // CHANGE ArduinoBLE_P TO ArduinoBLE WHEN USING VERSION 2.X OF SPARKFUN LIBRARY
+// HOWEVER... if the blocksize is larger than the MTU... it only works on ArduinoBLE_P (p = patched)
 
 #include <ArduinoBLE_P.h>
 /*
@@ -39,7 +40,7 @@
 
   2) Use notify to send data, but that will only send as many bytes that fit in the agreed MTU size between peripheral
   and central after connect. The default size is 23. Unfortunatly there is no library call to obtain
-  the agreed MTU size.
+  the agreed MTU size in the standard ArduinoBLE, but it is in ArduinoBLE_P (see example13 and example14)
 
   3) First set a new value with the correct size on the characteristic. Then the peripheral uses a NOTIFY characteristic to 
   send SHORT message the central to indicate that a read characteristic is ready to be read.
@@ -56,8 +57,19 @@
  
   This will go on until the full message length (spread over multiple blocks). It is then displayed.
  
-  It is not super fast, BLE (Bluetooth Low Energy) was never mend to be superfast. Next to that the overhead
-  of the handling. BUT it works  :-)
+  Using this example12 you can achieve the following transfer speed:
+
+  
+  blocksize
+  100 : it takes about 2900 mS to sent a data packet of 874 bytes.
+  200 : it takes about 1450 mS to sent a data packet of 874 bytes.
+  300 : it takes about 870 mS to sent a data packet of 874 bytes.(only ArduinoBLE_P !)
+  400 : it takes about 848 mS to sent a data packet of 874 bytes.(only ArduinoBLE_P !)
+  500 : it takes about 507 mS to sent a data packet of 874 bytes.(only ArduinoBLE_P !)
+
+  Above 200 (actually 239) the packet does not fit in a single agreed MTU-size. AruindoBLE_P has been adjusted
+  to take care of that !!
+  We can't do more than 512 (maximum for ArduinoBLE)
 
 */
 
@@ -67,7 +79,7 @@
 // Program defines
 ///////////////////////////////////////////////////////
 #define MAGICNUM            0XCF      // should be byte 0 in new message
-#define MAXBLOCKSIZE        100       // size of block buffer
+#define MAXBLOCKSIZE        500       // size of block buffer
 #define RETRYCOUNT          5         // number of retry for better block handling
 
 // Commands
@@ -102,6 +114,7 @@ int     inpcnt = 0;                   // keyboard input buffer length
 uint8_t RetryErrorCnt = 0;            // keep track on repeated block request
 bool    MessageComplete= false;       // if true complete message has been received. Ready to action / display
 
+unsigned long st;
 ///////////////////////////////////////////////////////
 // NO NEED FOR CHANGES BEYOND THIS POINT
 ///////////////////////////////////////////////////////
@@ -112,12 +125,7 @@ void setup() {
   Serial.print("\nExampe12 central RW_Notify. Compiled on: ");
   Serial.println(__TIME__);
 
-  // BLE init
-  Start_BLE();                    // in BLE_Comm
-
-  display_menu();
-  
-  Serial.println(F("Ready to go"));
+  GetGoing();
 }
 
 void loop() {
@@ -131,7 +139,7 @@ void loop() {
     PeripheralCmd = NO_COMMAND;
     PendingCommand = NO_COMMAND;
     TotalMessageLength = 0;
-    Start_BLE();
+     GetGoing();
   }
 
   // handle any keyboard input
@@ -139,62 +147,9 @@ void loop() {
     while (SERIAL_PORT.available()) handle_input(SERIAL_PORT.read());
   }
 
-  // if command received from Central
-  if (PeripheralCmd != NO_COMMAND) {
-
-    switch (PeripheralCmd){
-      
-      case NEW_BLOCK_AVAILABLE:
-#ifdef BLE_SHOW_DATA 
-          SERIAL_PORT.println("New Data");
-#endif
-          PeripheralCmd = NO_COMMAND;
-          ReadDataBlock();
-        break;
-
-      case RECEIVED_OK:
-#ifdef BLE_SHOW_DATA 
-        SERIAL_PORT.println("Got OK");
-#else
-        // show still alive
-        SERIAL_PORT.print(".");
-#endif
-        switch (PendingCommand) {
-
-          case CRC_BLOCK:
-          case INVALID_BLOCK:
-          case ERR_INTERNAL:
-            RetryBlock();
-            break;
-            
-          case CANCEL_MESSAGE:
-            TotalMessageLength = 0;
-            // fall through
-          
-          default:
-            PeripheralCmd = NO_COMMAND;
-            PendingCommand = NO_COMMAND;
-        }
-        break;
-
-      case CANCEL_MESSAGE:
-        SERIAL_PORT.println("Cancel Message request from peripheral");
-        SendCommand(RECEIVED_OK);
-        PeripheralCmd = NO_COMMAND;
-        PendingCommand = NO_COMMAND;
-        SetCommandNext = NO_COMMAND;
-        TotalMessageLength = 0;
-        break;
-
-      case REQ_INVALID:
-        SERIAL_PORT.println("Invalid Request command from peripheral");
-        SendCommand(RECEIVED_OK);
-        PendingCommand = NO_COMMAND;
-        PeripheralCmd = NO_COMMAND;
-        break;
-    }
-  }
-
+  // Handle (potential) input received from peripheral
+  HandlePeripheralCmd();
+  
   //any pending command to send
   if (SetCommandNext != NO_COMMAND){
     if (loopcnt++ > 1) {
@@ -212,6 +167,83 @@ void loop() {
   }
 }
 
+/**
+ * start the BLE connection
+ */
+void GetGoing()
+{
+  // BLE init & wait for connection
+  Start_BLE();                    // in BLE_Comm
+
+  Serial.print(F("Using blocksize : "));
+  Serial.println(MAXBLOCKSIZE);
+
+  display_menu();
+  
+  Serial.println(F("Ready to go"));
+}
+
+/**
+ * take action on command received from peripheral
+ */
+void HandlePeripheralCmd()
+{
+  // if No command received from peripheral
+  if (PeripheralCmd == NO_COMMAND) return;
+
+  switch (PeripheralCmd){
+    
+    case NEW_BLOCK_AVAILABLE:
+#ifdef BLE_SHOW_DATA 
+        SERIAL_PORT.println(F("New Data"));
+#endif
+        PeripheralCmd = NO_COMMAND;
+        ReadDataBlock();            // will be acknowledged if block is good or bad).
+      break;
+
+    case RECEIVED_OK:
+#ifdef BLE_SHOW_DATA 
+      SERIAL_PORT.println(F("Got OK"));
+#else
+      // show still alive
+      SERIAL_PORT.print(".");
+#endif
+      switch (PendingCommand) {     // this was previous command sent by us
+
+        case CRC_BLOCK:
+        case INVALID_BLOCK:
+        case ERR_INTERNAL:
+          RetryBlock();
+          break;
+          
+        case CANCEL_MESSAGE:
+          TotalMessageLength = 0;
+          // fall through
+        
+        default:
+          PeripheralCmd = NO_COMMAND;
+          PendingCommand = NO_COMMAND;
+      }
+      break;
+
+    case CANCEL_MESSAGE:
+      SERIAL_PORT.println(F("Cancel Message request from peripheral"));
+      SendCommand(RECEIVED_OK);
+      PeripheralCmd = NO_COMMAND;
+      PendingCommand = NO_COMMAND;
+      SetCommandNext = NO_COMMAND;
+      TotalMessageLength = 0;
+      break;
+
+    case REQ_INVALID:
+      SERIAL_PORT.println(F("Invalid Request command from peripheral"));
+      SendCommand(RECEIVED_OK);
+      PendingCommand = NO_COMMAND;
+      PeripheralCmd = NO_COMMAND;
+      break;
+  }
+}
+
 /** 
  *  Retry new block after error only for RETRYCOUNT
  */
@@ -220,7 +252,7 @@ void RetryBlock()
   if (RetryErrorCnt++ < RETRYCOUNT) 
     SendCommand(REQ_NEW_BLOCK);
   else {
-    SERIAL_PORT.println("Retry count exceeded. Given up");
+    SERIAL_PORT.println(F("Retry count exceeded. Giving up"));
     SendCommand(CANCEL_MESSAGE);
   }
 }
@@ -250,12 +282,12 @@ void SendCommand(uint8_t cmd){
  */
 void ReadDataBlock()
 {
-  uint8_t i = 0;                // offset to start copy data
+  uint16_t i = 0;                // offset to start copy data
 
   // read Block
   int ret = RXData(BlockBuf, MAXBLOCKSIZE);
 
-  if (ret < 1) {
+  if (! ret) {
     SERIAL_PORT.println("Error: could not read Block\n");
     SendCommand(ERR_INTERNAL);
     return;    
@@ -263,7 +295,7 @@ void ReadDataBlock()
 
   // start of new message ?
   if (TotalMessageLength == 0) {
-
+st = millis();
     // check for correct packet start
     if (BlockBuf[i++] != MAGICNUM)  {
       SERIAL_PORT.println("Invalid magic\n");
@@ -282,7 +314,7 @@ void ReadDataBlock()
     MessageBuf = (uint8_t  *) malloc(TotalMessageLength);
 
     if (! MessageBuf) {
-      SERIAL_PORT.println("Error: could not obtain memory\n");
+      SERIAL_PORT.println(F("Error: could not obtain memory\n"));
       SendCommand(ERR_INTERNAL);
       return;
     } 
@@ -302,8 +334,9 @@ void ReadDataBlock()
     SendCommand(INVALID_BLOCK);
     return;    
   }
-  
-  uint8_t ReceiveBufLen = BlockBuf[i++];    // block data length (excluding CRC)
+
+  uint16_t ReceiveBufLen = BlockBuf[i++] << 8;
+  ReceiveBufLen = ReceiveBufLen |BlockBuf[i++];
 
   // the total length is content length + CRC
   if (ret != ReceiveBufLen + 2 ){
@@ -326,7 +359,7 @@ void ReadDataBlock()
     if (MessageWriteOffset < TotalMessageLength)
         MessageBuf[MessageWriteOffset++] = BlockBuf[i];
   }
-  
+
   // get CRC of message
   uint16_t RcvCRC = BlockBuf[i++] << 8;
   RcvCRC |= BlockBuf[i++]; 
@@ -334,13 +367,18 @@ void ReadDataBlock()
   if (RcvCRC != calc_crc(BlockBuf,i-2)) {
     SERIAL_PORT.println(F("CRC error"));
     SendCommand(CRC_BLOCK);
+    
 #if 0
-    for(uint8_t j=0;j<i;j++){
+    uint8_t k = 0;
+    for(uint16_t j=0; j<i;j++){
       SERIAL_PORT.print(BlockBuf[j],HEX);
       SERIAL_PORT.print(" ");
+      if(k++ > 80){
+        SERIAL_PORT.println();
+        k=0;
+      }
     }
     SERIAL_PORT.print("\n");
-    while(1);
 #endif    
     // restore write offset
     MessageWriteOffset = SaveMessageWriteOffset;
@@ -361,6 +399,8 @@ void ReadDataBlock()
   // did we receive the complete message.
   if (MessageWriteOffset >= TotalMessageLength) {
     MessageComplete = true;       // indicate message received
+    Serial.printf("It took %d mS\n", millis() -st);
+    SetCommandNext = RCD_CMPLT_MSG;
   }
   else {
     // first allow RECEIVED_OK to be send
@@ -377,6 +417,12 @@ void ReadDataBlock()
  */
 void HandlePeripheralNotify(const uint8_t *buf, uint16_t len)
 {
+#ifdef BLE_SHOW_DATA  
+  SERIAL_PORT.print(F("HandlePeripheralNotify: Magicnum 0x"));
+  SERIAL_PORT.print(buf[0], HEX);
+  SERIAL_PORT.print(F(" command 0x"));
+  SERIAL_PORT.println(buf[1], HEX);
+#endif
     
   // check for correct packet start
   if (buf[0] != MAGICNUM) {
@@ -427,6 +473,9 @@ void handle_input(char c)
         SERIAL_PORT.println(F("Disconnect request\r"));
         BLE.disconnect();
         WaitToReconnect();
+        // reset keyboard buffer
+        inpcnt = 0;
+        return;
         break;
                 
     default:
@@ -443,8 +492,8 @@ void handle_input(char c)
 
 void display_menu()
 {
-  SERIAL_PORT.println(F("1  Request message from peripheral"));
-  SERIAL_PORT.println(F("2  Cancel message from peripheral"));
+  SERIAL_PORT.println(F("1. Request message from peripheral"));
+  SERIAL_PORT.println(F("2. Cancel message from peripheral"));
   SERIAL_PORT.println(F("3. Disconnect from peripheral"));
 }
 
@@ -482,7 +531,7 @@ void WaitToReconnect()
   SERIAL_PORT.println(F("Press <enter> to reconnect\r"));
 
   // wait for enter
-  while (! SERIAL_PORT.available());
+  while (! SERIAL_PORT.available()) CheckConnect();
 
   // clear buffer
   while (SERIAL_PORT.available()) {

@@ -229,6 +229,19 @@ bool BLELocalDevice::paired()
   return ATT.paired();
 }
 
+// special paulvha
+uint16_t BLELocalDevice::readMTU()
+{
+
+  BLEDevice central = ATT.central();
+
+  if (central) {
+    return central.readMTU();
+  }
+
+  return 0;
+}
+
 bool BLELocalDevice::disconnect()
 {
   return ATT.disconnect();

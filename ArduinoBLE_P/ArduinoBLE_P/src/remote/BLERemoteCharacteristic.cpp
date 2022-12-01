@@ -159,15 +159,23 @@ bool BLERemoteCharacteristic::updatedValueRead()
   return result;
 }
 
-bool BLERemoteCharacteristic::read()
+// changed paulvha
+bool BLERemoteCharacteristic::read(int offset)
 {
   if (!ATT.connected(_connectionHandle)) {
     return false;
   }
-  
-  uint8_t resp[256];
 
-  int respLength = ATT.readReq(_connectionHandle, _valueHandle, resp);
+  uint8_t resp[256];
+  int respLength;
+
+  // if first read attempt
+  if (! offset)
+    respLength = ATT.readReq(_connectionHandle, _valueHandle, resp);
+
+  // more data is expected
+  else
+    respLength = ATT.readReqBlob(_connectionHandle, _valueHandle, offset, resp);
 
   if (!respLength) {
     _valueLength = 0;
@@ -188,7 +196,7 @@ bool BLERemoteCharacteristic::read()
     return false;
   }
 
-  memcpy(_value, &resp[1], _valueLength); 
+  memcpy(_value, &resp[1], _valueLength);
 
   return true;
 }

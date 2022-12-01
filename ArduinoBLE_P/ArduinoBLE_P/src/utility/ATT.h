@@ -90,6 +90,7 @@ public:
   virtual void setEventHandler(BLEDeviceEvent event, BLEDeviceEventHandler eventHandler);
 
   virtual int readReq(uint16_t connectionHandle, uint16_t handle, uint8_t responseBuffer[]);
+  virtual int readReqBlob(uint16_t connectionHandle, uint16_t handle, uint16_t offset, uint8_t responseBuffer[]); // paulvha
   virtual int writeReq(uint16_t connectionHandle, uint16_t handle, const uint8_t* data, uint8_t dataLen, uint8_t responseBuffer[]);
   virtual void writeCmd(uint16_t connectionHandle, uint16_t handle, const uint8_t* data, uint8_t dataLen);
   virtual int setPeerEncryption(uint16_t connectionHandle, uint8_t encryption);
@@ -143,6 +144,7 @@ private:
   virtual int sendReq(uint16_t connectionHandle, void* requestBuffer, int requestLength, uint8_t responseBuffer[]);
 
 private:
+
   uint16_t _maxMtu;
   unsigned long _timeout;
   struct {

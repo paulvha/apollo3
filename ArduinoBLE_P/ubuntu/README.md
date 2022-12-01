@@ -15,15 +15,21 @@ In my tests I used Sparkfun Artemis ATP and Sparkfun Artemis Edge.
 
 ## Examples
 The following examples were added to work as central:
-### BME280		   peripheral sketch: example10_ph_bme280
+### example20_BME280		   peripheral sketch: example20_ph_bme280
 In this setup an BME280 temperature, humidity and pressure sensor is connected to the peripheral. On regular intervals  it will send updated information on notify characteristic. This central has a menu to request data now, change the parameters of the data and stop sending data.
 
-### RWexample    peripheral sketch: example11_ph_RW
+### example11_RW    peripheral sketch: example11_ph_RW
 In this setup there are 4 characteristic. Two String characteristics (one reading to and one reading from), and two characteristics (one reading to and one reading from) for binary data. The central can send and read, same for the peripheral.
 
-### RW_N_example peripheral sketch: example12_ph_RW_Notify
+### example12_RW_N peripheral sketch: example12_ph_RW_Notify
 In this setup a large data message is split in multiple blocks exchanged using a flow control. There are 3 characteristics: one for peripheral to send the large data message, one for the central to send commands and feedback and one for notify.
 The notify is used by the peripheral to send command and feedback and as such also indicate to the central that a next block is ready to be read.
+
+### exampe13_MTU_test peripheral sketch: example13_ph_MTU_size
+This is using an enhancement in the ArduinoBLE_P to understand the impact of MTU size and how to read it.
+
+### exampe14_RW_N_MTU peripheral sketch: example14_ph_RW_notify_MTU
+This is the same as example12, but then using the agreed MTU as blocksize
 
 In the top of each of the files and sketches there are more details. Also each of the examples have command line options.
 

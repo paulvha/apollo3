@@ -159,32 +159,51 @@ uint8_t BLECharacteristic::operator[] (int offset) const
   return 0;
 }
 
+/**
+ * @param value : place to store the received data
+ * @param length is the maximum length to obtain
+ *
+ * @return :
+ * this routine will return the number of bytes read and let the
+ * sketch decide whether that is enough.
+ *
+ * paulvha
+ */
 int BLECharacteristic::readValue(uint8_t value[], int length)
 {
   int bytesRead = 0;
+  int offset = 0;
 
   if (_local) {
-    bytesRead = min(length, _local->valueLength());
-
+    bytesRead  = min(length, _local->valueLength());
     memcpy(value, _local->value(), bytesRead);
+    return bytesRead;
   }
 
   if (_remote) {
-    // trigger a read if the updated value (notification/indication)
-    // has already been read and the characteristic is readable
-    if (_remote->updatedValueRead() && canRead()) {
-      if (!read()) {
-        // read failed
-        return 0;
+
+    // as long as we did not get all the bytes expected
+    while (offset < length) {
+
+      // trigger a read if the updated value (notification / indication)
+      // has already been read and the characteristic is readable
+      if (_remote->updatedValueRead() && canRead()) {
+
+        if (!_remote->read(offset)) {
+          // new read failed
+          return offset;
+        }
       }
+
+      bytesRead = min(length, _remote->valueLength());
+
+      memcpy(value + offset, _remote->value() , bytesRead);
+
+      offset += bytesRead;
     }
-
-    bytesRead = min(length, _remote->valueLength());
-
-    memcpy(value, _remote->value(), bytesRead);
   }
 
-  return bytesRead;
+  return offset;
 }
 
 int BLECharacteristic::readValue(void* value, int length)
@@ -328,7 +347,7 @@ bool BLECharacteristic::valueUpdated()
     return _remote->valueUpdated();
   }
 
-  return false; 
+  return false;
 }
 
 void BLECharacteristic::addDescriptor(BLEDescriptor& descriptor)
@@ -443,7 +462,7 @@ bool BLECharacteristic::canRead()
 bool BLECharacteristic::read()
 {
   if (_remote) {
-    return _remote->read();
+    return _remote->read(0);    // paulvha
   }
 
   return false;

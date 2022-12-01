@@ -66,6 +66,8 @@ public:
   virtual int advertise();
   virtual void stopAdvertise();
 
+  virtual uint16_t readMTU(); //paulvha
+
   virtual int scan(bool withDuplicates = false);
   virtual int scanForName(String name, bool withDuplicates = false);
   virtual int scanForUuid(String uuid, bool withDuplicates = false);
@@ -78,7 +80,7 @@ public:
   virtual void setAdvertisingInterval(uint16_t advertisingInterval);
   virtual void setConnectionInterval(uint16_t minimumConnectionInterval, uint16_t maximumConnectionInterval);
   virtual void setSupervisionTimeout(uint16_t supervisionTimeout);
-  virtual void setConnectable(bool connectable); 
+  virtual void setConnectable(bool connectable);
 
   virtual void setEventHandler(BLEDeviceEvent event, BLEDeviceEventHandler eventHandler);
 
@@ -86,7 +88,7 @@ public:
 
   virtual void debug(Stream& stream);
   virtual void noDebug();
-  
+
   virtual void setPairable(uint8_t pairable);
   virtual bool pairable();
   virtual bool paired();
@@ -108,7 +110,7 @@ public:
   virtual void setDisplayCode(void (*displayCode)(uint32_t confirmationCode));
   virtual void setBinaryConfirmPairing(bool (*binaryConfirmPairing)());
   uint8_t BDaddress[6];
-  
+
 protected:
   virtual BLEAdvertisingData& getAdvertisingData();
   virtual BLEAdvertisingData& getScanResponseData();
