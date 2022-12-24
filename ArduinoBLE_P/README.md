@@ -28,6 +28,12 @@ In case you also want the Ubuntu examples, see the README in the subfolder Ubunt
 
 ## Versioning
 
+### Version 1.1.3 / december 2022
+ * added output/input_control peripheral and Android app.
+
+### Version 1.1.2 / December 2022
+ * fixed issue(s) with discover descriptors (https://github.com/arduino-libraries/ArduinoBLE/issues/277)
+
 ### version 1.1.1 / November 2022
  * added peripheral and central example13 and example14
  * added central examples running on Ubuntu/Linux for example13 and example14

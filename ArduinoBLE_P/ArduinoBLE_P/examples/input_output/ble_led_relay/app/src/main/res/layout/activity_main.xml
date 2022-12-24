@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/rlVar1"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:descendantFocusability="beforeDescendants"
+    android:focusableInTouchMode="true"
+    android:paddingBottom="@dimen/activity_vertical_margin"
+    android:paddingLeft="@dimen/activity_horizontal_margin"
+    android:paddingRight="@dimen/activity_horizontal_margin"
+    android:paddingTop="@dimen/activity_vertical_margin"
+    android:background="@color/green"
+    tools:context="com.example.ble_led_relay.MainActivity">
+
+    <TextView
+        android:id="@+id/TopLine"
+        android:layout_width="250dp"
+        android:layout_height="wrap_content"
+        android:textSize="30dp" />
+
+    <Button
+        android:layout_width="100dp"
+        android:layout_height="50dp"
+        android:text="Scan"
+        android:id="@+id/StartScanButton"
+        android:layout_marginTop="40dp"/>
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="55dp"
+        android:text="Stop Scanning"
+        android:id="@+id/StopScanButton"
+        android:layout_marginTop="40dp"/>
+
+    <Button
+        android:id="@+id/SetBatOn"
+        android:layout_width="100dp"
+        android:layout_height="55dp"
+        android:layout_marginTop="40dp"
+        android:text="Battery On" />
+
+    <Button
+        android:id="@+id/SetBatOff"
+        android:layout_width="100dp"
+        android:layout_height="55dp"
+        android:layout_marginTop="40dp"
+        android:text="Battery Off" />
+
+    <Button
+        android:id="@+id/GetInp1"
+        android:layout_width="100dp"
+        android:layout_height="55dp"
+        android:layout_marginTop="40dp"
+        android:layout_centerHorizontal="true"
+        android:text="Digital1" />
+
+    <Button
+        android:id="@+id/GetAnp1"
+        android:layout_width="100dp"
+        android:layout_height="55dp"
+        android:layout_alignParentRight="true"
+        android:layout_marginTop="40dp"
+        android:text="Analog1" />
+
+    <Button
+        android:id="@+id/SetLedOn"
+        android:layout_width="100dp"
+        android:layout_height="55dp"
+        android:layout_alignParentRight="true"
+        android:layout_marginTop="90dp"
+        android:text="led on" />
+
+    <Button
+        android:id="@+id/SetLedOff"
+        android:layout_width="100dp"
+        android:layout_height="55dp"
+        android:layout_alignParentRight="true"
+        android:layout_marginTop="90dp"
+        android:text="led off" />
+
+    <Button
+        android:id="@+id/SetOut1On"
+        android:layout_width="100dp"
+        android:layout_height="55dp"
+        android:layout_marginTop="90dp"
+        android:text="Out1 on" />
+
+    <Button
+        android:id="@+id/SetOut1Off"
+        android:layout_width="100dp"
+        android:layout_height="55dp"
+        android:layout_marginTop="90dp"
+        android:text="Out1 off" />
+
+    <Button
+        android:id="@+id/SetOut2On"
+        android:layout_width="100dp"
+        android:layout_height="55dp"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="90dp"
+        android:text="Out2 on" />
+
+    <Button
+        android:id="@+id/SetOut2Off"
+        android:layout_width="100dp"
+        android:layout_height="55dp"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="90dp"
+        android:text="out2 off" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="150dp"
+        android:layout_marginBottom="80dp"
+        android:id="@+id/PeripheralTextView"
+        android:scrollbars="vertical"
+        android:maxLines="30" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Connect to device index: "
+        android:id="@+id/ConnectButton"
+        android:layout_alignParentBottom="true"/>
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Disconnect from device"
+        android:id="@+id/DisconnectButton"
+        android:layout_alignParentBottom="true"/>
+
+    <EditText
+        android:layout_width="100dp"
+        android:layout_height="50dp"
+        android:singleLine="true"
+        android:cursorVisible="false"
+        android:id="@+id/InputIndex"
+        android:inputType="number"
+        android:paddingLeft="10dp"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentRight="true"
+        android:background="@drawable/textviewborder"/>
+
+</RelativeLayout>

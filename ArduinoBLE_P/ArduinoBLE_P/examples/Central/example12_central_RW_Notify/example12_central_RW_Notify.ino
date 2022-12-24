@@ -6,25 +6,25 @@
   This sketch demostrates the sending and receiving of data between 2 BLE devices
   It acts as the central for the sketch example12_ph_RW_Notify.
 
-  It will search the peripheral based on the service-name, when detected it will connect, extract the 
+  It will search the peripheral based on the service-name, when detected it will connect, extract the
   attributes and checks for the 3 characteristics to be available.
 
-  In each message received the first byte MUST be the MAGICNUM.  
+  In each message received the first byte MUST be the MAGICNUM.
 
   There are 4 tabs :
   example12_central_RW_Notify : here is the user level data exchange performed
-  BLE_Comm  : All BLE related activities are in this tab. 
+  BLE_Comm  : All BLE related activities are in this tab.
   defines.h : Defines that are common for the tabs.
   crc       : calculate the CRC for each block
-  
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   Challenge PROBLEM / ERROR
-  
+
   When BLERead call back has been set we can get undesired behaviour.
 
-  When a central wants to read a characteristic, ArduinoBLE will first check for valuelength. 
+  When a central wants to read a characteristic, ArduinoBLE will first check for valuelength.
   If not zero it will perform readValue(). If BLERead call back was set, it will be called BEFORE
-  copying the characteristic value to be send. The callback can now write a different value and that value 
+  copying the characteristic value to be send. The callback can now write a different value and that value
   might have gotten a different length. Still ArduinoBLE will only copy the initial obtained valuelength.
 
   The issues :
@@ -32,34 +32,34 @@
   zero and readValue() is never called.
 
   2. If readValue() is called the earlier obtained valuelength might be incorrect for the updated value. (done
-  in the callback) 
+  in the callback)
 
   WorkArounds
-  1) If your value is a fixed length all the time, on connect the peripheral can set a dummy with the fixed length. 
+  1) If your value is a fixed length all the time, on connect the peripheral can set a dummy with the fixed length.
   With a every call_back you can then set the updated value to be send.
 
   2) Use notify to send data, but that will only send as many bytes that fit in the agreed MTU size between peripheral
   and central after connect. The default size is 23. Unfortunatly there is no library call to obtain
   the agreed MTU size in the standard ArduinoBLE, but it is in ArduinoBLE_P (see example13 and example14)
 
-  3) First set a new value with the correct size on the characteristic. Then the peripheral uses a NOTIFY characteristic to 
+  3) First set a new value with the correct size on the characteristic. Then the peripheral uses a NOTIFY characteristic to
   send SHORT message the central to indicate that a read characteristic is ready to be read.
 
   --------------------------------------------------------------------------------------------------------
-  
+
   This example will demonstrate option 3.
-  
+
   When this central requests a new message, it will be send in blocks of MAXBLOCKSIZE length.
   On each command (request or cancel) from the centralthe peripheral will send RECEIVED_OK.  After the request has
-  been received the peripheral will then write the first block,send a notification that the block is ready to be read. 
+  been received the peripheral will then write the first block,send a notification that the block is ready to be read.
   This central will then read the block and if the CRC is correct send a RECEIVED_OK and request the next block.
   Else it will request to resend the block.
- 
+
   This will go on until the full message length (spread over multiple blocks). It is then displayed.
- 
+
   Using this example12 you can achieve the following transfer speed:
 
-  
+
   blocksize
   100 : it takes about 2900 mS to sent a data packet of 874 bytes.
   200 : it takes about 1450 mS to sent a data packet of 874 bytes.
@@ -88,7 +88,7 @@
 #define CANCEL_MESSAGE      2         // Peripheral / Central : cancel and disgard message
 #define NEW_BLOCK_AVAILABLE 3         // peripheral: to indicate new block is ready
 #define RECEIVED_OK         4         // Peripheral / Central : acknowledge on good receive latest command
-#define REQ_NEW_BLOCK       5         // Central : request new block  
+#define REQ_NEW_BLOCK       5         // Central : request new block
 #define RCD_CMPLT_MSG       6         // !!central : complete message received
 // errors
 #define TIMEOUT_BLOCK       7         // !!central : timeout, req to resend
@@ -103,7 +103,7 @@
 ///////////////////////////////////////////////////////
 uint8_t BlockCounter = 0;             // keep track of current block to send
 int16_t TotalMessageLength = 0;       // keep track of total message bytes left to send
-uint8_t *MessageBuf = NULL;           // holds the complete received message  
+uint8_t *MessageBuf = NULL;           // holds the complete received message
 uint16_t MessageWriteOffset = 0;      // current write offset for message
 uint8_t BlockBuf[MAXBLOCKSIZE];       // Data buffer from Bluetooth to user level
 uint8_t PeripheralCmd = NO_COMMAND;   // latest command from peripheral
@@ -131,7 +131,7 @@ void setup() {
 void loop() {
 
   static uint8_t loopcnt = 0;
-  
+
   // poll and check connect (in BLE_Comm)
   if (!CheckConnect()) {
     SERIAL_PORT.println(F("Disconnected\r"));
@@ -149,7 +149,7 @@ void loop() {
 
   // Handle (potential) input received from peripheral
   HandlePeripheralCmd();
-  
+
   //any pending command to send
   if (SetCommandNext != NO_COMMAND){
     if (loopcnt++ > 1) {
@@ -179,7 +179,7 @@ void GetGoing()
   Serial.println(MAXBLOCKSIZE);
 
   display_menu();
-  
+
   Serial.println(F("Ready to go"));
 }
 
@@ -192,9 +192,9 @@ void HandlePeripheralCmd()
   if (PeripheralCmd == NO_COMMAND) return;
 
   switch (PeripheralCmd){
-    
+
     case NEW_BLOCK_AVAILABLE:
-#ifdef BLE_SHOW_DATA 
+#ifdef BLE_SHOW_DATA
         SERIAL_PORT.println(F("New Data"));
 #endif
         PeripheralCmd = NO_COMMAND;
@@ -202,7 +202,7 @@ void HandlePeripheralCmd()
       break;
 
     case RECEIVED_OK:
-#ifdef BLE_SHOW_DATA 
+#ifdef BLE_SHOW_DATA
       SERIAL_PORT.println(F("Got OK"));
 #else
       // show still alive
@@ -215,11 +215,11 @@ void HandlePeripheralCmd()
         case ERR_INTERNAL:
           RetryBlock();
           break;
-          
+
         case CANCEL_MESSAGE:
           TotalMessageLength = 0;
           // fall through
-        
+
         default:
           PeripheralCmd = NO_COMMAND;
           PendingCommand = NO_COMMAND;
@@ -244,12 +244,12 @@ void HandlePeripheralCmd()
   }
 }
 
-/** 
+/**
  *  Retry new block after error only for RETRYCOUNT
  */
 void RetryBlock()
 {
-  if (RetryErrorCnt++ < RETRYCOUNT) 
+  if (RetryErrorCnt++ < RETRYCOUNT)
     SendCommand(REQ_NEW_BLOCK);
   else {
     SERIAL_PORT.println(F("Retry count exceeded. Giving up"));
@@ -274,8 +274,8 @@ void SendCommand(uint8_t cmd){
 
 /**
  * Read block from peripheral
- * 
- * 
+ *
+ *
  * The total message can be split across multiple blocks.
  * The first byte in a the first package of a new messages will indicate the
  * total length of the message.
@@ -290,7 +290,7 @@ void ReadDataBlock()
   if (! ret) {
     SERIAL_PORT.println("Error: could not read Block\n");
     SendCommand(ERR_INTERNAL);
-    return;    
+    return;
   }
 
   // start of new message ?
@@ -302,7 +302,7 @@ st = millis();
       SendCommand(MAGIC_INVALID);
       return;
     }
-  
+
     // get total message size
     TotalMessageLength = BlockBuf[i++] << 8;
     TotalMessageLength = TotalMessageLength |BlockBuf[i++];
@@ -317,22 +317,22 @@ st = millis();
       SERIAL_PORT.println(F("Error: could not obtain memory\n"));
       SendCommand(ERR_INTERNAL);
       return;
-    } 
+    }
 
     BlockCounter = 0;
     MessageWriteOffset = 0;
-    
-#ifdef BLE_SHOW_DATA 
+
+#ifdef BLE_SHOW_DATA
     SERIAL_PORT.print(F("Total Data length in this message = "));
     SERIAL_PORT.println(TotalMessageLength);
-#endif   
+#endif
   }
 
   // for any block
   if ( BlockCounter++ != BlockBuf[i++]){
     SERIAL_PORT.println(F("Error: Invalid block\n"));
     SendCommand(INVALID_BLOCK);
-    return;    
+    return;
   }
 
   uint16_t ReceiveBufLen = BlockBuf[i++] << 8;
@@ -344,15 +344,15 @@ st = millis();
     SendCommand(INVALID_BLOCK);
     return;
   }
-  
-#ifdef BLE_SHOW_DATA  
+
+#ifdef BLE_SHOW_DATA
   SERIAL_PORT.print(F("Current Block len = "));
   SERIAL_PORT.println(ReceiveBufLen);
 #endif
 
   // save current message location in case of CRC error
   uint16_t SaveMessageWriteOffset = MessageWriteOffset;
-  
+
   // copy data of this packet in the receive buffer
   for (; i < ReceiveBufLen ; i++) {
     // prevent buffer overrun
@@ -362,12 +362,12 @@ st = millis();
 
   // get CRC of message
   uint16_t RcvCRC = BlockBuf[i++] << 8;
-  RcvCRC |= BlockBuf[i++]; 
+  RcvCRC |= BlockBuf[i++];
 
   if (RcvCRC != calc_crc(BlockBuf,i-2)) {
     SERIAL_PORT.println(F("CRC error"));
     SendCommand(CRC_BLOCK);
-    
+
 #if 0
     uint8_t k = 0;
     for(uint16_t j=0; j<i;j++){
@@ -379,27 +379,29 @@ st = millis();
       }
     }
     SERIAL_PORT.print("\n");
-#endif    
+#endif
     // restore write offset
     MessageWriteOffset = SaveMessageWriteOffset;
-    return;  
+    return;
   }
 
   // we had a good block and communication
   SendCommand(RECEIVED_OK);
   RetryErrorCnt = 0;
 
-#ifdef BLE_SHOW_DATA  
+#ifdef BLE_SHOW_DATA
   SERIAL_PORT.print(F("MessageWriteOffset: "));
-  SERIAL_PORT.print(MessageWriteOffset);  
+  SERIAL_PORT.print(MessageWriteOffset);
   SERIAL_PORT.print(F(" TotalMessageLength: "));
-  SERIAL_PORT.println(TotalMessageLength); 
+  SERIAL_PORT.println(TotalMessageLength);
 #endif
 
   // did we receive the complete message.
   if (MessageWriteOffset >= TotalMessageLength) {
     MessageComplete = true;       // indicate message received
-    Serial.printf("It took %d mS\n", millis() -st);
+    Serial.print("It took ");
+    Serial.print(millis() - st);
+    Serial.println(" mS");
     SetCommandNext = RCD_CMPLT_MSG;
   }
   else {
@@ -410,20 +412,20 @@ st = millis();
 
 /**
  * Hand-off the notify received from the peripheral
- * 
+ *
  * Hand-off the data and let the "stack" clear with all the returns pending
- * to ArduinoBLE functions to prevent stack-overrun. 
+ * to ArduinoBLE functions to prevent stack-overrun.
  * The handling of the command triggered once returned in loop()
  */
 void HandlePeripheralNotify(const uint8_t *buf, uint16_t len)
 {
-#ifdef BLE_SHOW_DATA  
+#ifdef BLE_SHOW_DATA
   SERIAL_PORT.print(F("HandlePeripheralNotify: Magicnum 0x"));
   SERIAL_PORT.print(buf[0], HEX);
   SERIAL_PORT.print(F(" command 0x"));
   SERIAL_PORT.println(buf[1], HEX);
 #endif
-    
+
   // check for correct packet start
   if (buf[0] != MAGICNUM) {
     SendCommand(MAGIC_INVALID);
@@ -446,12 +448,12 @@ void handle_input(char c)
    * first character.
    */
   if (c == '\r') return;          // skip CR
-        
+
   if (c != '\n') {                // act on linefeed
     input[inpcnt++] = c;
-    if (inpcnt < 9) return; 
+    if (inpcnt < 9) return;
   }
-  
+
   input[inpcnt] = 0x0;
 
   // we only use the first character here
@@ -463,7 +465,7 @@ void handle_input(char c)
         RetryErrorCnt = 0;
         SendCommand(REQ_NEW_MESSAGE);
         break;
-    
+
     case '2':
         SERIAL_PORT.print(F("Cancel message from peripheral\n"));
         SendCommand(CANCEL_MESSAGE);
@@ -477,15 +479,15 @@ void handle_input(char c)
         inpcnt = 0;
         return;
         break;
-                
+
     default:
         SERIAL_PORT.print(F("Unknown request: "));
         SERIAL_PORT.println(input[0]);
         break;
   }
-  
+
   display_menu();
-  
+
   // reset keyboard buffer
   inpcnt = 0;
 }
@@ -512,7 +514,7 @@ void DisplayMessage() {
 
     SERIAL_PORT.print((char) MessageBuf[i]);
   }
-  
+
   SERIAL_PORT.println();
 }
 /**
@@ -521,13 +523,13 @@ void DisplayMessage() {
  */
 void WaitToReconnect()
 {
-  
+
   // clear any pending
   while (SERIAL_PORT.available()) {
     SERIAL_PORT.read();
     delay(100);
   }
-  
+
   SERIAL_PORT.println(F("Press <enter> to reconnect\r"));
 
   // wait for enter
@@ -538,4 +540,4 @@ void WaitToReconnect()
     SERIAL_PORT.read();
     delay(100);
   }
-}  
+}

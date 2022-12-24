@@ -72,19 +72,19 @@ void GATTClass::end()
 {
   if (_genericAccessService->release() == 0)
     delete(_genericAccessService);
-  
+
   if (_deviceNameCharacteristic->release() == 0)
     delete(_deviceNameCharacteristic);
-  
+
   if (_appearanceCharacteristic->release() == 0)
     delete(_appearanceCharacteristic);
-  
+
   if (_genericAttributeService->release() == 0)
     delete(_genericAttributeService);
-  
+
   if (_servicesChangedCharacteristic->release() == 0)
     delete(_servicesChangedCharacteristic);
-  
+
   clearAttributes();
 }
 
@@ -159,7 +159,7 @@ void GATTClass::addService(BLELocalService* service)
     characteristic->retain();
     _attributes.add(characteristic);
     characteristic->setHandle(attributeCount());
-    
+
     // add the characteristic again to make space of the characteristic value handle
     characteristic->retain();
     _attributes.add(characteristic);
@@ -170,6 +170,7 @@ void GATTClass::addService(BLELocalService* service)
       descriptor->retain();
       _attributes.add(descriptor);
       descriptor->setHandle(attributeCount());
+
     }
   }
 

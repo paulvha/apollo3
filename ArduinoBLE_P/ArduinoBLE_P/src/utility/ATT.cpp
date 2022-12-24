@@ -795,13 +795,14 @@ void ATTClass::findInfoReq(uint16_t connectionHandle, uint16_t mtu, uint8_t dlen
     }
 
     if (response[1] != infoType) {
-      // different type
+      // different type length of UUID
       break;
     }
 
     // add the handle
     memcpy(&response[responseLength], &handle, sizeof(handle));
     responseLength += sizeof(handle);
+
 
     if (isValueHandle || isDescriptor) {
       // add the UUID
@@ -810,7 +811,6 @@ void ATTClass::findInfoReq(uint16_t connectionHandle, uint16_t mtu, uint8_t dlen
     } else {
       // add the type
       uint16_t type = attribute->type();
-
       memcpy(&response[responseLength], &type, sizeof(type));
       responseLength += sizeof(type);
     }
@@ -1737,7 +1737,7 @@ bool ATTClass::discoverCharacteristics(uint16_t connectionHandle, BLERemoteDevic
 
   return true;
 }
-
+/*
 bool ATTClass::discoverDescriptors(uint16_t connectionHandle, BLERemoteDevice* device)
 {
   uint16_t reqStartHandle = 0x0001;
@@ -1753,10 +1753,12 @@ bool ATTClass::discoverDescriptors(uint16_t connectionHandle, BLERemoteDevice* d
     uint16_t serviceEndHandle = service->endHandle();
 
     int characteristicCount = service->characteristicCount();
-
+      Serial.printf(".................. %s \n", service->uuid());
     for (int j = 0; j < characteristicCount; j++) {
+
       BLERemoteCharacteristic* characteristic = service->characteristic(j);
-      // see issue 175 for incorrect choice
+      Serial.printf("characteristicCount %d, j %d, %s \n",characteristicCount, j, characteristic->uuid());
+
       BLERemoteCharacteristic* nextCharacteristic = (j == (characteristicCount - 1)) ? NULL : service->characteristic(j + 1);
 
       reqStartHandle = characteristic->valueHandle() + 1;
@@ -1767,21 +1769,28 @@ bool ATTClass::discoverDescriptors(uint16_t connectionHandle, BLERemoteDevice* d
       }
 
       while (1) {
-        int respLength = findInfoReq(connectionHandle, reqStartHandle, reqEndHandle, responseBuffer);
 
+        int respLength = findInfoReq(connectionHandle, reqStartHandle, reqEndHandle, responseBuffer);
+Serial.printf("reqStartHandle %d, reqEndHandle %d\n",reqStartHandle, reqEndHandle);
         if (respLength == 0) {
           return false;
         }
 
         if (responseBuffer[0] == ATT_OP_FIND_INFO_RESP) {
-          uint16_t lengthPerDescriptor = responseBuffer[1] * 4;
-          uint8_t uuidLen = 2;
+          //uint16_t lengthPerDescriptor = responseBuffer[1] * 4;
+          uint16_t lengthPerDescriptor = 4 ; // assume 16-bit UUID
+          if (responseBuffer[1] == 0x2) lengthPerDescriptor = 18; // if 128 BIT UUID (16 + handle)
 
+          uint8_t uuidLen = 2;
+Serial.printf("resplength %d, lengthPerDescriptor %d\n",respLength, lengthPerDescriptor);
           for (int i = 2; i < respLength; i += lengthPerDescriptor) {
             struct __attribute__ ((packed)) RawDescriptor {
               uint16_t handle;
               uint8_t uuid[16];
             } *rawDescriptor = (RawDescriptor*)&responseBuffer[i];
+
+for(int p =0 ; p < respLength; p++) Serial.printf(" %x", responseBuffer[p]);
+Serial.printf("\nawDescriptor->handle %d, i %d, respLength %d \n",rawDescriptor->handle,i,respLength);
 
             BLERemoteDescriptor* descriptor = new BLERemoteDescriptor(rawDescriptor->uuid, uuidLen,
                                                                       connectionHandle,
@@ -1792,10 +1801,115 @@ bool ATTClass::discoverDescriptors(uint16_t connectionHandle, BLERemoteDevice* d
             }
 
             characteristic->addDescriptor(descriptor);
-
+Serial.printf("voor %d\n",reqStartHandle);
             reqStartHandle = rawDescriptor->handle + 1;
+            Serial.printf("na %d\n",reqStartHandle);
           }
         } else {
+          break;
+        }
+      }
+    }
+  }
+
+  return true;
+}
+*/
+// {paulvha} this routine has been updated / streamlined to :
+// reduce unneccessary discovery calls
+// NOT add characteristics nor characteristic values as potential descriptors
+// added additional comments to better understand the code
+bool ATTClass::discoverDescriptors(uint16_t connectionHandle, BLERemoteDevice* device)
+{
+  uint16_t reqStartHandle = 0x0001;
+  uint16_t reqEndHandle = 0xffff;
+
+  uint8_t responseBuffer[_maxMtu];
+
+  int serviceCount = device->serviceCount();
+
+  for (int i = 0; i < serviceCount; i++) {
+
+    BLERemoteService* service = device->service(i);
+
+    uint16_t serviceEndHandle = service->endHandle();
+
+    int characteristicCount = service->characteristicCount();
+
+    // Needed to filter out Characteristic Valuehandle() {paulvha}
+    bool NextIsCharValue = false;
+
+    for (int j = 0; j < characteristicCount; j++) {
+      BLERemoteCharacteristic* characteristic = service->characteristic(j);
+
+      // if we are on the last characteristic of the service there is NO next
+      BLERemoteCharacteristic* nextCharacteristic = (j == (characteristicCount - 1)) ? NULL : service->characteristic(j + 1);
+
+      // check for potential descriptor AFTER characteristic valuehandle
+      reqStartHandle = characteristic->valueHandle() + 1;
+
+      // and BEFORE the handle of the next characteristic (if any)
+      // if there is NO next characteristic, use the service endhandle instead
+      reqEndHandle = nextCharacteristic ? nextCharacteristic->valueHandle() : serviceEndHandle;
+
+      while (1) {
+        // if we have checked all the attributes handles we are done with this service  {paulvha}
+        if (reqStartHandle > reqEndHandle) {
+          break;
+        }
+
+        int respLength = findInfoReq(connectionHandle, reqStartHandle, reqEndHandle, responseBuffer);
+
+        if (respLength == 0) {
+          return false;
+        }
+
+        if (responseBuffer[0] == ATT_OP_FIND_INFO_RESP) {
+
+          // 3.4.3.2 Find Information Response {paulvha}
+          uint16_t lengthPerDescriptor = 4 ; // assume 16-bit UUID = 2 bytes + 2 handle
+          uint8_t uuidLen = 2;               // Num of bytes for UUID copy
+
+          if (responseBuffer[1] == 0x2) {
+            lengthPerDescriptor = 18;        // if 128-BIT UUID = 16 bytes  + 2 handle
+            uuidLen = 16;
+          }
+
+          for (int i = 2; i < respLength; i += lengthPerDescriptor) {
+
+            struct __attribute__ ((packed)) RawDescriptor {
+              uint16_t handle;
+              uint8_t uuid[16];               // potential maximum UUID for descriptor
+            } *rawDescriptor = (RawDescriptor*)&responseBuffer[i];
+
+            reqStartHandle = rawDescriptor->handle + 1;
+
+            // in case previous handle was a characteristic, this one is the Characteristic value
+            // that should not be added to list of discriptors {paulvha}
+            if (NextIsCharValue) {
+              NextIsCharValue = false;
+              continue;
+            }
+
+            uint16_t Checktype = BLETypeCharacteristic;
+            // if UUID len is 2 and the UUID is type characteristic  don't add to descriptors {paulvha}
+            if (responseBuffer[1] == 0x1 && memcmp(rawDescriptor->uuid, &Checktype, sizeof(Checktype)) == 0){
+              // not only skip adding this characteristic to the discriptor list, but also skip the next = valuehandle()
+              NextIsCharValue = true;
+              continue;
+            }
+
+            BLERemoteDescriptor* descriptor = new BLERemoteDescriptor(rawDescriptor->uuid, uuidLen,
+                                                                      connectionHandle,
+                                                                      rawDescriptor->handle);
+
+            if (descriptor == NULL) {
+              return false;
+            }
+
+            characteristic->addDescriptor(descriptor);
+          }
+        } else {    // no response received
           break;
         }
       }

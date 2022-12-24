@@ -148,7 +148,7 @@ void HCIClass::poll(unsigned long timeout)
 
     _recvBuffer[_recvIndex++] = b;
 
-    if (_recvBuffer[0] == HCI_ACLDATA_PKT) {
+    if (_recvBuffer[0] == HCI_ACLDATA_PKT) { //0x02
       if (_recvIndex > 5 && _recvIndex >= (5 + (_recvBuffer[3] + (_recvBuffer[4] << 8)))) {
         if (_debug) {
           dumpPkt("HCI ACLDATA RX <- ", _recvIndex, _recvBuffer);
@@ -769,7 +769,7 @@ void HCIClass::handleAclDataPkt(uint8_t /*plen*/, uint8_t pdata[])
     return;
   }
 
-  if (aclHdr->cid == ATT_CID) {
+  if (aclHdr->cid == ATT_CID) { //0x0004
     if (aclFlags == 0x01) {
       // use buffered packet
       ATT.handleData(aclHdr->handle & 0x0fff, aclHdr->len, &_aclPktBuffer[sizeof(HCIACLHdr)]);

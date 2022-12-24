@@ -62,7 +62,7 @@ BLEService::BLEService(const BLEService& other)
     _remote->retain();
   }
 }
-
+// Fix memory leak on end() -> begin() -> end()
 void BLEService::clear()
 {
   if (_local) {

@@ -32,7 +32,7 @@ public:
 
   unsigned int characteristicCount() const;
   BLERemoteCharacteristic* characteristic(unsigned int index) const;
-
+  String _uuid;
 protected:
   friend class ATTClass;
 
@@ -45,7 +45,7 @@ private:
   uint16_t _startHandle;
   uint16_t _endHandle;
 
-  String _uuid;
+ // String _uuid; paulvha
 
   BLELinkedList<BLERemoteCharacteristic*> _characteristics;
 };

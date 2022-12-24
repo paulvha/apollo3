@@ -15,6 +15,10 @@ In my tests I used Sparkfun Artemis ATP and Sparkfun Artemis Edge.
 
 ## Examples
 The following examples were added to work as central:
+
+### output_input_control   peripheral sketch: output_input_sketch
+Central to control the Arduino on-board led, 2 ouput pins, 1 digital input, 1 analog input and simuliated battery
+
 ### example20_BME280		   peripheral sketch: example20_ph_bme280
 In this setup an BME280 temperature, humidity and pressure sensor is connected to the peripheral. On regular intervals  it will send updated information on notify characteristic. This central has a menu to request data now, change the parameters of the data and stop sending data.
 

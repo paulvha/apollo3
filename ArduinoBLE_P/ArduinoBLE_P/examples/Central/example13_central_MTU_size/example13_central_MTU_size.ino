@@ -155,7 +155,9 @@ bool ScanForPeri()
   // Not Found, stop scanning
   BLE.stopScan();
   
-  Serial.printf("ERROR: Could not find peripheral %s. freeze\n", DEVICENAME);
+  Serial.print("ERROR: Could not find peripheral ");
+  Serial.print(DEVICENAME);
+  Serial.println("freeze");
   while(1);    
 }
 
@@ -234,7 +236,9 @@ void RxChar_Received(BLEDevice central, BLECharacteristic characteristic) {
     Serial.println("MTU mismatch");
   }
   
-  Serial.printf("Simulated battery level %d%%\n",buf[2]);
+  Serial.print("Simulated battery level ");
+  Serial.print(buf[2]);
+  Serial.println("%%");
   
   //for (uint16_t i = 0; i < len; i++) Serial.println(buf[i]); 
 }

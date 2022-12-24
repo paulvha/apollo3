@@ -157,7 +157,7 @@ BLEDevice GAPClass::available()
         return result;
       } else {
         continue;
-      } 
+      }
     }
   }
 
@@ -216,11 +216,19 @@ void GAPClass::handleLeAdvertisingReport(uint8_t type, uint8_t addressType, uint
 
   if (discoveredDevice == NULL) {
     if (_discoveredDevices.size() >= GAP_MAX_DISCOVERED_QUEUE_SIZE) {
-      // drop
+    // ********* begin change ******
+/*      // drop
       return;
     }
-
-    discoveredDevice = new BLEDevice(addressType, address);
+*/
+   // https://github.com/arduino-libraries/ArduinoBLE/pull/264 fix BLE scanning block after minutes
+   BLEDevice* device_first = _discoveredDevices.remove(0);
+     if (device_first != NULL) {
+       delete device_first;
+     }
+   }
+   // ******** end change *************
+   discoveredDevice = new BLEDevice(addressType, address);
 
     _discoveredDevices.add(discoveredDevice);
     discoveredIndex = _discoveredDevices.size() - 1;
