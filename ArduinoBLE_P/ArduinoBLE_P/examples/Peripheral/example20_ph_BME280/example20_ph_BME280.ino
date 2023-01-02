@@ -14,6 +14,10 @@
   For Sparkfun Apollo3 library V1.2.3 a special patched ArduinoBLE_P (P = patched) and
   ExactLE package needs to be installed. See installation instructions
 
+  January 2023 / paulvha / version 1.0.2
+  - update to better reset on disconnect
+  - tested with Android app.
+  
   November 2022 / paulvha / version 1.0.1
   - changed the sending to bytes instead of string
   - added synchronisation byte
@@ -28,17 +32,7 @@
  ************************************************************************************
 = BME280
 
-  This has been tested with an Adafruit BME280. Parts of the code below are coming from
-  Sparkfun BME280 library: https://github.com/sparkfun/SparkFun_BME280_Arduino_Library
-  The expected I2C address is 0x77.
-
-    BME280      QWUIC
-    GND         GND
-    VCC         3V3
-    SCK         SCL
-    SDI         SDA
-
-   OR (depending on your BME280 board and connected to QWiic)
+  This has been tested with an Adafruit BME280. 
 
    BME280       I2C
     VIN         3v3
@@ -49,6 +43,18 @@
     SDI         SDA
     CS
 
+  OR (depending on your BME280 board and connected to QWiic)
+  
+  Parts of the code below are coming from
+  Sparkfun BME280 library: https://github.com/sparkfun/SparkFun_BME280_Arduino_Library
+  The expected I2C address is 0x77.
+
+    BME280      QWIIC
+    GND         GND
+    VCC         3V3
+    SCK         SCL
+    SDI         SDA
+   
 
 **********************************************************************************
 !! BEFORE YOU START!!
@@ -75,6 +81,9 @@ private:
 **********************************************************************************
 
   Use Example20_central_BME280 to read complete BME280 information
+
+  Janury 2023 : there is not also an Android App available.
+  
 
   For debug :
 
@@ -157,7 +166,7 @@ bool BME280_Detected = false;
 #include "utility/HCI.h"    // needed for sendcommand
 
 // MAX Up to 29 characters for BLE name
-const char BLE_PERIPHERAL_NAME[] = "Artemis peripheral BME280 BLE";
+const char BLE_PERIPHERAL_NAME[] = "Peripheral BME280 BLE";
 
 // define your new Bluetooth device address in NEW_APOLLO_BDADR in REVERSE order :
 // {0x66, 0x55, 0x44, 0x33, 0x22, 0x11} will become device address 11:22:33:44:55:66
@@ -204,7 +213,7 @@ void setup() {
 
   SERIAL_PORT.begin(115200);
   delay(1000);
-  SERIAL_PORT.printf("Exxample20 BME280 peripheral. Compiled: %s\n\r", __TIME__);
+  SERIAL_PORT.printf("Example20 BME280 peripheral. Compiled: %s\n\r", __TIME__);
 
   ///////////////////////////////////////////////////
   // BLE INIT
@@ -419,7 +428,7 @@ void CentralRequestReceived()
   BME280rCharacteristic.readValue(buf, len);
 
 /** set to 1 to enable debug */
-#if (0)
+#if (1)
   SERIAL_PORT.print(F("Received command with length: "));
   SERIAL_PORT.print(len);
   SERIAL_PORT.print("\r\n");
@@ -506,6 +515,7 @@ bool SendReplyCentral(uint8_t *buf, uint8_t len)
     return(false);
   }
 
+Serial.printf("sending len %d\n", len);
   ToSend[0] = MAGICNUM; // magicnumber to improve synchronisation
   ToSend[1] = len;      // second byte of new message in the total data length
 
@@ -561,4 +571,6 @@ void blePeripheralDisconnectHandler(BLEDevice central) {
   Serial.print("Disconnected event, central: ");
   Serial.println(central.address());
   Interval = FIRST_SENDINTERVAL;      // reset
+  uint8_t AltitudeInMeter = 1;
+  uint8_t TempInCelsius = 1;
 }

@@ -28,6 +28,9 @@ In case you also want the Ubuntu examples, see the README in the subfolder Ubunt
 
 ## Versioning
 
+### Version 1.1.4 / January 2023
+ * added Android app for  example20_ph_BME280
+
 ### Version 1.1.3 / december 2022
  * added output/input_control peripheral and Android app.
 

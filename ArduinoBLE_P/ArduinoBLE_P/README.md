@@ -22,6 +22,9 @@ This is the same as example12, but then using the agreed MTU as blocksize
 
 Next to a central in the Arduino IDE environment there is also an central in the ubuntu/linux environment.
 
+Also there are 2 Android apps available
+BME280 : works with peripheral example20_ph_BME280
+Input / output control which is a combination of an Android app and Sketch to control input/output.
 
 [![Compile Examples Status](https://github.com/arduino-libraries/ArduinoBLE/workflows/Compile%20Examples/badge.svg)](https://github.com/arduino-libraries/ArduinoBLE/actions?workflow=Compile+Examples) [![Spell Check Status](https://github.com/arduino-libraries/ArduinoBLE/workflows/Spell%20Check/badge.svg)](https://github.com/arduino-libraries/ArduinoBLE/actions?workflow=Spell+Check)
 
