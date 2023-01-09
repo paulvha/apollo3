@@ -344,7 +344,6 @@ int HCIClass::leSetAdvertisingData(uint8_t length, uint8_t data[])
   memset(&leAdvertisingData, 0, sizeof(leAdvertisingData));
   leAdvertisingData.length = length;
   memcpy(leAdvertisingData.data, data, length);
-
   return sendCommand(OGF_LE_CTL << 10 | OCF_LE_SET_ADVERTISING_DATA, sizeof(leAdvertisingData), &leAdvertisingData);
 }
 
@@ -627,6 +626,7 @@ int HCIClass::sendAclPkt(uint16_t handle, uint8_t cid, uint8_t plen, void* data)
 {
 
   while (_pendingPkt >= _maxPkt) {
+Serial.println("poll");
     poll();
   }
 
@@ -1035,7 +1035,7 @@ void HCIClass::handleEventPkt(uint8_t /*plen*/, uint8_t pdata[])
       uint8_t subevent;
     } *leMetaHeader = (LeMetaEventHeader*)&pdata[sizeof(HCIEventHdr)];
 #ifdef _BLE_TRACE_
-    Serial.print("\tSubEvent: 0x");
+    Serial.print("(EVT_LE_META_EVENT) SubEvent: 0x");
     Serial.println(leMetaHeader->subevent,HEX);
 #endif
     switch((LE_META_EVENT)leMetaHeader->subevent){

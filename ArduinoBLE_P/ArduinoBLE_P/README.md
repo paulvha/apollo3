@@ -1,8 +1,14 @@
-# ArduinoBLE_P - November 2022: update and tested on V1.2.3
+# ArduinoBLE_P - January 2023: update and tested on V1.2.3
 
 This is based on ArduinoBLE 1.3.2, but adjusted for Sparkfun library V1.2.3. Next to that a number of changes have been applied. (see doc folder). For installation instruction see Doc-folder.
 
 ## examples have been added with a menu structure:
+
+### Scan Beacon central (January 2023)
+This scanner can find and dislay the details of an iBeacon. (i)Beacons are peripherals that advertise a special formatted message as defined by Apple. See more inforamation on https://en.wikipedia.org/wiki/IBeacon.
+
+### Beacon Peripheral		(January 2023)
+This peripheral can emulate and iBeacon. (i)Beacons are peripherals that advertise a special formatted message as defined by Apple. See more inforamation on https://en.wikipedia.org/wiki/IBeacon.  An (i)Beacon is used to find your way around a building or to a specific place.
 
 ### example20_ph_bme280 / example20_central_bme280
 In this setup an BME280 temperature, humidity and pressure sensor is connected to the peripheral. On regular intervals  it will send updated information on notify characteristic. This central has a menu to request data now, change the parameters of the data and stop sending data.

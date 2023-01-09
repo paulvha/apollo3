@@ -651,3 +651,8 @@ src/utility/GAP.cpp, round line 222
     _discoveredDevices.add(discoveredDevice);
     discoveredIndex = _discoveredDevices.size() - 1;
   }
+  
+..........................................................................................
+
+..........................................................................................
+

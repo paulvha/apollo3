@@ -315,7 +315,7 @@ HCITransportInterface& HCITransport = HCICordioTransport;
 
 void HCICordioTransportClass::onDataReceived(uint8_t* data, uint8_t len)
 {
-  HCICordioTransport.handleRxData(data, len);
+   HCICordioTransport.handleRxData(data, len);
 }
 
 #endif

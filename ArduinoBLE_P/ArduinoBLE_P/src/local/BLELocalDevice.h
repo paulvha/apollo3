@@ -111,7 +111,7 @@ public:
   virtual void setBinaryConfirmPairing(bool (*binaryConfirmPairing)());
   uint8_t BDaddress[6];
 
-protected:
+//protected:    //{paulvha}
   virtual BLEAdvertisingData& getAdvertisingData();
   virtual BLEAdvertisingData& getScanResponseData();
 

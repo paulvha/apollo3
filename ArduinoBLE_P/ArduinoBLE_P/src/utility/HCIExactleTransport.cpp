@@ -17,7 +17,7 @@
   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
   ********************************************************************
-  This is a special for running ArduinoBLe on Exactle (and thus 1.2.1)
+  This is a special for running ArduinoBLE on Exactle (and thus 1.2.1)
   based on HCICordioTransport.cpp.  paulvha / February 2021
 
   Sometimes you get :
@@ -35,8 +35,8 @@
 
 #include <Arduino.h>
 #include "HCIExactleTransport.h"
-
 #include "RingBuffer.h"
+
 RingBufferN<256> _rxBuf;
 
 #ifdef __cplusplus
@@ -330,7 +330,7 @@ exactle_init(void) {
     // ALL that is handled by ArduinoBLE.
     //
     handlerId = WsfOsSetNextHandler(HciDrvHandler);  // in hci_drv_apollo3.c
-    HciDrvHandlerInitArduinoBLE(handlerId);
+    HciDrvHandlerInit(handlerId);
 }
 
 //*****************************************************************************

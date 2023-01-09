@@ -33,6 +33,7 @@
 #include "wsf_buf.h"
 #include "wsf_msg.h"
 #include "wsf_cs.h"
+#include "am_util.h"
 
 /**************************************************************************************************
   Compile time assert checks
@@ -382,6 +383,7 @@ void wsfOsDispatcher(void)
     {
       if ((pTask->handlerEventMask[i] != 0) && (pTask->handler[i] != NULL))
       {
+
         WSF_CS_ENTER(cs);
         eventMask = pTask->handlerEventMask[i];
         pTask->handlerEventMask[i] = 0;

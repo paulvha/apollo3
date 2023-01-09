@@ -14,11 +14,13 @@ looks to be the future for the Apollo3 boards.
 <br>This is a ArduinoBLE_P package contains the necessary BLE-stack files for V1.2.3 and ArduinoBLE version 1.3.2 taken from ![ArduinoBLE](https://github.com/arduino-libraries/ArduinoBLE).
 A number of known bugfixes have been applied. It is delivered as is and there are NO plans to incorporate new functionalities or apply bug-changes as they become known or available. A number of bugs are known to be solved in future versions of the official version, see their ![website](https://github.com/arduino-libraries/ArduinoBLE/issues).
 
-## Getting started
-Make sure to install V1.2.3 for Artemis/Apollo3 Sparkfun boards in the Arduino IDE.
+<br> The Exactly part is focussed on Apollo3 / Artemis. If you use ArduinoBLE (on the many Arduino or Sparkfun boards that do not rely on Apollo3 V1)
+Most of the examples can be used for any ArduinoBLE implemenation.
 
-In case you have the official ArduinoBLE installed, it will not work without modification on V1.2.3. No need to change or remove as with
-this package an ArduinoBLE_P will be installed that has been tested and works.
+## Getting started
+In case of V1.2.3 for Artemis/Apollo3 Sparkfun boards in the Arduino IDE, make sure to install Exactly.
+
+In case you have the official ArduinoBLE installed. No need to change or remove as with this package an ArduinoBLE_P will be installed that has been tested and works.
 
 <br>Otherwise no special library dependencies.
 
@@ -28,29 +30,33 @@ In case you also want the Ubuntu examples, see the README in the subfolder Ubunt
 
 ## Versioning
 
-### Version 1.1.4 / January 2023
- * added Android app for  example20_ph_BME280
+### Version 1.1.5 / January 2023
+ * Added iBeacon peripheral and Beacon scanner central
+ * Removed most of the unnessary code for Exactly. Might mean you need to use this latest version
 
-### Version 1.1.3 / december 2022
- * added output/input_control peripheral and Android app.
+### Version 1.1.4 / January 2023
+ * Added source Android app for example20_ph_BME280
+
+### Version 1.1.3 / December 2022
+ * Added output/input_control peripheral and source Android app.
 
 ### Version 1.1.2 / December 2022
- * fixed issue(s) with discover descriptors (https://github.com/arduino-libraries/ArduinoBLE/issues/277)
+ * Fixed issue(s) with discover descriptors (https://github.com/arduino-libraries/ArduinoBLE/issues/277)
 
 ### version 1.1.1 / November 2022
- * added peripheral and central example13 and example14
- * added central examples running on Ubuntu/Linux for example13 and example14
+ * Added peripheral and central example13 and example14
+ * Added central examples running on Ubuntu/Linux for example13 and example14
 
 ### version 1.1.0 / November 2022
- * added peripheral and central example11 and example12
- * added central examples running on Ubuntu/Linux for example20, example11 and example12
+ * Added peripheral and central example11 and example12
+ * Added central examples running on Ubuntu/Linux for example20, example11 and example12
 
 ### version 1.0.1 / October 2022
- * updated files for Sparkfun library V1.2.3
- * updated to use ArduinoBLE 1.3.2 as starting point
- * applied different bug fixes (see extras folder)
- * updated peripheral and central examples for BME280
- * added BME280 solution that can run on Linux/ubuntu
+ * Updated files for Sparkfun library V1.2.3
+ * Updated to use ArduinoBLE 1.3.2 as starting point
+ * Applied different bug fixes (see extras folder)
+ * Updated peripheral and central examples for BME280
+ * Added BME280 solution that can run on Linux/ubuntu
 
 ### version 1.0 / April 2021
  * Initial version

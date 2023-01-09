@@ -33,7 +33,7 @@
 #include "wsf_buf.h"
 #include "wsf_msg.h"
 #include "wsf_cs.h"
-
+#include "am_util.h"
 /**************************************************************************************************
   Compile time assert checks
 **************************************************************************************************/
@@ -233,7 +233,7 @@ void WsfSetEvent(wsfHandlerId_t handlerId, wsfEventMask_t event)
   WSF_ASSERT(WSF_HANDLER_FROM_ID(handlerId) < WSF_MAX_HANDLERS);
 
   WSF_TRACE_INFO2("WsfSetEvent handlerId:%u event:%u", handlerId, event);
-
+//am_hal_gpio_state_write(22, AM_HAL_GPIO_OUTPUT_SET);
   WSF_CS_ENTER(cs);
   wsfOs.task.handlerEventMask[WSF_HANDLER_FROM_ID(handlerId)] |= event;
   wsfOs.task.taskEventMask |= WSF_HANDLER_EVENT;
@@ -390,7 +390,7 @@ void wsfOsDispatcher(void)
           eventMask = pTask->handlerEventMask[i];
           pTask->handlerEventMask[i] = 0;
           WSF_CS_EXIT(cs);
-
+//am_hal_gpio_state_write(22, AM_HAL_GPIO_OUTPUT_CLEAR);
           (*pTask->handler[i])(eventMask, NULL);
         }
       }

@@ -53,10 +53,10 @@ struct BLEAdvertisingRawData {
 
 class BLEAdvertisingData {
 public:
-  BLEAdvertisingData(); 
+  BLEAdvertisingData();
   virtual ~BLEAdvertisingData();
 
-  int availableForWrite(); 
+  int availableForWrite();
   void clear();
   void copy(const BLEAdvertisingData& adv);
   BLEAdvertisingData& operator=(const BLEAdvertisingData &other);
@@ -110,7 +110,7 @@ private:
   uint16_t _manufacturerCompanyId;
   bool _hasManufacturerCompanyId;
 
-  const char* _advertisedServiceUuid; 
+  const char* _advertisedServiceUuid;
   int _advertisedServiceUuidLength;
   uint16_t _serviceDataUuid;
   const uint8_t* _serviceData;

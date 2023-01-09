@@ -22,6 +22,7 @@
 
 #include "GAP.h"
 
+// only 5 scan devices at any time the queue
 #define GAP_MAX_DISCOVERED_QUEUE_SIZE 5
 
 #define GAP_ADV_IND (0x00)
@@ -51,7 +52,6 @@ int GAPClass::advertise(uint8_t* advData, uint8_t advDataLen, uint8_t* scanData,
   uint8_t directBdaddr[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
   uint8_t type = (_connectable) ? GAP_ADV_IND : (scanDataLen ? GAP_ADV_SCAN_IND : GAP_ADV_NONCONN_IND);
-
   stopAdvertise();
 
   if (HCI.leSetAdvertisingParameters(_advertisingInterval, _advertisingInterval, type, 0x00, 0x00, directBdaddr, 0x07, 0) != 0) {
@@ -142,6 +142,8 @@ void GAPClass::stopScan()
   _discoveredDevices.clear();
 }
 
+// checking for new peripheral added.
+// e.g. from an advertise report.
 BLEDevice GAPClass::available()
 {
   for (unsigned int i = 0; i < _discoveredDevices.size(); i++) {
@@ -149,8 +151,10 @@ BLEDevice GAPClass::available()
 
     if (device->discovered()) {
       BLEDevice result = *device;
-
+      // remove from list
       _discoveredDevices.remove(i);
+
+      // this is freeing up memory, but we are still going to use it ??
       delete device;
 
       if (matchesScanFilter(result)) {
@@ -174,6 +178,7 @@ void GAPClass::setConnectable(bool connectable)
   _connectable = connectable;
 }
 
+// optional to set a call back when scan data has been received
 void GAPClass::setEventHandler(BLEDeviceEvent event, BLEDeviceEventHandler eventHandler)
 {
   if (event == BLEDiscovered) {
@@ -181,6 +186,7 @@ void GAPClass::setEventHandler(BLEDeviceEvent event, BLEDeviceEventHandler event
   }
 }
 
+// advertising report (event 0x3e, subevent 0x02)
 void GAPClass::handleLeAdvertisingReport(uint8_t type, uint8_t addressType, uint8_t address[6],
                                           uint8_t eirLength, uint8_t eirData[], int8_t rssi)
 {
@@ -188,12 +194,13 @@ void GAPClass::handleLeAdvertisingReport(uint8_t type, uint8_t addressType, uint
     return;
   }
 
+// if a scan call back was set & Non connectable undirected advertising (ADV_NONCONN_IND)
   if (_discoverEventHandler && type == 0x03) {
     // call event handler and skip adding to discover list
     BLEDevice device(addressType, address);
 
     device.setAdvertisementData(type, eirLength, eirData, rssi);
-
+    // if there is a match on a filter or filter not set
     if (matchesScanFilter(device)) {
       _discoverEventHandler(device);
     }
@@ -221,8 +228,9 @@ void GAPClass::handleLeAdvertisingReport(uint8_t type, uint8_t addressType, uint
       return;
     }
 */
-   // https://github.com/arduino-libraries/ArduinoBLE/pull/264 fix BLE scanning block after minutes
-   BLEDevice* device_first = _discoveredDevices.remove(0);
+     // https://github.com/arduino-libraries/ArduinoBLE/pull/264 fix BLE scanning block after minutes
+     BLEDevice* device_first = _discoveredDevices.remove(0);
+
      if (device_first != NULL) {
        delete device_first;
      }
@@ -234,25 +242,31 @@ void GAPClass::handleLeAdvertisingReport(uint8_t type, uint8_t addressType, uint
     discoveredIndex = _discoveredDevices.size() - 1;
   }
 
-  if (type != 0x04) {
+  if (type != 0x04) {   // Scan Response (SCAN_RSP)
     discoveredDevice->setAdvertisementData(type, eirLength, eirData, rssi);
   } else {
+    // copy scan response AFTER advertising data
     discoveredDevice->setScanResponseData(eirLength, eirData, rssi);
   }
-
+  // Only scanresponse (0x04) and a scan call back was set
+  // no need to check 0x03.. would never get here given earlier check
   if (discoveredDevice->discovered() && _discoverEventHandler) {
-    // remove from list and report as discovered
+
+    // remove from list
     BLEDevice device = *discoveredDevice;
 
-    _discoveredDevices.remove(discoveredIndex);
-    delete discoveredDevice;
-
+    // all back with handler if it matches the filter or filter NOT set
     if (matchesScanFilter(device)) {
       _discoverEventHandler(device);
     }
+
+    _discoveredDevices.remove(discoveredIndex);
+    // delete before usage ????
+    delete discoveredDevice;
   }
 }
 
+// check for any filter that might haver been set
 bool GAPClass::matchesScanFilter(const BLEDevice& device)
 {
   if (_scanAddressFilter.length() > 0 && !(_scanAddressFilter.equalsIgnoreCase(device.address()))) {

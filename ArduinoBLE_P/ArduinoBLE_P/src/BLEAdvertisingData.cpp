@@ -190,6 +190,7 @@ bool BLEAdvertisingData::setRawData(const uint8_t* data, int length)
   }
   _rawData = data;
   _rawDataLength = length;
+
   return true;
 }
 
@@ -220,10 +221,12 @@ bool BLEAdvertisingData::updateData()
   bool success = true;
   // Reset data
   _dataLength = 0;
+
   // If rawData is present, then only rawData is inserted in the advertising packet
   if (_rawData && _rawDataLength) {
     return addRawData(_rawData, _rawDataLength);
   }
+
   // Try to add flags into the current advertising packet
   if (_hasFlags) {
     success &= addFlags(_flags);
@@ -322,6 +325,7 @@ bool BLEAdvertisingData::addRawData(const uint8_t* data, int length)
   }
   memcpy(&_data[_dataLength], data, length);
   _dataLength += length;
+
   return true;
 }
 

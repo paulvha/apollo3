@@ -341,6 +341,7 @@ int BLELocalDevice::advertise()
 {
   _advertisingData.updateData();
   _scanResponseData.updateData();
+
   return GAP.advertise( _advertisingData.data(), _advertisingData.dataLength(),
                         _scanResponseData.data(), _scanResponseData.dataLength());
 }
