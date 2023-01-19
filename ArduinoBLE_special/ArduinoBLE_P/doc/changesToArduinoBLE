@@ -1,0 +1,672 @@
+Changes Applied for ArduinoBLE_P (P from Patched)
+
+This version of ArduinoBLE can work on Sparkfun library 2.0.x as well as Library 1.2.3
+The original ArduinoBLE was version 1.3.2 now version 3.3.2
+
+
+
+=================================
+#Enable working on Sparkfun 1.2.1
+=================================
+New files have been added to ArduinoBLE/src/uility/
+
+HCIExactleTransport.cpp
+HCIExactleTransport.h
+
+The handle the HCI interface between the ArduinoBLE HCI commands and
+the Exactle layer.
+
+=================================
+#Handle correct detection
+=================================
+Depending on the architecture either UART, Cordio or EXACTLE HCI-Transport
+layer is selected. This needs a small change
+
+In HCIUartTransport.cpp around line 20
+change :  #if !defined(ARDUINO_ARCH_MBED)
+to     :  #if !defined(ARDUINO_ARCH_MBED) && !defined(ARDUINO_ARCH_APOLLO3)
+
+=================================
+#Added example
+=================================
+Added example10_ph_BME280 and example10_central_BME280. This will demonstrate
+a menu structure interaction and sending the BME280 sensor data.
+
+=============================================
+# MANY different BUGS fixes applied
+=============================================
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In ArduinoBLE/src/uility/HCICordioTransport.CPP fix a bug to prevent loosing data.
+   In routine handleRxData() around line 294
+   change :     return;
+   to     :     yield();
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In ArduinoBLE/src/uility/HCICordioTransport.CPP fix a bug that will block sleep
+
+4 changes to be applied:
+
+   1) In global space around line 75
+   ADD : volatile bool GoSleep = false;    // added {paulvha}
+................................................................
+   2) In routine bleLoop() around line 121
+   ADD :  in the top of while (true) loop :
+
+   while (true){
+
+       if (GoSleep) {    // added {paulvha}
+            timer.stop();
+            //Serial.print("SLEEP\n");
+            rtos::ThisThread::flags_wait_any(0x02); // wait for signal
+            //Serial.print("WAKE\n");
+            timer.start();
+        }
+
+        ........
+..................................................................
+   3) In routine begin() around line 209
+   change  :	bleLoopThread.start(bleLoop);
+
+   to      :
+    if (GoSleep) {
+      bleLoopThread.flags_set(0x02);  // restart scheduler (paulvha)
+      GoSleep = false;
+    }
+    else
+      bleLoopThread.start(bleLoop);     // start WSF sheduler
+...............................................................
+   4) In routine end() around line 225
+   change  :    bleLoopThread.terminate();      // once terminated you can NOT restart (paulvha)
+   to      :    GoSleep = true;                 // set WSF sheduler to sleep (paulvha)
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In ArduinoBLE/src/uility/HCICordioTransport.CPP fix a bug to prevent crash if no buffer can be obtained
+  In routine write() around line 273
+
+  AFTER:
+    uint8_t* packet = (uint8_t*) WsfMsgAlloc(max(packetLength, MIN_WSF_ALLOC));
+
+  ADD:
+  if (packet == NULL) {
+     Serial.println("HCICordioTransportClass::write");  // {paulvha}
+     Serial.println("Could not obtain memory");
+     return(0);
+  }
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In ArduinoBLE/src/uility/HCI.CPP fix a bug to prevent uncontrolled hang during attributes
+
+    In routine poll() around line 146
+    change :
+
+     if (_debug) {
+        dumpPkt("HCI EVENT RX <- ", _recvIndex, _recvBuffer);
+     }
+
+    to :
+
+    if (_debug) {
+        dumpPkt("HCI EVENT RX <- ", _recvIndex, _recvBuffer);
+    }
+    else
+        delay(20);
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In ArduinoBLE/src/uility/HCI.CPP fix a crash after disconnect when working as Central
+3 changes are needed
+
+    1) In global space around line 73
+
+    AFTER :
+    	 #define HCI_OE_USER_ENDED_CONNECTION 0x13	
+    
+    ADD : 
+   	 bool ScanResponseDataSet = false;
+
+    ....................................................
+    
+    2) In leSetScanResponseData() around line 350
+    
+    AFTER : 
+         memcpy(leScanResponseData.data, data, length);
+ 
+    ADD:
+      // indicate running as peripheral {paulvha}
+      ScanResponseDataSet = true;
+      
+    ....................................................
+    
+    3) In handleEventPkt() around line 835
+    
+    CHANGE : 
+         HCI.leSetAdvertiseEnable(0x01);
+ 
+    TO :
+        if (ScanResponseDataSet) HCI.leSetAdvertiseEnable(0x01);
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In ArduinoBLE/src/local/BLELocalDevice.CPP fix a bug to give time to settle after reset()
+
+   In routine begin() around line 99
+   AFTER:
+
+    if (HCI.reset() != 0) {
+     end();
+     return 0;
+    }
+
+   ADD :
+    delay(1000);
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In ArduinoBLE/src/local/BLELocalCharacteristic.CPP fix a bug When we use ArduinoBLE (1.1.3) as Peripheral device it notifies subscribed Central of characteristic value change, even if the write came from Central itself.
+Issue :https://github.com/arduino-libraries/ArduinoBLE/issues/144
+
+  In routine writeValue() around line 113
+  AFTER :
+  if (_fixedLength) {
+    _valueLength = _valueSize;
+  }
+  
+  ADD :
+  if (_written) {
+    return 1;
+  }
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Fix a bug where disconnect needs a clean up in ATT to prevent memory leaks
+3 changes to apply
+
+1) In ArduinoBLE/src/uility/ATT.CPP around line 247
+  
+BEFORE:
+  void ATTClass::addConnection(uint16_t handle, uint8_t role, uint8_t peerBdaddrType,
+  
+ADD:
+// can lead to memory leaks for _peers[i].device and other issues,
+// especially if disconnect does not not happen nicely
+// https://github.com/arduino-libraries/ArduinoBLE/issues/129
+// {paulvha}
+void ATTClass::end()
+{
+    for (int i = 0; i < ATT_MAX_PEERS; i++) {
+        if (_peers[i].connectionHandle == 0xffff) {
+        continue;
+        }
+    
+        _peers[i].connectionHandle = 0xffff;
+        _peers[i].role = 0x00;
+        _peers[i].addressType = 0x00;
+        memset(_peers[i].address, 0x00, sizeof(_peers[i].address));
+        _peers[i].mtu = 23;
+        
+        if (_peers[i].device) {
+          delete _peers[i].device;
+          _peers[i].device = NULL;
+        }
+    }
+}
+
+..................................................................
+2) In In ArduinoBLE/src/uility/ATT.h around line 84
+
+AFTER:
+  bool disconnect();
+ADD:
+  void end();       // {paulvha}
+
+
+..................................................................
+3) In ArduinoBLE/src/local/BLELocalDevice.CPP
+
+In void BLELocalDevice::end(), around line 188
+AFTER :
+  GATT.end();
+  
+ADD:
+  ATT.end();        // {paulvha}
+  
+
+...................................................................................
+
+In ArduinoBLE/src/uility/HCI.CPP fix issue with memory allocation warning
+4 changes
+
+1) In int HCIClass::sendAclPkt() around line 641
+
+CHANGE:
+  uint8_t txBuffer[sizeof(aclHdr) + plen];
+TO:
+  uint8_t* txBuffer = (uint8_t*)malloc(sizeof(aclHdr) + plen);  // issue fixed {paulvha}
+
+...................................................................................
+
+2) In int HCIClass::sendAclPkt() around line 658
+
+AFTER:
+  HCITransport.write(txBuffer, sizeof(aclHdr) + plen);
+ADD:
+  free(txbuffer);  // issue fixed {paulvha}
+
+...................................................................................
+
+3) In int HCIClass::sendCommand() around line 691
+
+CHANGE:
+  uint8_t txBuffer[sizeof(aclHdr) + plen];
+TO:
+  uint8_t* txBuffer = (uint8_t*)malloc(sizeof(pktHdr) + plen);  // issue fixed {paulvha}
+
+...................................................................................
+
+4) In int HCIClass::sendCommand() around line 709
+
+AFTER:
+  HCITransport.write(txBuffer, sizeof(pktHdr) + plen);
+ADD:
+  free(txbuffer);  // issue fixed {paulvha}
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In ArduinoBLE/src/BLEAdvertisingData.CPP fix issue with incorrect AD field setting
+https://github.com/arduino-libraries/ArduinoBLE/issues/239
+
+in function addAdvertisedServiceUuid()
+
+change:  advField = BLEFieldIncompleteAdvertisedService128;
+to advField = BLEFieldCompleteAdvertisedService128;
+
+change:  advField = BLEFieldIncompleteAdvertisedService16;
+to advField = BLEFieldCompleteAdvertisedService16;
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Fix for multiple callback on BLEread when the value that was written before is 
+larger than the MTU size. 1 change
+
+
+ArduinoBLE/src/local/BLELocalCharacteristic.cpp
+
+CHANGE readValue() to :
+
+void BLELocalCharacteristic::readValue(BLEDevice device, uint16_t offset, uint8_t value[], int length)
+{
+  // setting to TRUE at BEGINNING will force a call BLERead to enable overwrite the current value.  (set with a previous writeValue())
+  // setting to FALSE at BEGINNING, it will first send the current value.  (set with a previous writeValue())
+
+  // once the complete value has been send, with the following readValue() call it will
+  // call BLERead to overwrite the current value. { Nov 22 paulvha}
+  static bool AllWasReadBefore = true;
+
+  // if the complete previous value was read before, allowed it to be updated
+  if (AllWasReadBefore) {
+
+     // allow call back (if set)
+     if (_eventHandlers[BLERead]) {
+          _eventHandlers[BLERead](device, BLECharacteristic(this));
+     }
+
+     AllWasReadBefore = false;
+  }
+
+  // copy the value
+  memcpy(value, _value + offset, length);
+
+  // check complete message has been read
+  if (offset + length >= _valueLength) {
+     AllWasReadBefore = true;
+  }
+
+ // Serial.print("read: ");
+ // Serial.print(length);
+ // Serial.print(" offset: ");
+ // Serial.print(offset);
+ // Serial.print(" AllWasReadBefore ");
+ // Serial.println(AllWasReadBefore);
+}
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ Added possibility to obtain MTU
+ 
+ ArduinoBLE/src/local/BLELocalDevice.cpp
+ 
+ add function
+ 
+ uint16_t BLELocalDevice::readMTU()
+{
+
+  BLEDevice central = ATT.central();
+
+  if (central) {
+    return central.readMTU();
+  }
+
+  return 0;
+}
+
+ArduinoBLE/src/local/BLELocalDevice.h
+ in public add
+ 
+ virtual uint16_t readMTU(); //paulvha
+ 
+ 
+ ArduinoBLE/src/local/BLEDevice.cpp
+ 
+ add function 
+ 
+ // special paulvha
+uint16_t BLEDevice::readMTU()
+{
+  // get connectionhandle
+  uint16_t handle = ATT.connectionHandle(_addressType, _address);
+
+  if (handle == 0xffff){
+    Serial.println("Error during obtaining connection handle\n");
+    return 0;
+  }
+
+  return(ATT.mtu(handle));
+}
+
+ ArduinoBLE/src/local/BLEDevice.h
+
+  in public add
+ 
+ virtual uint16_t readMTU(); //paulvha
+ 
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  
+  
+  A central on ArduinoBLE is only reading whatever fits within a MTU.
+  Everything else is not asked, neglected. These changes enable the Central
+  to read all the necessary bytes.
+  
+  ArduinoBLE/src/utility/ATT.cpp
+  add
+  
+  /**
+ * added paulvha
+ *
+ * we are looking for more data from the characteristic than would fit in a single MTU-size
+ * This is send after readReq did not provide all the expected bytes due to MTU size.
+ *
+ */
+int ATTClass::readReqBlob(uint16_t connectionHandle, uint16_t handle, uint16_t offset, uint8_t responseBuffer[])
+{
+  struct __attribute__ ((packed)) {
+    uint8_t op;
+    uint16_t handle;
+    uint16_t offset;
+  } readReq = {ATT_OP_READ_BLOB_REQ, handle, offset };
+
+  return sendReq(connectionHandle, &readReq, sizeof(readReq), responseBuffer);
+}
+  
+ .............................................................................. 
+ ArduinoBLE/src/utility/ATT.h
+  add
+  
+    virtual int readReqBlob(uint16_t connectionHandle, uint16_t handle, uint16_t offset, uint8_t responseBuffer[]); // paulvha
+ ..............................................................................
+ 
+ ArduinoBLE/src/remote/BLERemoteCharacteristic.h
+ change
+   bool read ();
+ to
+   bool read (int offset);      // changed paulvha
+  ..............................................................................
+   
+ ArduinoBLE/src/remote/BLERemoteCharacteristic.cpp 
+ 
+ change bool read() function to
+ 
+ bool BLERemoteCharacteristic::read(int offset)
+{
+  if (!ATT.connected(_connectionHandle)) {
+    return false;
+  }
+
+  uint8_t resp[256];
+  int respLength;
+
+  // if first read attempt
+  if (! offset)
+    respLength = ATT.readReq(_connectionHandle, _valueHandle, resp);
+
+  // more data is expected
+  else
+    respLength = ATT.readReqBlob(_connectionHandle, _valueHandle, offset, resp);
+
+  if (!respLength) {
+    _valueLength = 0;
+    return false;
+  }
+
+  if (resp[0] == 0x01) {
+    // error
+    _valueLength = 0;
+    return false;
+  }
+
+  _valueLength = respLength - 1;
+  _value = (uint8_t*)realloc(_value, _valueLength);
+
+  if (_value == NULL) {
+    _valueLength = 0;
+    return false;
+  }
+
+  memcpy(_value, &resp[1], _valueLength);
+
+  return true;
+}
+
+ ..............................................................................
+ 
+ ArduinoBLE/src/BLECharateristic.cpp
+ change readValue() routine to:
+ 
+ /**
+ * @param value : place to store the received data
+ * @param length is the maximum length to obtain
+ *
+ * @return :
+ * this routine will return the number of bytes read and let the
+ * sketch decide whether that is enough.
+ *
+ * paulvha
+ */
+int BLECharacteristic::readValue(uint8_t value[], int length)
+{
+  int bytesRead = 0;
+  int offset = 0;
+
+  if (_local) {
+    bytesRead  = min(length, _local->valueLength());
+    memcpy(value, _local->value(), bytesRead);
+    return bytesRead;
+  }
+
+  if (_remote) {
+
+    // as long as we did not get all the bytes expected
+    while (offset < length) {
+
+      // trigger a read if the updated value (notification / indication)
+      // has already been read and the characteristic is readable
+      if (_remote->updatedValueRead() && canRead()) {
+
+        if (!_remote->read(offset)) {
+          // new read failed
+          return offset;
+        }
+      }
+
+      bytesRead = min(length, _remote->valueLength());
+
+      memcpy(value + offset, _remote->value() , bytesRead);
+
+      offset += bytesRead;
+    }
+  }
+
+  return offset;
+}   
+ 
+  ..............................................................................
+  
+  Improve stabalize the descriptor discovery
+  
+  in ArduinoBLE/src/utility/ATT.cpp
+  replace the complete routine ATTClass::discoverDescriptors with :
+ // {paulvha} this routine has been updated / streamlined to :
+// reduce unneccessary discovery calls
+// NOT add characteristics nor characteristic values as potential descriptors
+// added additional comments to better understand the code
+bool ATTClass::discoverDescriptors(uint16_t connectionHandle, BLERemoteDevice* device)
+{
+  uint16_t reqStartHandle = 0x0001;
+  uint16_t reqEndHandle = 0xffff;
+
+  uint8_t responseBuffer[_maxMtu];
+
+  int serviceCount = device->serviceCount();
+
+  for (int i = 0; i < serviceCount; i++) {
+
+    BLERemoteService* service = device->service(i);
+
+    uint16_t serviceEndHandle = service->endHandle();
+
+    int characteristicCount = service->characteristicCount();
+
+    // Needed to filter out Characteristic Valuehandle() {paulvha}
+    bool NextIsCharValue = false;
+
+    for (int j = 0; j < characteristicCount; j++) {
+      BLERemoteCharacteristic* characteristic = service->characteristic(j);
+
+      // if we are on the last characteristic of the service there is NO next
+      BLERemoteCharacteristic* nextCharacteristic = (j == (characteristicCount - 1)) ? NULL : service->characteristic(j + 1);
+
+      // check for potential descriptor AFTER characteristic valuehandle
+      reqStartHandle = characteristic->valueHandle() + 1;
+
+      // and BEFORE the handle of the next characteristic (if any)
+      // if there is NO next characteristic, use the service endhandle instead
+      reqEndHandle = nextCharacteristic ? nextCharacteristic->valueHandle() : serviceEndHandle;
+
+      while (1) {
+        // if we have checked all the attributes handles we are done with this service  {paulvha}
+        if (reqStartHandle > reqEndHandle) {
+          break;
+        }
+
+        int respLength = findInfoReq(connectionHandle, reqStartHandle, reqEndHandle, responseBuffer);
+
+        if (respLength == 0) {
+          return false;
+        }
+
+        if (responseBuffer[0] == ATT_OP_FIND_INFO_RESP) {
+
+          // 3.4.3.2 Find Information Response {paulvha}
+          uint16_t lengthPerDescriptor = 4 ; // assume 16-bit UUID = 2 bytes + 2 handle
+          uint8_t uuidLen = 2;               // Num of bytes for UUID copy
+
+          if (responseBuffer[1] == 0x2) {
+            lengthPerDescriptor = 18;        // if 128-BIT UUID = 16 bytes  + 2 handle
+            uuidLen = 16;
+          }
+
+          for (int i = 2; i < respLength; i += lengthPerDescriptor) {
+
+            struct __attribute__ ((packed)) RawDescriptor {
+              uint16_t handle;
+              uint8_t uuid[16];               // potential maximum UUID for descriptor
+            } *rawDescriptor = (RawDescriptor*)&responseBuffer[i];
+
+            reqStartHandle = rawDescriptor->handle + 1;
+
+            // in case previous handle was a characteristic, this one is the Characteristic value
+            // that should not be added to list of discriptors {paulvha}
+            if (NextIsCharValue) {
+              NextIsCharValue = false;
+              continue;
+            }
+
+            uint16_t Checktype = BLETypeCharacteristic;
+            // if UUID len is 2 and the UUID is type characteristic  don't add to descriptors {paulvha}
+            if (responseBuffer[1] == 0x1 && memcmp(rawDescriptor->uuid, &Checktype, sizeof(Checktype)) == 0){
+              // not only skip adding this characteristic to the discriptor list, but also skip the next = valuehandle()
+              NextIsCharValue = true;
+              continue;
+            }
+
+            BLERemoteDescriptor* descriptor = new BLERemoteDescriptor(rawDescriptor->uuid, uuidLen,
+                                                                      connectionHandle,
+                                                                      rawDescriptor->handle);
+
+            if (descriptor == NULL) {
+              return false;
+            }
+
+            characteristic->addDescriptor(descriptor);
+          }
+        } else {    // no response received
+          break;
+        }
+      }
+    }
+  }
+
+  return true;
+} 
+  
+..........................................................................................
+
+https://github.com/arduino-libraries/ArduinoBLE/pull/264 fix BLE scanning block after minutes
+src/utility/GAP.cpp, round line 222
+
+  if (discoveredDevice == NULL) {
+    if (_discoveredDevices.size() >= GAP_MAX_DISCOVERED_QUEUE_SIZE) {
+    // ********* begin change ******
+/*      // drop
+      return;
+    }
+*/
+   // https://github.com/arduino-libraries/ArduinoBLE/pull/264 fix BLE scanning block after minutes
+   BLEDevice* device_first = _discoveredDevices.remove(0);
+     if (device_first != NULL) {
+       delete device_first;
+     }
+   }
+   // ******** end change *************
+  
+    discoveredDevice = new BLEDevice(addressType, address);
+
+    _discoveredDevices.add(discoveredDevice);
+    discoveredIndex = _discoveredDevices.size() - 1;
+  }
+  
+..........................................................................................
+  
+  NEEDED FOR BEACON
+  
+  src/local/BLELocalDevice.h.. Around line 114
+  
+  change
+  protected:
+  virtual BLEAdvertisingData& getAdvertisingData();
+  virtual BLEAdvertisingData& getScanResponseData();
+  
+  to  (comment out protected
+  
+  //protected:    //{paulvha}
+  virtual BLEAdvertisingData& getAdvertisingData();
+  virtual BLEAdvertisingData& getScanResponseData();
+..........................................................................................
+

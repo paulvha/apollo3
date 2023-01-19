@@ -28,6 +28,9 @@ For the Linux client software use the --help or -h option
 
 ## Versioning
 
+### Version 3.16 / January 2023
+ * update ArduinoBLE_special
+
 ### version 3.15 / November 2022
  * updated Qwicc filemanager
  * added printf (solution to floating point printf)
