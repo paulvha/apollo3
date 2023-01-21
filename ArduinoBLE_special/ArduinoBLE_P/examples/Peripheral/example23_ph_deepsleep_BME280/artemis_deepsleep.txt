@@ -1,0 +1,122 @@
+﻿                                       Deepsleep with Sparkfun Artemis / Apollo3
+                                       =========================================
+
+Background
+==========
+Sparkfun has 2 boards libraries for the Artemis / Apollo3 boards. At the time of writing there are the V1.2.3 and V2.2.1. (https://github.com/sparkfun/Arduino_Apollo3)
+
+The latest V1.2.3 was released in June 2021. The V2.2.1 version is mostly used and more or less maintained, the latest V2.2.1 has been released in March 2022. There are a number of critical issues known (see https://github.com/sparkfun/Arduino_Apollo3/issues) that should actually be a good reason to provide an updated version.
+
+The biggest difference between the versions is that V1 is build from the AmbiqSuite and V2 is build around Mbed-OS 5.
+
+This has massive implications and some of them impact the ability for deepsleep. Hence I first need to provide you the information about the versions.
+
+Versions
+========
+The V1.x.x library is build with AmbiqSuite which is provided by Ambiq Micro who produce the Apollo3 processor. It is a ‘C’-based SDK and does not use Arduino IDE, but most of the information is available in structure that it could be ported into an Arduino-style boards library. Sparkfun had taken the time to do so and that must have been a large job. The V1 library compiles fast, small binaries as a result, uploads fast and above all works fast. It is easy to maintain due to a small code environment where you can control / change all easily.
+
+Mbed-OS 5.20.02 is produced Arm company (https://os.mbed.com/mbed-os/) It is a open source, real-time operating system (RTS), very modular so it can be integrated in many environments, has good security, many drivers and a large number of connectivity options (WIFI, Bluetooth, cellular etc).
+Mbed-OS is the core that controls it all. It does not have an Arduino-style library. Sparkfun has done the massive job to take ‘the parts and pieces’ from V1 and structure that around Mbed-OS to make a V2 version and ready for Arduino environment. Although there is a newer version of Mbed-OS (e.g. 6.16) I would not expect (given the amount of work) this to become part of the Sparkfun library.
+
+---------------------------------------------------------------------------------------
+Normally a V2 is better than a V1, but this time I HAVE MY DOUBTS:
+---------------------------------------------------------------------------------------
+The V1 code base is MUCH larger: V1 is 105MB, V2 is 250MB.
+
+The v2 code is much more complex, from sketch to library (e.g. Wire), then to Mbed-OS layer and drivers, then to the Ambiq target drivers and back again. There are many more points of hand-off / copy of data and subroutines in between. Thus multiple places of failure and increased execution time.
+
+Given the low amount of end-to-end good Mbed documentation it is much harder to debug and diagnose in case of an error.
+
+The V2 time to compile is much longer , let us Blink:
+V1 time to compile first time: 15 seconds, second time (no change): 4 seconds
+V2 time to compile first time: 27 seconds. second time (no change: 10 seconds
+
+This get’s worse if you include more libraries, let’s use example21
+V1 time to compile first time: 34 seconds, second time (no change): 5 seconds
+V2 time to compile first time: 1 min 44 seconds (more than 3x). second time (no change): 15 seconds
+
+The V2 produced binaries are MUCH larger.  Let us Blink again :
+V1    8664 bytes program (9K !!), 33820 dynamic memory (34K)
+V2  117868 bytes program (118K) , 27992 dynamic memory (28K)
+A larger binary also means a larger upload time.
+
+Given the big Mbed-OS, although the source is provided as well, it is included during compile of a sketch with a pre-compiled library. If this would not have been done the time to compile would have been even longer. Just compiling the library on my fast Ubuntu takes 88 seconds, first time around. A second time it is normally < 5 seconds (depending on the changes made)
+
+ANY change to ‘apollo3/core/mbed’, requires a new pre-compiled library for each and every board. Trying to debug an issue requires a new build of the pre-compiled library to be created and copied to the right place in the Sparkfun boards variant folder, before recompile the sketch.
+
+Given the V2 complexity a large number of bugs have been identified after release. A good number of them have been corrected, but there are many still around.
+
+The overhead from Mbed-OS is causing the code to execute much slower, Not only due to the size, but as it is an RTS it is performing every clock-tick a number of house keeping administration tasks. In most case these are NOT necessary for our simple sketch, but do impact a lot. As a result OneWire, SoftwareSerial and any other bit-banging will NOT work.
+
+There are a many drivers for devices included in Mbed-OS that are NOT used at all and will never be used, different Cellular devices, WIFI,  TCP/IP, LORA and many others. All there, taking memory and potential points of failure.
+
+Looking at the above there is a good reason to stay on V1.2.3, as the Artemis Openlog is doing.
+
+SO WHY ARE THERE 2 VERSIONS?
+============================
+I can only guess, but one of the major short coming of V1 is that it does NOT have Bluetooth. Maybe it was the only short coming.
+
+The Apollo3 chip has the HCI-layer of Bluetooth. The early versions of V1 had the ExactLE-Bluetooth layer (from the AmbiqSuite) but porting Bluetooth to Arduino environment was very complex. It was also lacking good documentation and Sparkfun could not get this work. I have tried it and it took me weeks to get it to going, very complex and not even stable.
+
+Mbed-OS has a very comprehensive Bluetooth stack (Cordio). Actually ARM company integrated ExactLE into Cordio to ship it with Mbed-OS. Cordio has a ton of features, but also bad documentation and missing good end-to-end examples.
+
+The ArduinoBLE Bluetooth that is available for Artemis is only using (maybe) 3% of Cordio, only the code for routing with the Sparkfun driver to connect to the HCI layer.  The main part of Cordio, in my mind the main reason for V2, is NOT USED AT ALL !!! No GAP, NO ATT, NO Security only a little bit of the HCi driver
+
+To make life more interesting as ArduinoBLE is only using the routing, it was very easy to extract that part from the earlier ExactLE Bluetooth stack to make the connection work (stable) on V1. The ArduinoBLE_P (P = patched) includes the HCI connection for V1 as well and works fast and good.  It also has a number of known ArduinoBLE bugs corrected and I have used this as part of my testing.
+
+To be fair.. ArduinoBLE is limited in security and other features, much less than Cordio. e.g. The current version does not have binding options or other security options.  But for most of the implementations with sensor data it is doing a good job.
+
+Deepsleep challenges with IOM
+=============================
+In sleep you just wait for some period of time and then continue, in deepsleep you also want to preserve power consumption as much as possible.
+
+Before you enter deepsleep, you turn off as much as possible parts of the Apollo3 chip features to minimize the power consumption. But also you terminate running programs and features to prevent they interfere time set for deepsleep.  You can see that in the code of example23.
+
+The routines to perform a power-down Apollo3 parts are the nearly the same between V1 and V2. That is because many of the Apollo3 driver routines in V2 have been taken from V1.
+
+Setting V1 to deepsleep is done by first turning off started features, e.g. Wire, BLE, SPI etc. In V1 calling Wire.end() or SPI.end() will cause the Input/Output Module (IOM) in the Apollo3 processor to stop, de-initialize and power down. It straight forward and later calling Wire.begin() will re-power and re-initialize the IOM again.
+
+In V2 the world is different. Mbed-OS seems to have sleep and deepsleep calls (https://os.mbed.com/docs/mbed-os/v6.15/apis/power-management-sleep.html) but looking at the Mbed-OS 5 code from Sparkfun, these are empty calls. This Mbed-OS version does not support deepsleep. (see mbed_power_mgnt.c)
+
+We need to de-initialize the driver and then power down the IOM. While the Apollo3 Sparkfun driver has routines to de-initialize and power down (free()), you can not call them to through Mbed-OS, nor by-pass Mbed-OS. All you can do is power down the IOM. After deepsleep you can power them up, BUT the IOM will now be disabled by default. When now trying to initialize IOM again e.g. call SPI.begin() or WIRE.begin, it will fail as the driver still assumes the IOM was already initialized. Different parts are out of sync.
+
+Hence you should look at 'https://github.com/sparkfun/Arduino_Apollo3/issues/412' for changes needed for Wire(). Similar changes are needed for SPI. For that reason a src.zip file is in this example23 package. This src-folder should replace the current src-folder in SparkFun/hardware/apollo3/2.2.1/libraries/SPI
+
+Deepsleep challenges with BLE
+=============================
+When using Bluetooth (BLE) a ‘ticker’ is needed to make sure the data between ArduinoBLE, Sparkfun HCI-driver and the HCI-layer in the chip is flowing in a correct controlled sequence.
+
+In V1 this is handled by ExactLE-WSF functions. WSF has a queuing structure so commands, data and responses are exchanged in a controlled way. But in V1 we are not using the WSF-timers we are only setting an event. The ‘ticker’ is handled by calling BLE.poll() on a regular base which will trigger the WSFdispatcher to handle any waiting event.
+
+In V2 this is handled by the WSF part of Mbed-OS. A separate thread is started for bleloop() and the ‘ticker’ used is mbed::LowPowerTimer, which is actually levering the Apollo3 ctimer7. There is NO Mbed-OS call to stop this LowPowerTimer, and thus stop the ctimer7. When you call BLE.end() the separate bleloop-thread will be terminated and deleted, but the LowPowerTimer and ctimer7 are NOT stopped.
+
+Taken sleep_api.h from Mbed :
+‘The processor can only be woken up by low power ticker, RTC, an external interrupt on a pin or a watchdog timer.’
+
+Hence once BLE started BLE.begin(), the ctimer7 started and with BLE.end() it will NOT be stopped. Deepsleep will not happen as it will be woken up with the next interrupt-tick from the timer. So with V2 we need to stop the ctimer7 manually before going to deepsleep and restart after wakeup. That is done in example23.
+
+!!!!! BUT WAIT.. THERE IS MORE... VERY IMPORTANT !!!!
+WSF is working with handles which are obtained for events and timers by calling WsfOsSetNextHandler(). To each handle a callback-function is assigned that is called when the timer has timed out or an event was set for that handle. The maximum amount of handles that can be obtained is 9.  As you start BLE.begin(), it will obtain the handle and initialize it with the right callback-function. But as you call BLE.end() there is NO function to "give back" the handle. Thus with each wake-up after deepsleep, the next handle is obtained. After 9 times wakeup all handles have been used and now BLE.begin() will fail as it can not communicate anymore with WSF.
+
+In the 'ArduinoBLE_P' for V1 in the file HCIExactleTransport.cpp I have been able to place a workaround. But for V2 the file HCICordioTransport.cpp is used to connect through Mbed-OS. It will call 'CordioHCIHook::getDriver().initialize()' which will perform the obtaining of the handle. This is part of the pre-compiled library.
+So to fix this you need to adjust the file 'SparkFun/hardware/apollo3/2.2.1/cores/mbed-os/features/FEATURE_BLE/targets/TARGET_Ambiq_Micro/TARGET_Apollo/AP3CordioHCITransportDriver.cpp' in a similar way as I did for ExactLE, recompile the library for your board and place it on the right place.
+
+All in all.. if you need deepsleep.. consider to use V1.2.3.......
+
+Example23
+=========
+
+This example is based on Example21. It is using a BME280 to provide meaningful data that can be send over Bluetooth with a regular interval or on request. If has a menu structure the request different options. However in this case the BME280 is communicating using SPI instead of Wire!
+
+The example will compile both on V1 and V2, as it will auto-detect. This adjust the sketch on different places to enable a good compile and working binary. If you get ‘'rtc' was not declared in this scope’, the detection did not work for some reason.
+
+You can define the UPTIME and DOWNTIME in minutes. The DOWNTIME is handled with setting the Apollo3 RTC module with the correct parameters.
+
+Deepsleep Happy !!
+
+
+Paul van Haastrecht
+paulvha@hotmail.com
+January 2023
+
+

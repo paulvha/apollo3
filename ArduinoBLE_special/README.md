@@ -14,7 +14,7 @@ looks to be the future for the Apollo3 boards.
 <br>This is a ArduinoBLE_P package contains the necessary BLE-stack files for V1.2.3 and ArduinoBLE version 1.3.2 taken from ![ArduinoBLE](https://github.com/arduino-libraries/ArduinoBLE).
 A number of known bugfixes have been applied. It is delivered as is and there are NO plans to incorporate new functionalities or apply bug-changes as they become known or available. A number of bugs are known to be solved in future versions of the official version, see their ![website](https://github.com/arduino-libraries/ArduinoBLE/issues).
 
-<br> The Exactly part is focussed on Apollo3 / Artemis. If you use ArduinoBLE (on the many Arduino or Sparkfun boards that do not rely on Apollo3 V1)
+<br> The ExactLE part is focussed on Apollo3 / Artemis. If you use ArduinoBLE (on the many Arduino or Sparkfun boards that do not rely on Apollo3 V1)
 Most of the examples can be used for any ArduinoBLE implemenation.
 
 ## Getting started
@@ -31,6 +31,7 @@ In case you also want the Ubuntu examples, see the README in the subfolder Ubunt
 ## Versioning
 
 ### Version 1.1.5 / January 2023
+ * Added deepsleep example23 (same as example21 but now BME280 with SPI communication)
  * Added iBeacon example22 peripheral and Beacon scanner central
  * Added deepsleep example21 peripheral and central
  * Removed most of the unnessary code for ExactLE. MAKE SURE to install the latest version

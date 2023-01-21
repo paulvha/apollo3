@@ -29,10 +29,12 @@ For the Linux client software use the --help or -h option
 ## Versioning
 
 ### Version 3.16 / January 2023
- * update ArduinoBLE_special
+ * update ArduinoBLE_special for V1.2.3
+ * added Memory Dump sketch
+ * updated Qwicc filemanager 1.4 (with support for ESP32)
 
 ### version 3.15 / November 2022
- * updated Qwicc filemanager
+ * updated Qwicc filemanager 1.3
  * added printf (solution to floating point printf)
 
 ### version 3.14 / November 2022

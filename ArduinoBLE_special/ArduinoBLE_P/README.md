@@ -2,7 +2,11 @@
 
 This is based on ArduinoBLE 1.3.2, but adjusted for Sparkfun library V1.2.3. Next to that a number of changes have been applied. (see doc folder). For installation instruction see Doc-folder.
 
-## Version 3.3.3- January 2023
+## examples have been added with a menu structure:
+
+### example 23 deepsleep
+
+Same function as example 21, but now the BME280 is communicating with SPI instead of Wire/I2C.
 ### example 22 Scan Beacon central (January 2023)
 This scanner can find and dislay the details of an iBeacon. (i)Beacons are peripherals that advertise a special formatted message as defined by Apple. See more inforamation on https://en.wikipedia.org/wiki/IBeacon.
 
@@ -11,12 +15,11 @@ This peripheral can emulate and iBeacon. (i)Beacons are peripherals that adverti
 
 ### Deepsleep example21_ph_bme280 / example21_central_bme280
 Based on Example20 created a peripheral sketch that can be put to deepsleep. Either with the local menu OR with the example21 central.
-Deepsleep takes extra steps to complete. Make sure to read artemis_deepsleep.txt and the latest ExactLE for V1.
+Deepsleep takes extra steps to complete. Make sure to read artemis_deepsleep.txt and the latest ExactLE for V1. The BME280 is communicating with Wire/I2C.
 
 ### BME280: example20_ph_bme280 / example20_central_bme280 / BME280 Android APP (January 2023)
 In this setup an BME280 temperature, humidity and pressure sensor is connected to the peripheral. On regular intervals  it will send updated information on notify characteristic. This central has a menu to request data now, change the parameters of the data and stop sending data.
 
-##Version 3.3.2 December 2022
 ### example11_ph_RW / example11_central_RW
 In this setup there are 4 characteristic. Two String characteristics (one reading to and one reading from), and two characteristics (one reading to and one reading from) for binary data. The central can send and read, same for the peripheral.
 
