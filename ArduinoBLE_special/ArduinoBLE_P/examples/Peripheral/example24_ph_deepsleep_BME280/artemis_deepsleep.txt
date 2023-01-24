@@ -70,7 +70,7 @@ Deepsleep challenges with IOM
 =============================
 In sleep you just wait for some period of time and then continue, in deepsleep you also want to preserve power consumption as much as possible.
 
-Before you enter deepsleep, you turn off as much as possible parts of the Apollo3 chip features to minimize the power consumption. But also you terminate running programs and features to prevent they interfere time set for deepsleep.  You can see that in the code of example23.
+Before you enter deepsleep, you turn off as much as possible parts of the Apollo3 chip features to minimize the power consumption. But also you terminate running programs and features to prevent they interfere time set for deepsleep.  You can see that in the code of example24.
 
 The routines to perform a power-down Apollo3 parts are the nearly the same between V1 and V2. That is because many of the Apollo3 driver routines in V2 have been taken from V1.
 
@@ -80,7 +80,7 @@ In V2 the world is different. Mbed-OS seems to have sleep and deepsleep calls (h
 
 We need to de-initialize the driver and then power down the IOM. While the Apollo3 Sparkfun driver has routines to de-initialize and power down (free()), you can not call them to through Mbed-OS, nor by-pass Mbed-OS. All you can do is power down the IOM. After deepsleep you can power them up, BUT the IOM will now be disabled by default. When now trying to initialize IOM again e.g. call SPI.begin() or WIRE.begin, it will fail as the driver still assumes the IOM was already initialized. Different parts are out of sync.
 
-Hence you should look at 'https://github.com/sparkfun/Arduino_Apollo3/issues/412' for changes needed for Wire(). Similar changes are needed for SPI. For that reason a src.zip file is in this example23 package. This src-folder should replace the current src-folder in SparkFun/hardware/apollo3/2.2.1/libraries/SPI
+Hence you should look at 'https://github.com/sparkfun/Arduino_Apollo3/issues/412' for changes needed for Wire(). Similar changes are needed for SPI. For that reason a src.zip file is in this example24 package. This src-folder should replace the current src-folder in SparkFun/hardware/apollo3/2.2.1/libraries/SPI
 
 Deepsleep challenges with BLE
 =============================
@@ -93,7 +93,7 @@ In V2 this is handled by the WSF part of Mbed-OS. A separate thread is started f
 Taken sleep_api.h from Mbed :
 ‘The processor can only be woken up by low power ticker, RTC, an external interrupt on a pin or a watchdog timer.’
 
-Hence once BLE started BLE.begin(), the ctimer7 started and with BLE.end() it will NOT be stopped. Deepsleep will not happen as it will be woken up with the next interrupt-tick from the timer. So with V2 we need to stop the ctimer7 manually before going to deepsleep and restart after wakeup. That is done in example23.
+Hence once BLE started BLE.begin(), the ctimer7 started and with BLE.end() it will NOT be stopped. Deepsleep will not happen as it will be woken up with the next interrupt-tick from the timer. So with V2 we need to stop the ctimer7 manually before going to deepsleep and restart after wakeup. That is done in example24.
 
 !!!!! BUT WAIT.. THERE IS MORE... VERY IMPORTANT !!!!
 WSF is working with handles which are obtained for events and timers by calling WsfOsSetNextHandler(). To each handle a callback-function is assigned that is called when the timer has timed out or an event was set for that handle. The maximum amount of handles that can be obtained is 9.  As you start BLE.begin(), it will obtain the handle and initialize it with the right callback-function. But as you call BLE.end() there is NO function to "give back" the handle. Thus with each wake-up after deepsleep, the next handle is obtained. After 9 times wakeup all handles have been used and now BLE.begin() will fail as it can not communicate anymore with WSF.
@@ -103,7 +103,7 @@ So to fix this you need to adjust the file 'SparkFun/hardware/apollo3/2.2.1/core
 
 All in all.. if you need deepsleep.. consider to use V1.2.3.......
 
-Example23
+Example24
 =========
 
 This example is based on Example21. It is using a BME280 to provide meaningful data that can be send over Bluetooth with a regular interval or on request. If has a menu structure the request different options. However in this case the BME280 is communicating using SPI instead of Wire!

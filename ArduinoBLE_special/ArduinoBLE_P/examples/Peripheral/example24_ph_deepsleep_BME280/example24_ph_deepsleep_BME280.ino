@@ -19,7 +19,7 @@
 **********************************************************************************
   January 2023 / paulvha / version 1.1.2
   - initial release
-  - Example23 based on Example21 V1.1.2 with deepsleep option
+  - Example24 based on Example21 V1.1.2 with deepsleep option
   - It now uses the BME280 with SPI to communicate instead of Wire
 
   In case of V1.2.3 Sparkfun Artemis Library.
@@ -63,7 +63,7 @@
 **********************************************************************************
 
   Use Example21_central_BME280 to read complete BME280 information. The central is the 
-  same, just this example23 peripheral is using SPI instead of I2C for BME280.
+  same, just this example24 peripheral is using SPI instead of I2C for BME280.
 
   January 2023 : there is now also an Android App available.
   
@@ -229,7 +229,7 @@ void setup() {
 
   SERIAL_PORT.begin(115200);
   delay(1000);
-  SERIAL_PORT.printf("Example23 BME280 (SPI) peripheral & deepsleep. Compiled: %s\n\r", __TIME__);
+  SERIAL_PORT.printf("Example24 BME280 (SPI) peripheral & deepsleep. Compiled: %s\n\r", __TIME__);
 
   // start BME280
   StartBME280();

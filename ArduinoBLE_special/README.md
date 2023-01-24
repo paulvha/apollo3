@@ -18,7 +18,7 @@ A number of known bugfixes have been applied. It is delivered as is and there ar
 Most of the examples can be used for any ArduinoBLE implemenation.
 
 ## Getting started
-In case of V1.2.3 for Artemis/Apollo3 Sparkfun boards in the Arduino IDE, make sure to install ExactLE- HCI connection layer.
+In case of V1.2.3 for Artemis/Apollo3 Sparkfun boards in the Arduino IDE, make sure to install HCI connection layer.
 
 In case you have the official ArduinoBLE installed. No need to change or remove as with this package an ArduinoBLE_P will be installed that has been tested and works.
 
@@ -31,10 +31,11 @@ In case you also want the Ubuntu examples, see the README in the subfolder Ubunt
 ## Versioning
 
 ### Version 1.1.5 / January 2023
- * Added deepsleep example23 (same as example21 but now BME280 with SPI communication)
+ * Added deepsleep example24 (same as example21 but now BME280 with SPI communication)
+ * Added example23 SPS30 peripheral, central and Android app)
  * Added iBeacon example22 peripheral and Beacon scanner central
  * Added deepsleep example21 peripheral and central
- * Removed most of the unnessary code for ExactLE. MAKE SURE to install the latest version
+ * Removed most of the unnessary code for ExactLE. MAKE SURE to install the latest version !
 
 ### Version 1.1.4 / January 2023
  * Added source Android app for example20_ph_BME280

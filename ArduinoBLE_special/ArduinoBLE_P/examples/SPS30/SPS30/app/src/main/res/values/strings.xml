@@ -1,0 +1,35 @@
+<resources>
+    <string name="app_name">SPS30</string>
+    <string name="start">Start scan</string>
+    <string name="stop">Stop scan</string>
+    <string name="discnct">disconnect</string>
+    <string name="discon">Disconnected</string>
+    <string name="scanstop">scanning stopped</string>
+    <string name="scanstart">scan started</string>
+    <string name="DeviceDetected">Peripheral detected</string>
+    <string name="TryConnect">Trying to connect</string>
+    <string name="DeviceConnected">Device connected\n</string>
+    <string name="NotifyEnabled">Notifications enabled!</string>
+    <string name="NotifyDisabled">Notifications disabled!</string>
+    <string name="NotifyError">Notify characteristic not found!</string>
+    <string name="CCDError">CCD descriptor not found!</string>
+    <string name="ServiceDisc">control service has been discovered\n</string>
+    <string name="SendCharNotFound">Characteristic for sending not found</string>
+    <string name="UnknownState">we got an unknown state, uh oh\n</string>
+
+    <string name="empty"> </string>
+    <string name="InvalidPackage">Invalid package</string>
+    <string name="UpdateTime">Last updated %s</string>
+    <string name="NewUpdate">Update values</string>
+    <string name="SleepStatus">SPS30 sleeping</string>
+    <string name="P1">PM1</string>
+    <string name="P2">PM2.5</string>
+    <string name="clean">clean</string>
+    <string name="wakeup">wakeup</string>
+    <string name="P4">PM4.0</string>
+    <string name="p10">PM10</string>
+    <string name="MassFormat">%.2f μg/m3</string>
+    <string name="NumFormat">%.2f /cm3</string>
+    <string name="sleep">Sleep</string>
+    <string name="now">now</string>
+</resources>

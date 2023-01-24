@@ -8,7 +8,7 @@
 
   Be aware that you can only send as many bytes as the size of the MTU. Default size
   is 20 ( 23 - 3 overhead), but it could have been agreed different after connect.
-  see example13 
+  see example13
 
   It will require a good working function of ArduinoBLE.
   For Sparkfun Apollo3 library V1.2.3 a special patched ArduinoBLE_P (P = patched) and
@@ -17,7 +17,7 @@
   January 2023 / paulvha / version 1.0.2
   - update to better reset on disconnect
   - tested with Android app.
-  
+
   November 2022 / paulvha / version 1.0.1
   - changed the sending to bytes instead of string
   - added synchronisation byte
@@ -32,7 +32,7 @@
  ************************************************************************************
 = BME280
 
-  This has been tested with an Adafruit BME280. 
+  This has been tested with an Adafruit BME280.
 
    BME280       I2C
     VIN         3v3
@@ -44,7 +44,7 @@
     CS
 
   OR (depending on your BME280 board and connected to QWiic)
-  
+
   Parts of the code below are coming from
   Sparkfun BME280 library: https://github.com/sparkfun/SparkFun_BME280_Arduino_Library
   The expected I2C address is 0x77.
@@ -54,7 +54,7 @@
     VCC         3V3
     SCK         SCL
     SDI         SDA
-   
+
 
 **********************************************************************************
 !! BEFORE YOU START!!
@@ -83,7 +83,7 @@ private:
   Use Example20_central_BME280 to read complete BME280 information
 
   Janury 2023 : there is not also an Android App available.
-  
+
 
   For debug :
 
@@ -163,14 +163,9 @@ bool BME280_Detected = false;
 ////////////////////////////////////////////////////////////////////////////
 // CHANGE ArduinoBLE_P TO ArduinoBLE WHEN USING VERSION 2.X OF SPARKFUN LIBRARY
 #include <ArduinoBLE_P.h>
-#include "utility/HCI.h"    // needed for sendcommand
 
 // MAX Up to 29 characters for BLE name
 const char BLE_PERIPHERAL_NAME[] = "Peripheral BME280 BLE";
-
-// define your new Bluetooth device address in NEW_APOLLO_BDADR in REVERSE order :
-// {0x66, 0x55, 0x44, 0x33, 0x22, 0x11} will become device address 11:22:33:44:55:66
-static uint8_t BLEMacAddress[6]= {0x66, 0x55, 0x44, 0x33, 0x22, 0x21};
 
 // create the BME280 service
 BLEService BME280Service("19B10010-E8F2-537E-4F6C-D104768A1214");
@@ -230,17 +225,6 @@ void setup() {
 
   // set the local name peripheral advertises
   BLE.setLocalName(BLE_PERIPHERAL_NAME);
-
-  // set new BLE address
-  // THIS MIGHT FAIL AS IT NEEDS AN ADJUSTMENT IN THE DEFAULT ArduinoBLE :SEE TOP OF SKETCH
-  // THE CHANGE HAS ALREADY BEEN APPLIED IN ArduinoBLE_P
-  // commented out by default.
-/*
-  if (! WriteNewBdAddr()){
-    SERIAL_PORT.println(F("Failed to set new Device Address!\r"));
-    while (1);
-  }
-*/
 
   // set the UUID for the service this peripheral advertises:
   BLE.setAdvertisedService(BME280Service);
@@ -534,24 +518,6 @@ Serial.printf("sending len %d\n", len);
   if (j != 0) BME280sCharacteristic.writeValue(ToSend,j);
 
   return(true);
-}
-
-/*
- * Most of the Apollo3 chips have the same bluetooth address
- * this will allow you to change that.
- *
- * See top of sketch for change to apply to make this work !!!!
- *
- * Write new address with vendor specific command
- */
-bool WriteNewBdAddr()
-{
-  // NATIONZ
-  int result = HCI.sendCommand(0xFC32, 6, BLEMacAddress);
-
-  if (result == 0) return true;
-
-  return false;
 }
 
 /**

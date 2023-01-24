@@ -4,13 +4,16 @@ This is based on ArduinoBLE 1.3.2, but adjusted for Sparkfun library V1.2.3. Nex
 
 ## examples have been added with a menu structure:
 
-### example 23 deepsleep
+### example24_ph_bme280 with deepsleep
+Same function as example21, but now the BME280 is communicating with SPI instead of Wire/I2C. As central the example21_central_bme280 can be used
 
-Same function as example 21, but now the BME280 is communicating with SPI instead of Wire/I2C.
-### example 22 Scan Beacon central (January 2023)
+### example23_ph_sps30_ble / example23_central_sps30 / sps30 Android app (January 2023)
+In this setup an Sensirion SPS30 is connected to the peripheral. On regular intervals it will send updated information on notify characteristic. This central has a menu to request data now, change set clean, sleep, wakeup. Also the source code of an Android app is included.
+
+### example22 Scan Beacon central (January 2023)
 This scanner can find and dislay the details of an iBeacon. (i)Beacons are peripherals that advertise a special formatted message as defined by Apple. See more inforamation on https://en.wikipedia.org/wiki/IBeacon.
 
-### example 22 Beacon Peripheral	(January 2023)
+### example22 Beacon Peripheral	(January 2023)
 This peripheral can emulate and iBeacon. (i)Beacons are peripherals that advertise a special formatted message as defined by Apple. See more inforamation on https://en.wikipedia.org/wiki/IBeacon.  An (i)Beacon is used to find your way around a building or to a specific place.
 
 ### Deepsleep example21_ph_bme280 / example21_central_bme280
@@ -35,9 +38,10 @@ This is the same as example12, but then using the agreed MTU as blocksize
 
 Next to a central in the Arduino IDE environment there is also an central in the ubuntu/linux environment.
 
-Also there are 2 Android apps available
+Also there are 3 Android apps available
 BME280 : works with peripheral example20_ph_BME280
-Input / output control which is a combination of an Android app and Sketch to control input/output.
+SPS30  : works with peripheral example23_ph_sps30_ble
+Input / output control : which is a combination of an Android app and Sketch to control input/output.
 
 [![Compile Examples Status](https://github.com/arduino-libraries/ArduinoBLE/workflows/Compile%20Examples/badge.svg)](https://github.com/arduino-libraries/ArduinoBLE/actions?workflow=Compile+Examples) [![Spell Check Status](https://github.com/arduino-libraries/ArduinoBLE/workflows/Spell%20Check/badge.svg)](https://github.com/arduino-libraries/ArduinoBLE/actions?workflow=Spell+Check)
 
