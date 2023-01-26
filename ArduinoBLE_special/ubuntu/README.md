@@ -11,37 +11,40 @@ The libgatt-master.zip is the original download.
 The different examples have been tested against peripheral-sketches that are created using ArduinoBLE.
 Installing and using peripheral-sketches with Arduino IDE are not part of this description.
 In order to test you need to have an Arduino IDE, ArduinoBLE. The CPU board must have enough memory.
-In my tests I used Sparkfun Artemis ATP and Sparkfun Artemis Edge.
+In my tests I used Sparkfun Artemis ATP, Sparkfun Artemis Edge and Sparkfun Micromod with nRF52480.
 
 ## Examples
 The following examples were added to work as central:
 
+### example23_SPS30		     peripheral sketch: example23_ph_sps30_BLE
+In this setup an SPS30 is connected to the peripheral. On regular intervals it will send updated information on notify characteristic. This central has a menu to request data now, set clean, sleep and wakeup and stop sending data.
+
 ### output_input_control   peripheral sketch: output_input_sketch
-Central to control the Arduino on-board led, 2 ouput pins, 1 digital input, 1 analog input and simuliated battery
+Central to control the Arduino on-board led, 2 output pins, 1 digital input, 1 analog input and simulated battery
 
 ### example20_BME280		   peripheral sketch: example20_ph_bme280
-In this setup an BME280 temperature, humidity and pressure sensor is connected to the peripheral. On regular intervals  it will send updated information on notify characteristic. This central has a menu to request data now, change the parameters of the data and stop sending data.
+In this setup an BME280 temperature, humidity and pressure sensor is connected to the peripheral. On regular intervals it will send updated information on notify characteristic. This central has a menu to request data now, change the parameters of the data and stop sending data.
 
-### example11_RW    peripheral sketch: example11_ph_RW
-In this setup there are 4 characteristic. Two String characteristics (one reading to and one reading from), and two characteristics (one reading to and one reading from) for binary data. The central can send and read, same for the peripheral.
+### exampe14_RW_N_MTU      peripheral sketch: example14_ph_RW_notify_MTU
+This is the same as example12, but then using the agreed MTU as blocksize. Only works with ArduinoBLE_P.
 
-### example12_RW_N peripheral sketch: example12_ph_RW_Notify
+### exampe13_MTU_test      peripheral sketch: example13_ph_MTU_size
+This is using an enhancement in the ArduinoBLE_P to understand the impact of MTU size and how to read it.
+
+### example12_RW_N         peripheral sketch: example12_ph_RW_Notify
 In this setup a large data message is split in multiple blocks exchanged using a flow control. There are 3 characteristics: one for peripheral to send the large data message, one for the central to send commands and feedback and one for notify.
 The notify is used by the peripheral to send command and feedback and as such also indicate to the central that a next block is ready to be read.
 
-### exampe13_MTU_test peripheral sketch: example13_ph_MTU_size
-This is using an enhancement in the ArduinoBLE_P to understand the impact of MTU size and how to read it.
-
-### exampe14_RW_N_MTU peripheral sketch: example14_ph_RW_notify_MTU
-This is the same as example12, but then using the agreed MTU as blocksize
+### example11_RW           peripheral sketch: example11_ph_RW
+In this setup there are 4 characteristics. Two String characteristics (one reading to and one reading from), and two characteristics (one reading to and one reading from) for binary data. The central can send and read, same for the peripheral.
 
 In the top of each of the files and sketches there are more details. Also each of the examples have command line options.
 
 For each of the peripheral sketches above there are also example-central-sketches based on ArduinoBLE
-During my test I had the Sparkfun Artemis ATP as periperal and the Sparkfun Artemis Edge as an alternative central.
+In my tests I used Sparkfun Artemis ATP, Sparkfun Artemis Edge and Sparkfun Micromod with nRF52480.
 
 ## Installing
-Parts of this has been taken from the README.md that are part of the formentioned libgatt.
+Parts of this has been taken from the README.md that are part of the aforementioned libgatt.
 
 Build libgatt
 =============
