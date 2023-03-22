@@ -3,7 +3,7 @@
 
 ## Background
 Wanted to created a sketch to handle the MicroSD reading and writing
-It has been on library version V1.2.3 as well as V2.2.0. No change needed.
+For the Artemis , it has been tested on library version V1.2.3 as well as V2.2.0. No change needed.
 
 <br> This filemanager sketch has been developed to work on different Artemis platforms and the Micromod nRF52840 & ESP32:
 You need to select the right platform in the top of the sketch.
@@ -16,6 +16,9 @@ You need to select the right platform in the top of the sketch.
 * MicroMod Data logger carrier board (DEV-16829) with RF52840 Processor (WRL-16984)
 * MicroMod MainBoard (DEV-18576) with MM ESP Processor (WRL-16781)
 * MicroMod Data logger carrier board (DEV-16829) with MM ESP32 Processor (WRL-169781)
+* MicroMod Input and Display carrier board (DEV-16985) with MM Artemis Processor (WRL-16401)
+* MicroMod Input and Display carrier board (DEV-16985) with MM ESP Processor (WRL-16781)
+* MicroMod Input and Display carrier board (DEV-16985) with MM RF52840 Processor (WRL-16984)
 
 ## Usage
 * select the right board in the top of sketch (around line 134)
@@ -71,6 +74,11 @@ The sketch is depending on the SdFat v2.0.7 by Bill Greiman which can be install
 
 ## Versioning
 
+### Version 1.6 / March 2023
+	* Added MicroMod Input and Display carrier board (DEV-16985) with MM Artemis Processor (WRL-16401)
+	* Added MicroMod Input and Display carrier board (DEV-16985) with MM ESP Processor (WRL-16781)
+	* Added MicroMod Input and Display carrier board (DEV-16985) with MM RF52840 Processor (WRL-16984)
+
 ### Version 1.5 / April 2022
  *  Added support for MM nRF52840 on MM Mainboard and MM Data logger carrier board.
  *  Added support for MM ESP32 on MM Mainboard and MM Data logger carrier board.
@@ -86,7 +94,7 @@ The sketch is depending on the SdFat v2.0.7 by Bill Greiman which can be install
  * Fixed display size
 
 ### version 1.2 / February 2022
- * Added support for Micromod datalogger & MicroMod main board with Artemis processor
+ * Added support for MicroMod datalogger & MicroMod main board with Artemis processor
 
 ### Version 1.1 / December 2021
  * Added support for Artemis ATP

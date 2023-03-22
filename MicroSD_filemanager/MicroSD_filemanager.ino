@@ -3,14 +3,17 @@
  * A filemanager for reading and writing the MicroSD on different Artemis platforms 
  * and Micromod nRF52840 & ESP32:
  * 
- * 1. MicroMod MainBoard (DEV-18576) with MM Artemis Processor (WRL-16401)
- * 2. MicroMod Data logger carrier board (DEV-16829) with MM Artemis Processor (WRL-16401)
- * 3. Artemis OpenLog (DEV-16832) (NOT QWIIC Openlog that with another filemanager)
- * 4. Artemis ATP (DEV-15442) with external SparkFun Level Shifting microSD (DEV-13743)
- * 5. MicroMod MainBoard (DEV-18576) with MM nRF52840 Processor (WRL-16984)
- * 6. MicroMod Data logger carrier board (DEV-16829) with RF52840 Processor (WRL-16984)
- * 7. MicroMod MainBoard (DEV-18576) with MM ESP Processor (WRL-16781)
- * 8. MicroMod Data logger carrier board (DEV-16829) with MM ESP32 Processor (WRL-169781) 
+ * 1.  MicroMod MainBoard (DEV-18576) with MM Artemis Processor (WRL-16401)
+ * 2.  MicroMod Data logger carrier board (DEV-16829) with MM Artemis Processor (WRL-16401)
+ * 3.  Artemis OpenLog (DEV-16832) (NOT QWIIC Openlog that with another filemanager)
+ * 4.  Artemis ATP (DEV-15442) with external SparkFun Level Shifting microSD (DEV-13743)
+ * 5.  MicroMod MainBoard (DEV-18576) with MM nRF52840 Processor (WRL-16984)
+ * 6.  MicroMod Data logger carrier board (DEV-16829) with RF52840 Processor (WRL-16984)
+ * 7.  MicroMod MainBoard (DEV-18576) with MM ESP Processor (WRL-16781)
+ * 8.  MicroMod Data logger carrier board (DEV-16829) with MM ESP32 Processor (WRL-169781) 
+ * 9.  MicroMod Input and Display carrier board (DEV-16985) with MM Artemis Processor (WRL-16401)
+ * 10. MicroMod Input and Display carrier board (DEV-16985) with MM ESP Processor (WRL-16781)
+ * 11. MicroMod Input and Display carrier board (DEV-16985) with MM RF52840 Processor (WRL-16984)
  * 
  * Parts of the code has been taken from the OpenLog sketch/program created by Sparkfun.
  * 
@@ -21,6 +24,11 @@
   //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  * 
  * ============================ Versioning ==============================================
+ *  1.6                                 / March 2023
+ *  Added MicroMod Input and Display carrier board (DEV-16985) with MM Artemis Processor (WRL-16401)
+ *  Added MicroMod Input and Display carrier board (DEV-16985) with MM ESP Processor (WRL-16781)
+ *  Added MicroMod Input and Display carrier board (DEV-16985) with MM RF52840 Processor (WRL-16984)
+ *  
  *  1.5                                 / April 2022
  *  Added support for MM nRF52840 on MM Mainboard and MM Data logger carrier board.
  *  Added support for MM ESP32 on MM Mainboard and MM Data logger carrier board.
@@ -57,7 +65,7 @@
  * GND        GND
  * 
  * Note1: set PIN_MICROSD_CD_SELECT to zero to disable 
- * 
+ * =======================================================
  *            Artemis
  * MicroSD    MICROMOD_MMDLCB  (FYI only fixed)
  * D2/CS      41 (on-board) or 16 (on HEADER_CS) (defined by PIN_MICROSD_CHIP_SELECT)
@@ -67,34 +75,6 @@
  * CD         Not connected (on-board) / not used (on HEADER_CS)
  * GND        GND
  * POWER      33  (define by PIN_MICROSD_POWER)
- * 
- *            Artemis
- * MicroSD    MICROMOD_MAIN board  (FYI only fixed)
- * D2/CS      28
- * D1         MOSI / COPI
- * SCK        SCK
- * D0         MISO / CIPO
- * CD         Not connected
- * GND        GND 
- *
- *            Artemis
- * MicroSD    OpenLog board  (FYI only fixed)
- * D2/CS      23
- * D1         MOSI / COPI
- * SCK        SCK
- * D0         MISO / CIPO
- * CD         Not connected
- * GND        GND 
- * POWER      15
- *
- *            nRF52840 or ESP32
- * MicroSD    MICROMOD_MAIN board  (FYI only fixed)
- * D2/CS      G4
- * D1         MOSI / COPI
- * SCK        SCK
- * D0         MISO / CIPO
- * CD         Not connected
- * GND        GND 
  *
  *            nRF52840 or ESP32
  * MicroSD    MICROMOD_MMDLCB  (FYI only fixed)
@@ -105,6 +85,52 @@
  * CD         Not connected (on-board) / not used (on HEADER_CS)
  * GND        GND
  * POWER      G1  (define by PIN_MICROSD_POWER)
+ * ======================================================= 
+ *            Artemis
+ * MicroSD    MICROMOD Input & Display  (FYI only fixed)
+ * D2/CS      41 / SPI_CS 
+ * D1         MOSI / COPI
+ * SCK        SCK
+ * D0         MISO / CIPO
+ * CD         Not connected (on-board)
+ * GND        GND
+ * 
+ *            nRF52840 or ESP32
+ * MicroSD    MICROMOD Input & Display  (FYI only fixed)
+ * D2/CS      41 / SS 
+ * D1         MOSI / COPI
+ * SCK        SCK
+ * D0         MISO / CIPO
+ * CD         Not connected (on-board)
+ * GND        GND
+ * =======================================================
+ *            Artemis
+ * MicroSD    MICROMOD_MAIN board  (FYI only fixed)
+ * D2/CS      28
+ * D1         MOSI / COPI
+ * SCK        SCK
+ * D0         MISO / CIPO
+ * CD         Not connected
+ * GND        GND 
+ *
+ *            nRF52840 or ESP32
+ * MicroSD    MICROMOD_MAIN board  (FYI only fixed)
+ * D2/CS      G4
+ * D1         MOSI / COPI
+ * SCK        SCK
+ * D0         MISO / CIPO
+ * CD         Not connected
+ * GND        GND 
+ * =======================================================
+ *            Artemis
+ * MicroSD    OpenLog board  (FYI only fixed)
+ * D2/CS      23
+ * D1         MOSI / COPI
+ * SCK        SCK
+ * D0         MISO / CIPO
+ * CD         Not connected
+ * GND        GND 
+ * POWER      15
  *
  *  ================================ Disclaimer ======================================
  *  This program is distributed in the hope that it will be useful,
@@ -126,7 +152,7 @@
  Define whether this is used on Artemis OpenLog, MICROMOD_MMDLCB, MAINB or ATP
  On OpenLog & Micromod MMDLCB we need to switch on the MicroSD power
  On ATP the external microSD has (optional) CD detect function
- on Micromod Main board, no CD, NO power switch */
+ on Micromod Main board, MicroMod Input and Display :  no CD, NO power switch */
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // MAKE SURE TO SELECT THE RIGHT BOARD HERE AND IN ARDUINO IDE -> TOOLS -> BOARD
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -141,8 +167,12 @@
 //#define MICROMOD_MAINB_NRF52840          // Micromod mainboard with MM nRF52840 (WRL-16984)
 //#define MICROMOD_MMDLCB_NRF52840         // Micromod data logger carrier board with MM nRF52840 (WRL-16984)
 
-#define MICROMOD_MAINB_ESP32             // Micromod mainboard with MM ESP32 (WRL-16781)
+//#define MICROMOD_MAINB_ESP32             // Micromod mainboard with MM ESP32 (WRL-16781)
 //#define MICROMOD_MMDLCB_ESP32            // Micromod data logger carrier board with MM ESP32 (WRL-16781)      
+
+//#define  MICROMOD_INPUT_DISP_APOLLO3     // MicroMod Input Display carrier board MM Artemis
+//#define  MICROMOD_INPUT_DISP_ESP32       // MicroMod Input Display carrier board MM ESP32 (WRL-16781)
+#define  MICROMOD_INPUT_DISP_NRF52840    // MicroMod Input Display carrier board MM nRF52840 (WRL-16984)
 
 // =================================== Global Defines ========================================
 // SD_FAT_TYPE = 0 for SdFat/File, 1 for FAT16/FAT32, 2 for exFAT, 3 for FAT16/FAT32 and exFAT.
@@ -153,6 +183,14 @@
 #define MAX_DIR_ENTRY 100                   // maximum entries in a current directory
 
 // ================================= Board definitions =======================================
+
+#ifdef ATP
+const byte PIN_MICROSD_CD_SELECT = 27;      // Connect CD here (card detect) set as 0 -zero- to disable
+const byte PIN_MICROSD_CHIP_SELECT = 23;    // Connect CS here (chip select)
+#endif // ATP
+
+//==========================================================
+
 #ifdef MICROMOD_MMDLCB_APOLLO3 
 #define MICROMOD_MMDLCB
 const byte PIN_MICROSD_POWER = G1;          // LDO power
@@ -160,31 +198,44 @@ const int sdPowerDownDelay = 100;           // Delay for this many ms before tur
 const byte PIN_MICROSD_CHIP_SELECT = SPI_CS;// CS (chip select IOM)
 #endif // MICROMOD_MMDLCB_APOLLO3
 
-#if defined MICROMOD_MMDLCB_NRF52840 || defined MICROMOD_MMDLCB_ESP32
+#if (defined MICROMOD_MMDLCB_NRF52840) || defined (MICROMOD_MMDLCB_ESP32)
 #define MICROMOD_MMDLCB
 const byte PIN_MICROSD_POWER = G1;          // LDO power
 const int sdPowerDownDelay = 100;           // Delay for this many ms before turning off the SD card power
 const byte PIN_MICROSD_CHIP_SELECT = SS;    // CS (chip select IOM)  G0 = headerCS / SS = onboard CS
 #endif // MICROMOD_MMDLCB_NRF52840 & MICROMOD_MMDLCB_ESP32
 
+//==========================================================
+
 #ifdef MICROMOD_MAINB_APOLLO3 
 const byte PIN_MICROSD_CHIP_SELECT = G4;    // CS (chip select IOM)
 #endif // MICROMOD_MAINB_APOLLO3
 
-#if defined MICROMOD_MAINB_NRF52840 || defined MICROMOD_MAINB_ESP32
+#if (defined MICROMOD_MAINB_NRF52840) || defined (MICROMOD_MAINB_ESP32)
 const byte PIN_MICROSD_CHIP_SELECT = G4;    // CS (chip select IOM)
 #endif //MICROMOD_MAINB_NRF52840 & MICROMOD_MAINB_ESP32
 
+//==========================================================
+
+#ifdef MICROMOD_INPUT_DISP_APOLLO3 
+#define MICROMOD_INPUT_DISP
+const byte PIN_MICROSD_CHIP_SELECT = SPI_CS; // CS (chip select IOM)
+#endif // MICROMOD_INPUT_DISP
+
+#if (defined MICROMOD_INPUT_DISP_NRF52840) || defined (MICROMOD_INPUT_DISP_ESP32)
+#define MICROMOD_INPUT_DISP
+const byte PIN_MICROSD_CHIP_SELECT = SS; // CS (chip select IOM)
+#endif // MICROMOD_INPUT_DISP
+
+//==========================================================
 #ifdef ARTEMIS_OPENLOG
 const byte PIN_MICROSD_POWER = 15;          // power the FET
 const int sdPowerDownDelay = 100;           // Delay for this many ms before turning off the SD card power
 const byte PIN_MICROSD_CHIP_SELECT = 23;    // CS (chip select)
 #endif // ARTEMIS_OPENLOG
 
-#ifdef ATP
-const byte PIN_MICROSD_CD_SELECT = 27;      // Connect CD here (card detect) set as 0 -zero- to disable
-const byte PIN_MICROSD_CHIP_SELECT = 23;    // Connect CS here (chip select)
-#endif // ATP
+//==========================================================
+
 
 //**********************************************************************************************
 //***                      NO NEED TO MAKE CHANGES BEYOND THIS POINT                          **
@@ -240,16 +291,16 @@ void setup() {
   Serial.begin(115200); 
   while (!Serial);
    
-#if defined (MICROMOD_MAINB_NRF52840) || defined(MICROMOD_MMDLCB_NRF52840)
+#if defined (MICROMOD_MAINB_NRF52840) || defined(MICROMOD_MMDLCB_NRF52840) || \
+    defined (MICROMOD_INPUT_DISP_NRF52840)
   Serial.print(F("nRF52840")); 
-#elif defined (MICROMOD_MAINB_ESP32) || defined (MICROMOD_MMDLCB_ESP32)
-  Serial.print(PIN_MICROSD_CHIP_SELECT);
-  Serial.print(" ");
+#elif defined (MICROMOD_MAINB_ESP32) || defined (MICROMOD_MMDLCB_ESP32) ||\
+      defined (MICROMOD_INPUT_DISP_ESP32)
   Serial.print(F("ESP32")); 
 #else
   Serial.print(F("Artemis"));
 #endif
-  Serial.println(F(" MicroSD filemanager (Version 1.5)\nPress Enter to continue."));
+  Serial.println(F(" MicroSD filemanager (Version 1.6)\nPress Enter to continue."));
   
   GetFileName();
   
@@ -260,6 +311,9 @@ void setup() {
     Serial.println(F("Is the MicroSD installed correctly ?"));
     Serial.println(F("Is the right board selected in top of sketch?"));
     Serial.println(F("Is the right processor selected in the Arduino IDE ?"));
+#ifdef MICROMOD_INPUT_DISP
+    Serial.println(F("Maybe turnoff backlight on Hyperdisplay before start MicroSD"));
+#endif
     Serial.println(F("Freeze !"));
     while(1);
   }

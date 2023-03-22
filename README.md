@@ -27,6 +27,10 @@ Please see the description in the top of the sketch
 For the Linux client software use the --help or -h option
 
 ## Versioning
+
+### version 3.18 / March 2023
+ * Updated MicroSD filemanager to support MicroMod Input and display board
+
 ### version 3.17 / March 2023
  * added detailed information and sketch about deepsleep V1.x and V2.x
 
