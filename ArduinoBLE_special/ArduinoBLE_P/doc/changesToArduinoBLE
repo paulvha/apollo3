@@ -121,29 +121,29 @@ In ArduinoBLE/src/uility/HCI.CPP fix a crash after disconnect when working as Ce
     1) In global space around line 73
 
     AFTER :
-    	 #define HCI_OE_USER_ENDED_CONNECTION 0x13	
-    
-    ADD : 
+    	 #define HCI_OE_USER_ENDED_CONNECTION 0x13
+
+    ADD :
    	 bool ScanResponseDataSet = false;
 
     ....................................................
-    
+
     2) In leSetScanResponseData() around line 350
-    
-    AFTER : 
+
+    AFTER :
          memcpy(leScanResponseData.data, data, length);
- 
+
     ADD:
       // indicate running as peripheral {paulvha}
       ScanResponseDataSet = true;
-      
+
     ....................................................
-    
+
     3) In handleEventPkt() around line 835
-    
-    CHANGE : 
+
+    CHANGE :
          HCI.leSetAdvertiseEnable(0x01);
- 
+
     TO :
         if (ScanResponseDataSet) HCI.leSetAdvertiseEnable(0x01);
 
@@ -172,7 +172,7 @@ Issue :https://github.com/arduino-libraries/ArduinoBLE/issues/144
   if (_fixedLength) {
     _valueLength = _valueSize;
   }
-  
+
   ADD :
   if (_written) {
     return 1;
@@ -183,10 +183,10 @@ Fix a bug where disconnect needs a clean up in ATT to prevent memory leaks
 3 changes to apply
 
 1) In ArduinoBLE/src/uility/ATT.CPP around line 247
-  
+
 BEFORE:
   void ATTClass::addConnection(uint16_t handle, uint8_t role, uint8_t peerBdaddrType,
-  
+
 ADD:
 // can lead to memory leaks for _peers[i].device and other issues,
 // especially if disconnect does not not happen nicely
@@ -198,13 +198,13 @@ void ATTClass::end()
         if (_peers[i].connectionHandle == 0xffff) {
         continue;
         }
-    
+
         _peers[i].connectionHandle = 0xffff;
         _peers[i].role = 0x00;
         _peers[i].addressType = 0x00;
         memset(_peers[i].address, 0x00, sizeof(_peers[i].address));
         _peers[i].mtu = 23;
-        
+
         if (_peers[i].device) {
           delete _peers[i].device;
           _peers[i].device = NULL;
@@ -227,10 +227,10 @@ ADD:
 In void BLELocalDevice::end(), around line 188
 AFTER :
   GATT.end();
-  
+
 ADD:
   ATT.end();        // {paulvha}
-  
+
 
 ...................................................................................
 
@@ -285,7 +285,7 @@ to advField = BLEFieldCompleteAdvertisedService16;
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Fix for multiple callback on BLEread when the value that was written before is 
+Fix for multiple callback on BLEread when the value that was written before is
 larger than the MTU size. 1 change
 
 
@@ -330,11 +330,11 @@ void BLELocalCharacteristic::readValue(BLEDevice device, uint16_t offset, uint8_
 }
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  Added possibility to obtain MTU
- 
+
  ArduinoBLE/src/local/BLELocalDevice.cpp
- 
+
  add function
- 
+
  uint16_t BLELocalDevice::readMTU()
 {
 
@@ -349,14 +349,14 @@ void BLELocalCharacteristic::readValue(BLEDevice device, uint16_t offset, uint8_
 
 ArduinoBLE/src/local/BLELocalDevice.h
  in public add
- 
+
  virtual uint16_t readMTU(); //paulvha
- 
- 
+
+
  ArduinoBLE/src/local/BLEDevice.cpp
- 
- add function 
- 
+
+ add function
+
  // special paulvha
 uint16_t BLEDevice::readMTU()
 {
@@ -374,19 +374,19 @@ uint16_t BLEDevice::readMTU()
  ArduinoBLE/src/local/BLEDevice.h
 
   in public add
- 
+
  virtual uint16_t readMTU(); //paulvha
- 
+
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  
-  
+
+
   A central on ArduinoBLE is only reading whatever fits within a MTU.
   Everything else is not asked, neglected. These changes enable the Central
   to read all the necessary bytes.
-  
+
   ArduinoBLE/src/utility/ATT.cpp
   add
-  
+
   /**
  * added paulvha
  *
@@ -404,25 +404,25 @@ int ATTClass::readReqBlob(uint16_t connectionHandle, uint16_t handle, uint16_t o
 
   return sendReq(connectionHandle, &readReq, sizeof(readReq), responseBuffer);
 }
-  
- .............................................................................. 
+
+ ..............................................................................
  ArduinoBLE/src/utility/ATT.h
   add
-  
+
     virtual int readReqBlob(uint16_t connectionHandle, uint16_t handle, uint16_t offset, uint8_t responseBuffer[]); // paulvha
  ..............................................................................
- 
+
  ArduinoBLE/src/remote/BLERemoteCharacteristic.h
  change
    bool read ();
  to
    bool read (int offset);      // changed paulvha
   ..............................................................................
-   
- ArduinoBLE/src/remote/BLERemoteCharacteristic.cpp 
- 
+
+ ArduinoBLE/src/remote/BLERemoteCharacteristic.cpp
+
  change bool read() function to
- 
+
  bool BLERemoteCharacteristic::read(int offset)
 {
   if (!ATT.connected(_connectionHandle)) {
@@ -465,10 +465,10 @@ int ATTClass::readReqBlob(uint16_t connectionHandle, uint16_t handle, uint16_t o
 }
 
  ..............................................................................
- 
+
  ArduinoBLE/src/BLECharateristic.cpp
  change readValue() routine to:
- 
+
  /**
  * @param value : place to store the received data
  * @param length is the maximum length to obtain
@@ -514,12 +514,12 @@ int BLECharacteristic::readValue(uint8_t value[], int length)
   }
 
   return offset;
-}   
- 
+}
+
   ..............................................................................
-  
+
   Improve stabalize the descriptor discovery
-  
+
   in ArduinoBLE/src/utility/ATT.cpp
   replace the complete routine ATTClass::discoverDescriptors with :
  // {paulvha} this routine has been updated / streamlined to :
@@ -624,8 +624,8 @@ bool ATTClass::discoverDescriptors(uint16_t connectionHandle, BLERemoteDevice* d
   }
 
   return true;
-} 
-  
+}
+
 ..........................................................................................
 
 https://github.com/arduino-libraries/ArduinoBLE/pull/264 fix BLE scanning block after minutes
@@ -645,28 +645,23 @@ src/utility/GAP.cpp, round line 222
      }
    }
    // ******** end change *************
-  
+
     discoveredDevice = new BLEDevice(addressType, address);
 
     _discoveredDevices.add(discoveredDevice);
     discoveredIndex = _discoveredDevices.size() - 1;
   }
-  
-..........................................................................................
-  
-  NEEDED FOR BEACON
-  
-  src/local/BLELocalDevice.h.. Around line 114
-  
-  change
-  protected:
-  virtual BLEAdvertisingData& getAdvertisingData();
-  virtual BLEAdvertisingData& getScanResponseData();
-  
-  to  (comment out protected
-  
-  //protected:    //{paulvha}
-  virtual BLEAdvertisingData& getAdvertisingData();
-  virtual BLEAdvertisingData& getScanResponseData();
+
 ..........................................................................................
 
+NEEDED FOR CORRECT SCAN START
+src/utility/GAP.cpp, round line 86, at start of routine scan add
+
+  // clear out any pending discovered device list before starting new scan
+  for (unsigned int i = 0; i < _discoveredDevices.size(); i++) {
+    BLEDevice* device = _discoveredDevices.remove(i);
+    if (device != NULL) {
+      delete device;
+    }
+  }
+..........................................................................................

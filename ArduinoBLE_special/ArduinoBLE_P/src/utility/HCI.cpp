@@ -74,6 +74,7 @@
 
 #define HCI_OE_USER_ENDED_CONNECTION 0x13
 bool ScanResponseDataSet = false;       // paulvha
+unsigned long KeepAlive = 0;            // paulvha
 
 String metaEventToString(LE_META_EVENT event)
 {
@@ -131,7 +132,17 @@ void HCIClass::poll(unsigned long timeout)
 #ifdef ARDUINO_AVR_UNO_WIFI_REV2
   digitalWrite(NINA_RTS, LOW);
 #endif
-
+/*
+  // paulvha
+  // Check as more than 4 minutes have passed since last received something
+  // on an Artemis / Apollo3 board after 5 minutes the HCI in-chip layer
+  // became unresponsive.
+  // This will prevent the HCI layer to go to sleep and become unresponsive.
+  if ( millis() - KeepAlive > (4 * 60 * 1000) )  {
+    KeepAlive = millis();
+    sendCommand(OGF_INFO_PARAM << 10 | OCF_READ_LOCAL_VERSION);
+  }
+*/
   if (timeout) {
     HCITransport.wait(timeout);
   }
@@ -626,7 +637,6 @@ int HCIClass::sendAclPkt(uint16_t handle, uint8_t cid, uint8_t plen, void* data)
 {
 
   while (_pendingPkt >= _maxPkt) {
-Serial.println("poll");
     poll();
   }
 
@@ -734,6 +744,8 @@ void HCIClass::handleAclDataPkt(uint8_t /*plen*/, uint8_t pdata[])
     uint16_t cid;
   } *aclHdr = (HCIACLHdr*)pdata;
 
+  KeepAlive = millis();     // paulvha
+
   uint16_t aclFlags = (aclHdr->handle & 0xf000) >> 12;
 
   if ((aclHdr->dlen - 4) != aclHdr->len) {
@@ -827,6 +839,9 @@ void HCIClass::handleEventPkt(uint8_t /*plen*/, uint8_t pdata[])
     uint8_t evt;
     uint8_t plen;
   } *eventHdr = (HCIEventHdr*)pdata;
+
+  KeepAlive = millis();     // paulvha
+
 #ifdef _BLE_TRACE_
   Serial.print("HCI event: ");
   Serial.println(eventHdr->evt, HEX);
@@ -1038,7 +1053,7 @@ void HCIClass::handleEventPkt(uint8_t /*plen*/, uint8_t pdata[])
     Serial.println(leMetaHeader->subevent,HEX);
 #endif
     switch((LE_META_EVENT)leMetaHeader->subevent){
-      case 0x0A:{
+      case 0x0A:{  //LE Enhanced Connection Complete event
         struct __attribute__ ((packed)) EvtLeConnectionComplete {
           uint8_t status;
           uint16_t handle;

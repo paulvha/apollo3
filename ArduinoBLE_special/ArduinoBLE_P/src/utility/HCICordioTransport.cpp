@@ -25,7 +25,7 @@
 #include <driver/CordioHCITransportDriver.h>
 #include <driver/CordioHCIDriver.h>
 
-#if defined(ARDUINO_PORTENTA_H7_M4) || defined(ARDUINO_PORTENTA_H7_M7) || defined(ARDUINO_NICLA_VISION)
+#if defined(ARDUINO_PORTENTA_H7_M4) || defined(ARDUINO_PORTENTA_H7_M7) || defined(ARDUINO_NICLA_VISION)|| defined(ARDUINO_GIGA)
 #include "ble/BLE.h"
 #include <events/mbed_events.h>
 #endif
@@ -182,7 +182,7 @@ HCICordioTransportClass::~HCICordioTransportClass()
 {
 }
 
-#if defined(ARDUINO_PORTENTA_H7_M4) || defined(ARDUINO_PORTENTA_H7_M7) || defined(ARDUINO_NICLA_VISION)
+#if defined(ARDUINO_PORTENTA_H7_M4) || defined(ARDUINO_PORTENTA_H7_M7) || defined(ARDUINO_NICLA_VISION) || defined(ARDUINO_GIGA)
 events::EventQueue eventQueue(10 * EVENTS_EVENT_SIZE);
 void scheduleMbedBleEvents(BLE::OnEventsToProcessCallbackContext *context) {
   eventQueue.call(mbed::Callback<void()>(&context->ble, &BLE::processEvents));
@@ -202,7 +202,7 @@ int HCICordioTransportClass::begin()
   init_wsf(bufPoolDesc);
 #endif
 
-#if defined(ARDUINO_PORTENTA_H7_M4) || defined(ARDUINO_PORTENTA_H7_M7) || defined(ARDUINO_NICLA_VISION)
+#if defined(ARDUINO_PORTENTA_H7_M4) || defined(ARDUINO_PORTENTA_H7_M7) || defined(ARDUINO_NICLA_VISION) || defined(ARDUINO_GIGA)
   BLE &ble = BLE::Instance();
   ble.onEventsToProcess(scheduleMbedBleEvents);
 
@@ -236,7 +236,8 @@ void HCICordioTransportClass::end()
     bleLoopThread = NULL;
   }
 
-#if !defined(ARDUINO_PORTENTA_H7_M4) && !defined(ARDUINO_PORTENTA_H7_M7) && !defined(ARDUINO_NICLA_VISION)
+//#if !defined(ARDUINO_PORTENTA_H7_M4) && !defined(ARDUINO_PORTENTA_H7_M7) && !defined(ARDUINO_NICLA_VISION) && !defined(ARDUINO_GIGA)
+#if !defined(TARGET_STM32H7)
   CordioHCIHook::getDriver().terminate();
 #endif
 

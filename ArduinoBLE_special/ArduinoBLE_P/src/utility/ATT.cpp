@@ -276,7 +276,7 @@ void ATTClass::addConnection(uint16_t handle, uint8_t role, uint8_t peerBdaddrTy
 
   _peers[peerIndex].connectionHandle = handle;
   _peers[peerIndex].role = role;
-  _peers[peerIndex].mtu = 23;
+  _peers[peerIndex].mtu = 23; // default size
   _peers[peerIndex].addressType = peerBdaddrType;
   memcpy(_peers[peerIndex].address, peerBdaddr, sizeof(_peers[peerIndex].address));
   uint8_t BDADDr[6];
@@ -292,6 +292,7 @@ void ATTClass::addConnection(uint16_t handle, uint8_t role, uint8_t peerBdaddrTy
     memset(&_peers[peerIndex].resolvedAddress, 0, 6);
   }
 
+  // if call back was set
   if (_eventHandlers[BLEConnected]) {
     _eventHandlers[BLEConnected](BLEDevice(peerBdaddrType, peerBdaddr));
   }
@@ -1739,7 +1740,7 @@ bool ATTClass::discoverCharacteristics(uint16_t connectionHandle, BLERemoteDevic
 }
 /*
 bool ATTClass::discoverDescriptors(uint16_t connectionHandle, BLERemoteDevice* device)
-* // updated see below
+* // OLD !! updated see below
 {
   uint16_t reqStartHandle = 0x0001;
   uint16_t reqEndHandle = 0xffff;
@@ -1945,6 +1946,7 @@ int ATTClass::sendReq(uint16_t connectionHandle, void* requestBuffer, int reques
   return 0;
 }
 
+// ma
 void ATTClass::setEventHandler(BLEDeviceEvent event, BLEDeviceEventHandler eventHandler)
 {
   if (event < (sizeof(_eventHandlers) / (sizeof(_eventHandlers[0])))) {

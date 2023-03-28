@@ -28,6 +28,7 @@
 #define GAP_ADV_IND (0x00)
 #define GAP_ADV_SCAN_IND (0x02)
 #define GAP_ADV_NONCONN_IND (0x03)
+#define SCAN_RSP (0x04)
 
 GAPClass::GAPClass() :
   _advertising(false),
@@ -81,9 +82,19 @@ void GAPClass::stopAdvertise()
 
   HCI.leSetAdvertiseEnable(0x00);
 }
-
+// if withDuplicates is true.. it means that the scan will NOT filter out duplicates
+// so you get many advertise reports
 int GAPClass::scan(bool withDuplicates)
 {
+  // clear out any pending discovered device list before starting new scan
+  unsigned int dd = _discoveredDevices.size();
+  for (unsigned int i = 0; i < dd; i++) {
+    BLEDevice* device = _discoveredDevices.remove(i);
+    if (device != NULL) {
+      delete device;
+    }
+  }
+
   HCI.leSetScanEnable(false, true);
 
   // active scan, 10 ms scan interval (N * 0.625), 10 ms scan window (N * 0.625), public own address type, no filter
@@ -136,7 +147,9 @@ void GAPClass::stopScan()
   for (unsigned int i = 0; i < _discoveredDevices.size(); i++) {
     BLEDevice* device = _discoveredDevices.get(i);
 
-    delete device;
+   if (device != NULL) {
+      delete device;
+    }
   }
 
   _discoveredDevices.clear();
@@ -151,12 +164,14 @@ BLEDevice GAPClass::available()
 
     if (device->discovered()) {
       BLEDevice result = *device;
+
       // remove from list
       _discoveredDevices.remove(i);
 
       // this is freeing up memory, but we are still going to use it ??
       delete device;
 
+      // if there was a match on a filter or NO filter set
       if (matchesScanFilter(result)) {
         return result;
       } else {
@@ -194,22 +209,31 @@ void GAPClass::handleLeAdvertisingReport(uint8_t type, uint8_t addressType, uint
     return;
   }
 
-// if a scan call back was set & Non connectable undirected advertising (ADV_NONCONN_IND)
-  if (_discoverEventHandler && type == 0x03) {
-    // call event handler and skip adding to discover list
+
+/* if a scan call back was set & advertise report
+ * 0x03 = Non-Connectable Non-Scannable Undirected advertising (ADV_NONCONN_IND)
+ * you can not connect nor ask for a scanreport. info in that packet only.
+ * like a beacon..
+ */
+  if (_discoverEventHandler && type == GAP_ADV_NONCONN_IND) {
+
+    // create a device.
     BLEDevice device(addressType, address);
 
     device.setAdvertisementData(type, eirLength, eirData, rssi);
+
     // if there is a match on a filter or filter not set
     if (matchesScanFilter(device)) {
       _discoverEventHandler(device);
     }
+
     return;
   }
 
   BLEDevice* discoveredDevice = NULL;
   int discoveredIndex = -1;
 
+  // check we have already added this peripheral earlier to the list
   for (unsigned int i = 0; i < _discoveredDevices.size(); i++) {
     BLEDevice* device = _discoveredDevices.get(i);
 
@@ -221,7 +245,9 @@ void GAPClass::handleLeAdvertisingReport(uint8_t type, uint8_t addressType, uint
     }
   }
 
+  // if not see before
   if (discoveredDevice == NULL) {
+    // can we still add? if not....
     if (_discoveredDevices.size() >= GAP_MAX_DISCOVERED_QUEUE_SIZE) {
     // ********* begin change ******
 /*      // drop
@@ -229,6 +255,7 @@ void GAPClass::handleLeAdvertisingReport(uint8_t type, uint8_t addressType, uint
     }
 */
      // https://github.com/arduino-libraries/ArduinoBLE/pull/264 fix BLE scanning block after minutes
+     // we need to free up
      BLEDevice* device_first = _discoveredDevices.remove(0);
 
      if (device_first != NULL) {
@@ -236,37 +263,40 @@ void GAPClass::handleLeAdvertisingReport(uint8_t type, uint8_t addressType, uint
      }
    }
    // ******** end change *************
+   // create new device
    discoveredDevice = new BLEDevice(addressType, address);
 
-    _discoveredDevices.add(discoveredDevice);
-    discoveredIndex = _discoveredDevices.size() - 1;
+   // add to list
+   _discoveredDevices.add(discoveredDevice);
+   discoveredIndex = _discoveredDevices.size() - 1;
   }
 
-  if (type != 0x04) {   // Scan Response (SCAN_RSP)
+  if (type != SCAN_RSP) {   // if NOT Scan Response (0x04) and thus advertise data
     discoveredDevice->setAdvertisementData(type, eirLength, eirData, rssi);
   } else {
-    // copy scan response AFTER advertising data
+    // copy Scan Response AFTER advertising data
     discoveredDevice->setScanResponseData(eirLength, eirData, rssi);
   }
+
   // Only scanresponse (0x04) and a scan call back was set
-  // no need to check 0x03.. would never get here given earlier check
   if (discoveredDevice->discovered() && _discoverEventHandler) {
 
-    // remove from list
     BLEDevice device = *discoveredDevice;
 
-    // all back with handler if it matches the filter or filter NOT set
+    // callback with handler if it matches the filter or filter NOT set
     if (matchesScanFilter(device)) {
       _discoverEventHandler(device);
     }
 
+    // remove from list
     _discoveredDevices.remove(discoveredIndex);
-    // delete before usage ????
+
+    // free up memory
     delete discoveredDevice;
   }
 }
 
-// check for any filter that might haver been set
+// check for any filter that might have been set
 bool GAPClass::matchesScanFilter(const BLEDevice& device)
 {
   if (_scanAddressFilter.length() > 0 && !(_scanAddressFilter.equalsIgnoreCase(device.address()))) {

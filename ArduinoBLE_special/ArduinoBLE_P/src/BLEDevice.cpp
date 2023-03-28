@@ -571,7 +571,7 @@ bool BLEDevice::hasAddress(uint8_t addressType, uint8_t address[6])
 
 void BLEDevice::setAdvertisementData(uint8_t type, uint8_t eirDataLength, uint8_t eirData[], int8_t rssi)
 {
-  _advertisementTypeMask = (1 << type); // 0x03 (but also be 0x0,0x01, 0x2)
+  _advertisementTypeMask = (1 << type); // 0x0, 0x01, 0x2 or 0x03
   // copy at begin advertisementdata
   _eirDataLength = eirDataLength;
   memcpy(_eirData, eirData, eirDataLength);
