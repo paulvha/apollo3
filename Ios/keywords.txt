@@ -1,0 +1,37 @@
+#######################################
+# Syntax Coloring Map For IOS
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+begin	KEYWORD2
+beginSPI	KEYWORD2
+end	KEYWORD2
+flush	KEYWORD2
+peek	KEYWORD2
+read	KEYWORD2
+onReceive	KEYWORD2
+set_interrupt_host	KEYWORD2
+ios_setRegAccEnable	KEYWORD2
+write	KEYWORD2
+available	KEYWORD2
+ios_receiveHostInterrupt	KEYWORD2
+
+
+#######################################
+# Instances (KEYWORD2)
+#######################################
+
+IOS	KEYWORD2
+
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+

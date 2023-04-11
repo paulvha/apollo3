@@ -28,6 +28,9 @@ For the Linux client software use the --help or -h option
 
 ## Versioning
 
+### version 3.19 / April 2023
+ * added IOS (Apollo3 working as peripheral on SPI or I2C)
+
 ### version 3.18 / March 2023
  * Updated MicroSD filemanager to support MicroMod Input and display board
 
