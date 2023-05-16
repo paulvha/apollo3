@@ -87,8 +87,8 @@ public:
   void stopListening();
   bool isListening();
 
-  void begin(uint32_t baudRate);
-  void begin(uint32_t baudRate, uint16_t SSconfig);
+  void begin(uint32_t baudRate, int comp = 0);
+  void begin(uint32_t baudRate, uint16_t SSconfig, int comp = 0);
   void end(void);
 
   int available();
@@ -102,6 +102,8 @@ public:
   virtual size_t write(const char *str);
 
   void txHandler(void);
+  void estimateTxComp(bool act);    // may 2023
+  int16_t getTxComp();              // may 2023
 
   void rxBit(void);
   void rxEndOfByte(void);
@@ -130,6 +132,7 @@ private:
   uint8_t _parity = 0;   //Type of parity (0, 1, 2)
   uint8_t _stopBits = 0;
   uint8_t _parityBits = 0; //Number of parity bits (0 or 1)
+  uint8_t _ExpectBits = 0;
   bool _invertLogic;
 
   //For RX
@@ -150,12 +153,21 @@ private:
   void RemoveInterrupt(PinName pinName);
 #endif
 
-  //For TX
+  // get TX baudrate estimation May 2023
+  bool _BaudrateCompensation = false;
+  unsigned long _Txst;
+  unsigned long _Txtime;
+  void HandleEstimateComp();
+
+  // For TX
   void calcParityBit();
   uint16_t txSysTicksPerBit = 0;
   uint16_t txSysTicksPerStopBit = 0;
   uint8_t _parityForByte = 0; //Calculated per byte
   bool _txBufferOverflow = false;
+  uint32_t _baudRate;
+  int16_t _comp;
+  void calcTicks();
 };
 
 #endif

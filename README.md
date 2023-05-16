@@ -28,6 +28,9 @@ For the Linux client software use the --help or -h option
 
 ## Versioning
 
+### version 3.20 / May 2023
+ * update to SoftwareSerial
+
 ### version 3.19 / April 2023
  * added IOS (Apollo3 working as peripheral on SPI or I2C)
 

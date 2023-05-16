@@ -7,7 +7,7 @@
 #######################################
 
 SoftwareSerial	KEYWORD1
-
+mySerial	KEYWORD1
 #######################################
 # Methods and Functions (KEYWORD2)
 #######################################
@@ -24,6 +24,8 @@ overflow	KEYWORD2
 listen	KEYWORD2
 stopListening	KEYWORD2
 isListening	KEYWORD2
+estimateTxComp	KEYWORD2
+getTxComp	KEYWORD2
 
 #######################################
 # Constants (LITERAL1)

@@ -10,8 +10,8 @@
   https://github.com/sparkfun/SparkFun_Apollo3
 
   SoftwareSerial support for the Artemis
-  Any pin can be used for software serial receive or transmit
-  at 300 to 19200 and anywhere inbetween.
+  Any pin can be used for software serial receive 300 to 19200  or transmit
+  at 300 to 38400 and anywhere in between.
 
   Limitations (similar to Arduino core SoftwareSerial):
     * RX on one pin at a time.
@@ -37,14 +37,14 @@
 
 
   *********************************************************************
-  * This is a special port of Software Serial for Library version 2.1.1
+  * This is a special port of Software Serial for Library version 2.2.1
   *
   * While there is an option to increase the speed above 19200, given the
   * long time it takes the V2 library to trigger the interrupt handler
   * of Software Serial receiving speed to max 19200 for readable data is
   * supported. See detailed info just above rxBIT() below.
   *
-  * For sending only upto 19200 can be achieved.
+  * For sending only upto 38400 can be achieved.
   * See the explained.odt in the library / paulvha
   *********************************************************************
 */
@@ -59,8 +59,8 @@ SoftwareSerial *ap3_active_softwareserial_handle = 0;
 
 #ifdef DEBUG
 // you can select pins seperate
-#define PROC_DEBUG_PIN 10       // shows process
-#define TIME_DEBUG_PIN 14       // shows timing
+#define PROC_DEBUG_PIN D9 // shows process
+#define TIME_DEBUG_PIN D10 // shows timing
 #endif
 
 // This routine is called by MBED OR the driver directly
@@ -90,9 +90,9 @@ SoftwareSerial::~SoftwareSerial()
 }
 
 // start 8 bits, no parity, 1 stopbit
-void SoftwareSerial::begin(uint32_t baudRate)
+void SoftwareSerial::begin(uint32_t baudRate, int comp)
 {
-  begin(baudRate, SERIAL_8N1);
+  begin(baudRate, SERIAL_8N1, comp);
 }
 
 void SoftwareSerial::listen()
@@ -123,6 +123,7 @@ void SoftwareSerial::listen()
 #endif
 
 }
+
 #ifdef BYPASS_MBED_INTERRUPT
 
 // Handle interrupt outside Mbed
@@ -177,8 +178,10 @@ bool SoftwareSerial::isListening()
   return (this == ap3_active_softwareserial_handle);
 }
 
-void SoftwareSerial::begin(uint32_t baudRate, uint16_t SSconfig)
+void SoftwareSerial::begin(uint32_t baudRate, uint16_t SSconfig, int comp)
 {
+  _baudRate = baudRate;
+
   digitalWrite(_txPin, _invertLogic ? LOW : HIGH);
   pinMode(_txPin, OUTPUT);
 
@@ -203,33 +206,44 @@ void SoftwareSerial::begin(uint32_t baudRate, uint16_t SSconfig)
 
   //Set variables data bits, stop bits and parity based on config
   softwareserialSetConfig(SSconfig);
-  uint16_t comp;
 
-  // set overhead compensation depending on baudRate
-  switch(baudRate){
-    case 9600:
-       comp = 20;
-       break;
-    case 19200:
-       comp = 18;
-       break;
-    case 38400:
-       comp = 14;
-       break;
-    default:
-       Serial.println("Speed above 38400 can not be set. See readme\n");
-       return;
-       break;
+  if (_baudRate > 38400) {
+    Serial.println("Speed above 38400 can not be set reliable. See readme\n");
+    return;
   }
-  rxSysTicksPerBit = (TIMER_FREQ / baudRate) * 0.98; //Shorten the number of sysTicks a small amount because we are doing a mod operation
-  txSysTicksPerBit = (TIMER_FREQ / baudRate) - comp; //Shorten the txSysTicksPerBit by the number of ticks needed to run the txHandler ISR
 
-  rxSysTicksPerByte = (TIMER_FREQ / baudRate) * (_dataBits + _parityBits + _stopBits);
+  // see example8 to overrule default compensation values
+  if (comp > 0 ) _comp = comp;
+  else {
+    // set default overhead compensation depending on baudRate
+    switch(baudRate){
+      case 9600:
+         _comp = 7;
+         break;
+      case 19200:
+         _comp = 7;
+         break;
+      case 38400:
+         _comp = 7;
+         break;
+    }
+  }
 
-  txSysTicksPerStopBit = txSysTicksPerBit * _stopBits;
+  calcTicks();
 
   //Begin PCI
   listen();
+}
+
+// calculate the ticks per bit
+void SoftwareSerial::calcTicks() {
+
+  rxSysTicksPerBit = (TIMER_FREQ / _baudRate) * 0.98;  //Shorten the number of sysTicks a small amount because we are doing a mod operation
+  txSysTicksPerBit = (TIMER_FREQ / _baudRate) - _comp; //Shorten the txSysTicksPerBit by the number of ticks needed to run the txHandler ISR
+
+  rxSysTicksPerByte = (TIMER_FREQ / _baudRate) * (_dataBits + _parityBits + _stopBits);
+
+  txSysTicksPerStopBit = txSysTicksPerBit * _stopBits;
 }
 
 void SoftwareSerial::end(void)
@@ -350,7 +364,57 @@ size_t SoftwareSerial::write(const char *str)
   return write((const uint8_t *)str, strlen(str));
 }
 
-//Starts the transmission of the next available byte from the buffer
+// enable estimate baudrate compensation
+void SoftwareSerial::estimateTxComp(bool act){
+  if (act) _BaudrateCompensation = true;
+  else _BaudrateCompensation = false;
+}
+
+// display and adjust compensation for TX timing
+// only works if ONE byte has been send
+void SoftwareSerial::HandleEstimateComp()
+{
+  static uint8_t SameComp = 0;
+
+  unsigned long ExpectTime = (_dataBits + _parityBits + _stopBits + 0.8) * (1000000 / _baudRate); // 0.5 to compensate for start-bit
+
+  Serial.printf("Expected Byte time: %ld us, got %ld us: ", ExpectTime, _Txtime);
+
+  // wait max 5 times for same compensation
+  if (SameComp == 5) {
+    Serial.printf("Set compensation to %d\n", _comp);
+    return;
+  }
+
+  if (ExpectTime > _Txtime) {
+    Serial.printf("baudrate is too high\n");
+    _comp--;
+    SameComp = 0;
+  }
+
+  else if (ExpectTime == _Txtime) {
+    Serial.printf("baudrate is same\n");
+    SameComp++;
+  }
+
+  else {
+    Serial.printf("baudrate is too low\n");
+    _comp++;
+    SameComp = 0;
+  }
+
+  Serial.printf("\nNow trying with compensation: %d\n", _comp);
+
+  calcTicks();
+}
+
+// return the current compensation
+int16_t SoftwareSerial::getTxComp()
+{
+  return _comp;
+}
+
+// Starts the transmission of the next available byte from the buffer
 void SoftwareSerial::beginTX()
 {
   bitCounter = 0;
@@ -366,8 +430,10 @@ void SoftwareSerial::beginTX()
 
   //Initiate start bit
   digitalWrite(_txPin, _invertLogic ? HIGH : LOW);
-}
 
+  // needed to estimate
+  if (_BaudrateCompensation) _Txst = micros();
+}
 
 //Assumes the global variables have been set: _parity, _dataBits, outgoingByte
 //Sets global variable _parityBit
@@ -716,6 +782,7 @@ void SoftwareSerial::rxEndOfByte()
   NVIC_DisableIRQ(STIMER_CMPR7_IRQn);
 }
 
+
 //Called from cmprX ISR
 //Sends out a bit with each cmprX ISR trigger
 void SoftwareSerial::txHandler()
@@ -778,6 +845,11 @@ void SoftwareSerial::txHandler()
 
         //All done!
         txInUse = false;
+
+        if (_BaudrateCompensation) {
+          _Txtime = micros() - _Txst;
+          HandleEstimateComp();
+        }
 
         //Reattach PCI so we can hear rx bits coming in
         listen();
