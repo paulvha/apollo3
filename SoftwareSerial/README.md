@@ -27,6 +27,8 @@ SoftwareSerial has been tested on many Artemis boards. But not all boards are 10
 See the document explained.odt, which you can read with any word processor.
 For usage see https://www.arduino.cc/en/Reference/SoftwareSerial
 
+In case you plan to use this in a solution where the Artemis processor is put to sleep, handle SofwareSerial the same as Serial. So call mySerial.end() before going to sleep and mySerial.begin() after waking up.
+
 ## Installation
 
 1. Copy the complete SofwareSerial-directory in the directory :   apollo3/2.2.1/libraries
