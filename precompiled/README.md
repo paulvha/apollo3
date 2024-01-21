@@ -21,7 +21,7 @@ Included is a document that can be opened by any word processor providing insigh
 Next to that find the adjusted boards.txt and platform.txt for the V2.2.1 Sparkfun's Apollo3 boards library if you do not want to make the changes yourself.
 <br>
 This has been tested and working on both 1.18.16 and V 2.2.2 Arduino-IDE
-<br>
+
 ## Versioning
 
 ### version 1.0.1 / January 2024
