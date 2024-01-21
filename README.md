@@ -28,6 +28,9 @@ For the Linux client software use the --help or -h option
 
 ## Versioning
 
+### version 3.21 / January 2024
+ * add precompiled library
+
 ### version 3.20 / May 2023
  * update to SoftwareSerial
 
