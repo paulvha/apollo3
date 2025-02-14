@@ -43,8 +43,8 @@
 // This is part of revision v2.2.0-7-g63f7c2ba1 of the AmbiqSuite Development Package.
 //
 //  special port for ArduinoBLE  January 2021 / paulvha
-
-//  Stripped out much of the unnecessary stuff / January  2023 /paulvha
+//
+//  Stripped out much of the unnecessary stuff / February  2023 /paulvha
 //*****************************************************************************
 
 #include <stdint.h>
@@ -78,11 +78,7 @@
 // Configurable error-detection thresholds.
 //
 //*****************************************************************************
-#define HCI_DRV_MAX_IRQ_TIMEOUT          2000
 #define HCI_DRV_MAX_XTAL_RETRIES         10
-#define HCI_DRV_MAX_TX_RETRIES           10000
-#define HCI_DRV_MAX_HCI_TRANSACTIONS     10000
-#define HCI_DRV_MAX_READ_PACKET          4   // max read in a row at a time
 
 //*****************************************************************************
 //
@@ -131,7 +127,7 @@ void HciDrvEmptyWriteQueue(void);
 //
 //*****************************************************************************
 void hciDrvWriteCallback(uint8_t *pui8Data, uint32_t ui32Length, void *pvContext);
-//void hciDrvReadCallback(uint8_t *pui8Data, uint32_t ui32Length, void *pvContext);
+void hciDrvReadCallback(uint8_t *pui8Data, uint32_t ui32Length, void *pvContext);
 
 //*****************************************************************************
 //
@@ -170,7 +166,6 @@ void hciDrvWriteCallback(uint8_t *pui8Data, uint32_t ui32Length, void *pvContext
         HciDrvRadioShutdown();                                                \
         HciDrvRadioBoot(0);                                                   \
         HciDrvEmptyWriteQueue();                                              \
-        DmDevReset();                                                         \
         return;                                                               \
     }
 
@@ -192,7 +187,7 @@ void hciDrvWriteCallback(uint8_t *pui8Data, uint32_t ui32Length, void *pvContext
 #endif
 
 // for timing pulse
-#define AM_DEBUG_BLE_TIMING 0
+#define AM_DEBUG_BLE_TIMING 1
 //*****************************************************************************
 //
 // Function pointer for redirecting errors
@@ -254,10 +249,10 @@ HciDrvRadioBoot(bool bColdBoot)
 
 #ifdef AM_DEBUG_BLE_TIMING    // ATP pins
     am_hal_gpio_pinconfig(28, g_AM_HAL_GPIO_OUTPUT);    // interrupt from HCI layer
-    am_hal_gpio_pinconfig(27, g_AM_HAL_GPIO_OUTPUT);
-    am_hal_gpio_pinconfig(23, g_AM_HAL_GPIO_OUTPUT);
-    am_hal_gpio_pinconfig(22, g_AM_HAL_GPIO_OUTPUT);
-    am_hal_gpio_pinconfig(4, g_AM_HAL_GPIO_OUTPUT);
+    am_hal_gpio_pinconfig(27, g_AM_HAL_GPIO_OUTPUT);    // call handler
+    am_hal_gpio_pinconfig(23, g_AM_HAL_GPIO_OUTPUT);    // read call back
+    am_hal_gpio_pinconfig(22, g_AM_HAL_GPIO_OUTPUT);    // handler
+    //am_hal_gpio_pinconfig(4, g_AM_HAL_GPIO_OUTPUT);
 #endif // AM_DEBUG_BLE_TIMING
 
     //
@@ -371,10 +366,10 @@ HciDrvRadioBoot(bool bColdBoot)
  //                              AM_HAL_BLE_INT_BLECSSTAT));
     am_hal_ble_int_clear(BLE_P,0xffff);   // clear all
 
-    am_hal_ble_int_enable(BLE_P, (AM_HAL_BLE_INT_CMDCMP |
-                                AM_HAL_BLE_INT_DCMP |
-                                AM_HAL_BLE_INT_BLECIRQ |
-                                AM_HAL_BLE_INT_BLECSSTAT));
+    am_hal_ble_int_enable(BLE_P, (AM_HAL_BLE_INT_CMDCMP |   // Command Complete interrupt
+                                AM_HAL_BLE_INT_DCMP |       // DMA Complete.
+                                AM_HAL_BLE_INT_BLECIRQ |    // availability of read data from the BLE Core
+                                AM_HAL_BLE_INT_BLECSSTAT)); // writes can be done
 
     if (APOLLO3_GE_B0)
     {
@@ -416,7 +411,12 @@ HciDrvRadioShutdown(void)
     ERROR_CHECK_VOID(am_hal_ble_deinitialize(BLE_P));
 }
 
-// set call back to ArduinoBLE
+
+//*****************************************************************************
+//
+// set call back to ArduinoBLE to store the read data
+//
+//*****************************************************************************
 void
 HciDrvset_data_received_handler(data_received_handler_t handler)
 {
@@ -425,7 +425,7 @@ HciDrvset_data_received_handler(data_received_handler_t handler)
 
 //*****************************************************************************
 //
-// Short Description.
+// update BLE core to start sending data
 //
 //*****************************************************************************
 static void
@@ -455,6 +455,7 @@ update_wake(void)
 
     AM_CRITICAL_END;
 }
+
 //*****************************************************************************
 //
 // Function used by the BLE stack to send HCI messages to the BLE controller.
@@ -504,9 +505,6 @@ hciDrvWrite(uint8_t type, uint16_t len, uint8_t *pData)
         pui8Wptr[i] = pData[i];
     }
 
-    //
-    // Advance the queue.
-    //
     am_hal_queue_item_add(&g_sWriteQueue, 0, 1);
 
     //
@@ -653,6 +651,9 @@ hciDrvWriteCallback(uint8_t *pui8Data, uint32_t ui32Length, void *pvContext)
 {
     //CRITICAL_PRINT("INFO: HCI physical write complete.\n");
 
+    //
+    // Advance the queue.
+    //
     am_hal_queue_item_get(&g_sWriteQueue, 0, 1);
 
     while ( BLEIFn(0)->BSTATUS_b.SPISTATUS )
@@ -678,10 +679,12 @@ hciDrvWriteCallback(uint8_t *pui8Data, uint32_t ui32Length, void *pvContext)
 // This function determines what to do when a read operation completes.
 //
 //*****************************************************************************
-/*
 void // USE_NONBLOCKING_HCI
 hciDrvReadCallback(uint8_t *pui8Data, uint32_t ui32Length, void *pvContext)
 {
+#if AM_DEBUG_BLE_TIMING
+    am_hal_gpio_state_write(23, AM_HAL_GPIO_OUTPUT_SET);
+#endif
     //
     // Set a "transfer needed" event.
     //
@@ -689,174 +692,110 @@ hciDrvReadCallback(uint8_t *pui8Data, uint32_t ui32Length, void *pvContext)
     g_ui32NumBytes = ui32Length;
     WsfSetEvent(g_HciDrvHandleID, BLE_TRANSFER_NEEDED_EVENT);
 
+    //
     // wait to drop interrupt
+    //
     while ( BLE_IRQ_CHECK() )
     {
         am_util_delay_us(5);
     }
+
+    //
+    // Check the write queue, and possibly set wake.
+    //
+    if ( !am_hal_queue_empty(&g_sWriteQueue) )
+    {
+        am_hal_ble_wakeup_set(BLE_P, 1);
+    }
+#if AM_DEBUG_BLE_TIMING
+    am_hal_gpio_state_write(23, AM_HAL_GPIO_OUTPUT_CLEAR);
+#endif
 }
-*/
+
 //*****************************************************************************
 //
 // Event handler for HCI-related events.
 //
 // This handler can perform HCI reads or writes, and keeps the actions in the
 // correct order.
-//
-// taken from version 2.0.3 but adjusted for usage Exactle with ArduinoBLE  January  2021/ paulvh
+// USE_NONBLOCKING_HCI / interrupt driven
 //*****************************************************************************
-
-void // USE_NONBLOCKING_HCI
+void
 HciDrvHandler(wsfEventMask_t event, wsfMsgHdr_t *pMsg)
 {
-    uint32_t ui32ErrorStatus, ui32TxRetries = 0;
-    uint32_t ui32NumHciTransactions = 0;
-    uint32_t read_hci_packet_count = 0;
+  uint32_t ui32ErrorStatus;
 #if AM_DEBUG_BLE_TIMING
-    am_hal_gpio_state_write(23, AM_HAL_GPIO_OUTPUT_SET);
+    am_hal_gpio_state_write(22, AM_HAL_GPIO_OUTPUT_SET);
 #endif
-    //
-    // Loop indefinitely, checking to see if there are still tranfsers we need
-    // to complete.
-    //
+  //
+  // Check to see if we read any bytes over the HCI interface that we haven't
+  // already sent to the BLE stack.
+  //
+  if (g_ui32NumBytes > 0)
+  {
+      CRITICAL_PRINT("INFO: HCI data transferred to stack.\n");
 
-    while (ui32NumHciTransactions++ < HCI_DRV_MAX_HCI_TRANSACTIONS)
-    {
-        //
-        // Figure out what kind of transfer the BLE core will accept.
-        //
-        if ( BLE_IRQ_CHECK() )
-        {
-            //
-            // Is the BLE core asking for a read? If so, do that now.
-            //
-            g_ui32NumBytes = 0;
-            ui32ErrorStatus = am_hal_ble_blocking_hci_read(BLE_P, (uint32_t*)g_pui32ReadBuffer, &g_ui32NumBytes);
+      //
+      // Pass the data along to the stack. The stack should be able
+      // to read as much data as we send it.  If it can't, we need to
+      // know that.
+      // assume all bytes can be send
+      data_received_handler(g_pui8ReadBuffer, g_ui32NumBytes);
 
-            if (g_ui32NumBytes > HCI_DRV_MAX_RX_PACKET)
-            {
-                CRITICAL_PRINT("ERROR: Trying to receive an HCI packet larger than the hci driver buffer size (needs %d bytes of space).",
-                               g_ui32NumBytes);
+      CRITICAL_PRINT("INFO: HCI RX packet complete.\n");
+      g_ui32NumBytes   = 0;
+  }
 
-                ERROR_CHECK_VOID(HCI_DRV_RX_PACKET_TOO_LARGE);
-            }
+  if ( BLE_IRQ_CHECK() )
+  {
+      //
+      // If the stack has used up all of the saved data we've accumulated so
+      // far, we should check to see if we need to read any *new* data.
+      // once all the data has been read it will call hciDrvReadCallback(), this will
+      // set the correct g_ui32NumBytes and call this handler again. Once called
+      // the read data is passed to the upper layer
+      //
+      CRITICAL_PRINT("INFO: HCI Read started.\n");
+      ui32ErrorStatus = am_hal_ble_nonblocking_hci_read(BLE_P,
+                                                        g_pui32ReadBuffer,
+                                                        hciDrvReadCallback,
+                                                        0);
 
-            if ( ui32ErrorStatus == AM_HAL_STATUS_SUCCESS)
-            {
+      if (g_ui32NumBytes > HCI_DRV_MAX_RX_PACKET)
+      {
+          CRITICAL_PRINT("ERROR: Trying to receive an HCI packet "
+                         "larger than the hci driver buffer size "
+                         "(needs %d bytes of space).\n",
+                         g_ui32NumBytes);
+#if AM_DEBUG_BLE_TIMING
+    am_hal_gpio_state_write(22, AM_HAL_GPIO_OUTPUT_CLEAR);
+#endif
+          ERROR_CHECK_VOID(HCI_DRV_RX_PACKET_TOO_LARGE);
+      }
 
-                //
-                // If the read succeeded, we need to wait for the IRQ signal to
-                // go back down. If we don't we might inadvertently try to read
-                // the same packet twice.
-                //
-                uint32_t ui32IRQRetries;
-                for (ui32IRQRetries = 0; ui32IRQRetries < HCI_DRV_MAX_IRQ_TIMEOUT; ui32IRQRetries++)
-                {
-                    //CRITICAL_PRINT("IRQ_Check\n");
-
-                    if (BLE_IRQ_CHECK() == 0)
-                    {
-                        break;
-                    }
-
-                    am_util_delay_us(1);
-                }
-
-                //
-                // Pass the data along to the stack. The stack should be able
-                // to read as much data as we send it.  If it can't, we need to
-                // know that.
-                // assume all bytes can be send
-                data_received_handler(g_pui8ReadBuffer, g_ui32NumBytes);
-                g_ui32NumBytes   = 0;
-                read_hci_packet_count++;
-            }
-            else
-            {
-                //
-                // If the read didn't succeed for some physical reason, we need
-                // to know. We shouldn't get failures here. We checked the IRQ
-                // signal before calling the read function, and this driver
-                // only contains a single call to the blocking read function,
-                // so there shouldn't be any physical reason for the read to
-                // fail.
-                //
-                CRITICAL_PRINT("HCI READ failed with status %d. Try recording with a logic analyzer to catch the error.\n",
-                               ui32ErrorStatus);
-            }
-
-            if (read_hci_packet_count >= HCI_DRV_MAX_READ_PACKET)
-            {
-                // It looks like there's time that we won't get interrupt even though
-                // there's packet waiting for host to grab.
-                WsfSetEvent(g_HciDrvHandleID, BLE_TRANSFER_NEEDED_EVENT);
-
-                break;
-            }
-        }
-        else
-        {
-            //
-            // If we don't have anything to read, we can start checking to see
-            // if we have things to write.
-            //
-            if (am_hal_queue_empty(&g_sWriteQueue))
-            {
-                //
-                // If not, we're done!
-                //
-                break;
-            }
-            else
-            {
-                //
-                // If we do have something to write, just pop a single item
-                // from the queue and send it.
-                //
-                hci_drv_write_t *psWriteBuffer = am_hal_queue_peek(&g_sWriteQueue);
-
-                ui32ErrorStatus = am_hal_ble_blocking_hci_write(BLE_P,
-                                                                AM_HAL_BLE_RAW,
-                                                                psWriteBuffer->pui32Data,
-                                                                psWriteBuffer->ui32Length);
-
-                //
-                // If we managed to actually send a packet, we can go ahead and
-                // advance the queue.
-                //
-                if (ui32ErrorStatus == AM_HAL_STATUS_SUCCESS)
-                {
-                    am_hal_queue_item_get(&g_sWriteQueue, 0, 1);
-
-                    ui32TxRetries = 0;
-                    // Resetting the cumulative count
-                    ui32NumHciTransactions = 0;
-                }
-                else
-                {
-                    //
-                    // If we fail too many times in a row, we should throw an
-                    // error to avoid a lock-up.
-                    //
-                    ui32TxRetries++;
-
-                    if (ui32TxRetries > HCI_DRV_MAX_TX_RETRIES)
-                    {
-                        // we need to come back again later.
-                        WsfSetEvent(g_HciDrvHandleID, BLE_TRANSFER_NEEDED_EVENT);
-                        break;
-                    }
-                }
-
-            }
-        }
-    }
-
-    if (ui32NumHciTransactions == HCI_DRV_MAX_HCI_TRANSACTIONS)
-    {
-        CRITICAL_PRINT("ERROR: Maximum number of successive HCI transactions exceeded.\n");
-        //ERROR_RECOVER(HCI_DRV_TOO_MANY_PACKETS);
-    }
+      if (ui32ErrorStatus != AM_HAL_STATUS_SUCCESS)
+      {
+          //
+          // If the read didn't succeed for some physical reason, we need
+          // to know. We shouldn't get failures here. We checked the IRQ
+          // signal before calling the read function, and this driver
+          // only contains a single call to the blocking read function,
+          // so there shouldn't be any physical reason for the read to
+          // fail.
+          //
+          CRITICAL_PRINT("HCI READ failed with status %d. "
+                         "Try recording with a logic analyzer "
+                         "to catch the error.\n",
+                         ui32ErrorStatus);
+#if AM_DEBUG_BLE_TIMING
+    am_hal_gpio_state_write(22, AM_HAL_GPIO_OUTPUT_CLEAR);
+#endif
+          ERROR_RECOVER(ui32ErrorStatus);
+      }
+  }
+#if AM_DEBUG_BLE_TIMING
+    am_hal_gpio_state_write(22, AM_HAL_GPIO_OUTPUT_CLEAR);
+#endif
 }
 
 //*****************************************************************************
@@ -905,7 +844,7 @@ HciVsA3_SetRfPowerLevelEx(txPowerLevel_t txPowerlevel)
     }
 }
 
-/*************************************************************************************************/
+/*********************************************************************/
 /*!
  *  \fn     HciVsA3_ConstantTransmission
  *
@@ -915,14 +854,14 @@ HciVsA3_SetRfPowerLevelEx(txPowerLevel_t txPowerlevel)
  *
  *  \return true when success, otherwise false
  */
-/*************************************************************************************************/
+/*********************************************************************/
 void
 HciVsA3_ConstantTransmission(uint8_t txchannel)
 {
     am_util_ble_set_constant_transmission_ex(BLE_P, txchannel);
 }
 
-/*************************************************************************************************/
+/*********************************************************************/
 /*!
  *  \fn     HciVsA3_SetConstantTransmission
  *
@@ -932,14 +871,14 @@ HciVsA3_ConstantTransmission(uint8_t txchannel)
  *
  *  \return true when success, otherwise false
  */
-/*************************************************************************************************/
+/*********************************************************************/
 void
 HciVsA3_CarrierWaveMode(uint8_t txchannel)
 {
     am_util_ble_transmitter_control_ex(BLE_P, txchannel);
 }
 
-/*************************************************************************************************/
+/*********************************************************************/
 /*!
  *  \fn     HciDrvBleSleepSet
  *
@@ -949,7 +888,7 @@ HciVsA3_CarrierWaveMode(uint8_t txchannel)
  *
  *  \return none
  */
-/*************************************************************************************************/
+/*********************************************************************/
 void
 HciDrvBleSleepSet(bool enable)
 {

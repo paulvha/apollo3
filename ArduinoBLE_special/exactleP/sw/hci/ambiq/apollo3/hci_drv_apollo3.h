@@ -53,7 +53,8 @@
 //*****************************************************************************
 
 
-// Tx power level in dBm.
+// Tx power level in dBm. 
+// 0x03->-20dBm 0x04->-10dBm 0x05->-5dBm 0x08->0dBm 0x0F->3dBm
 typedef enum
 {
   TX_POWER_LEVEL_MINUS_10P0_dBm = 0x3,

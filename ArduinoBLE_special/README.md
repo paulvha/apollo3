@@ -29,7 +29,9 @@ For the Arduino examples : follow carefully the steps defined file : install_ins
 In case you also want the Ubuntu examples, see the README in the subfolder Ubuntu.
 
 ## Versioning
-
+### Version 1.1.8 / February 0205
+ # added example25 to set the BLE signal strength
+ 
 ### version 1.1.7 / March 2023
  * updated with ArduinoBLE 1.3.4
 

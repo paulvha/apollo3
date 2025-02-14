@@ -43,6 +43,9 @@ public:
   virtual bool poll();
 
   virtual size_t write(const uint8_t* data, size_t length);
+  
+  // special paulvha : set TX power Feb 2025
+  virtual bool setTXPower(uint8_t TXpower);
 
 private:
   static void onDataReceived(uint8_t* data, uint8_t len);

@@ -110,6 +110,12 @@ HCIClass::~HCIClass()
 {
 }
 
+// special paulvha : set TX power Feb 2025
+bool HCIClass::setTXPower(uint8_t TXpower)
+{
+  return(HCITransport.setTXPower(TXpower));  
+}
+
 int HCIClass::begin()
 {
   _recvIndex = 0;

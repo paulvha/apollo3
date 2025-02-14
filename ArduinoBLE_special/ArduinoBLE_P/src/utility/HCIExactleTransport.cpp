@@ -115,6 +115,19 @@ void HCIExactleTransportClass::end()
   _begun = false;
 }
 
+// special paulvha : set TX power Feb 2025
+bool HCIExactleTransportClass::setTXPower(uint8_t TXpower) 
+{
+  // defined in hci_drv_apollo3.h  / ExactleP as txPowerLevel_t valid values
+  if (TXpower != TX_POWER_LEVEL_MINUS_10P0_dBm &&
+  TXpower != TX_POWER_LEVEL_0P0_dBm && TXpower != TX_POWER_LEVEL_PLUS_3P0_dBm )
+    return (false);
+  
+  // perform the Apollo3 setting (in hci_drv_apollo3.c / ExactleP
+  return(HciVsA3_SetRfPowerLevelEx((txPowerLevel_t)TXpower));
+}
+
+
 // called from poll() in case it needs to wait for data
 // for a certain time
 void HCIExactleTransportClass::wait(unsigned long timeout)

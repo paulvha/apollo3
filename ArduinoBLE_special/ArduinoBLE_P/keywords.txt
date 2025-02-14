@@ -111,7 +111,8 @@ setValueBE	KEYWORD2
 valueBE	KEYWORD2
 
 uuid	KEYWORD2
-addCharacteristic	KEYWORD
+addCharacteristic	KEYWORD2
+setTXPower	KEYWORD2
 
 #######################################
 # Constants (LITERAL1)

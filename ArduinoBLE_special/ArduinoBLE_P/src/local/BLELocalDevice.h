@@ -30,6 +30,16 @@ enum Pairable {
   ONCE = 2,
 };
 
+// Tx power level in dBm. Source: hci_drv_apollo3.h
+typedef enum
+{
+  TX_POWER_LEVEL_MINUS_10P0_dBm = 0x3,
+  TX_POWER_LEVEL_0P0_dBm = 0x8,
+  TX_POWER_LEVEL_PLUS_3P0_dBm = 0xF,
+  TX_POWER_LEVEL_INVALID = 0x10,
+}txPowerLevel_t;
+
+
 class BLELocalDevice {
 public:
   BLELocalDevice();
@@ -67,6 +77,7 @@ public:
   virtual void stopAdvertise();
 
   virtual uint16_t readMTU(); //paulvha
+  virtual bool setTXPower(txPowerLevel_t TXpower); // special add paulvha Feb 2025
 
   virtual int scan(bool withDuplicates = false);
   virtual int scanForName(String name, bool withDuplicates = false);

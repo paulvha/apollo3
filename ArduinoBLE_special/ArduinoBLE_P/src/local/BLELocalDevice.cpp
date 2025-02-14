@@ -201,6 +201,11 @@ void BLELocalDevice::end()
 #elif defined(ARDUINO_PORTENTA_H7_M4) || defined(ARDUINO_PORTENTA_H7_M7) || defined(ARDUINO_NICLA_VISION)|| defined(ARDUINO_GIGA)
   digitalWrite(BT_REG_ON, LOW);
 #endif
+
+  //clear advertising data when BLE end is called
+  _advertisingData.clear();
+  _scanResponseData.clear();
+
 }
 
 void BLELocalDevice::poll()
@@ -246,6 +251,12 @@ uint16_t BLELocalDevice::readMTU()
 bool BLELocalDevice::disconnect()
 {
   return ATT.disconnect();
+}
+
+// special paulvha : set TX power Feb 2025
+bool BLELocalDevice::setTXPower(txPowerLevel_t TXpower)
+{
+  return(HCI.setTXPower(TXpower));  
 }
 
 String BLELocalDevice::address() const

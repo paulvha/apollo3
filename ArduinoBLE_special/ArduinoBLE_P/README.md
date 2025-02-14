@@ -30,11 +30,14 @@ In this setup there are 4 characteristic. Two String characteristics (one readin
 In this setup a large data message is split in multiple blocks exchanged using a flow control. There are 3 characteristics: one for peripheral to send the large data message, one for the central to send commands and feedback and one for notify.
 The notify is used by the peripheral to send command and feedback and as such also indicate to the central that a next block is ready to be read.
 
-### exampe13_MTU_test peripheral sketch: example13_ph_MTU_size
+### example13_MTU_test peripheral sketch: example13_ph_MTU_size
 This is using an enhancement in the ArduinoBLE_P to understand the impact of MTU size and how to read it.
 
-### exampe14_RW_N_MTU peripheral sketch: example14_ph_RW_notify_MTU
+### example14_RW_N_MTU peripheral sketch: example14_ph_RW_notify_MTU
 This is the same as example12, but then using the agreed MTU as blocksize
+
+### example25_ButtonLed and Signalstrength peripheral sketch: example25_ButtonLed_SignalStrength
+This is the same as buttonLed, but it also allows increase of decreasing the signal strength ( Fedb 2025)
 
 Next to a central in the Arduino IDE environment there is also an central in the ubuntu/linux environment.
 

@@ -27,7 +27,9 @@ Please see the description in the top of the sketch
 For the Linux client software use the --help or -h option
 
 ## Versioning
-
+### Version 3.22 / February 2025
+ * add update to ArduinoBLE_special
+ 
 ### version 3.21 / January 2024
  * add precompiled library
 

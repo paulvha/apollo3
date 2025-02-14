@@ -116,6 +116,9 @@ public:
 
   virtual void debug(Stream& stream);
   virtual void noDebug();
+  
+  // special paulvha : set TX power Feb 2025
+  virtual bool setTXPower(uint8_t TXpower);
 
   // TODO: Send command be private again & use ATT implementation of send command within ATT.
   virtual int sendCommand(uint16_t opcode, uint8_t plen = 0, void* parameters = NULL);
