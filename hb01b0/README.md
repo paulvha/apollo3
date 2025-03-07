@@ -1,11 +1,15 @@
 ############################################
 ### install updated Sparkfun EDGE driver ###
 
+## Versioning
+# version 1.1 / paulvha / March 2025
+- update libmbed-os.a from library V 2.0.6 to V 2.2.1
+
 The original libmbed-os.a is about 60MB, the one in this package is about 7.5MB as I have removed the debug info that is not used anyway.
 I have removed the complete HB01BO driver from mbed-os pre-compiled library, so we can use (nearly) the standard library provided by Sparkfun.
 The .includes-file has the MBED-PS HB01BO driver reference removed (2 lines)
 
-Go to the Sparkfun Artemis/Apollo3 V2.0.6 boards library (referenced as  {Vlib} in the rest of this document)
+Go to the Sparkfun Artemis/Apollo3 V2.2.1 boards library (referenced as  {Vlib} in the rest of this document)
 cd {vlib}/variants/SFE_EDGE/mbed
 
 rename libmbed-os.a to libmbed-os.org   (safety copy)
