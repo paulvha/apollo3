@@ -1,11 +1,11 @@
-# QWICC Openlog filemanager for reading and writing
+# QWIIC Openlog filemanager for reading and writing
 ## ===========================================================
 
 ## Background
-Wanted to created a sketch to handle the Sparkfun Qwicc Openlog module (DEV-15164) for reading and writing.
+Wanted to created a sketch to handle the Sparkfun Qwiic Openlog module (DEV-15164) for reading and writing.
 It has been on library version V1.2.3 as well as V2.2.0. No change needed. But I would expect this to run on other boards as well. The V1.1 has been adjusted and tested with an ATMEGA as well. While this could also work on an UNO, the memory-size is causing limitations. Now also tested on ESP32
 
-<br> The Qwicc Openlog module is able to be connected with Wire from different boards to log data on a MicroSD card.
+<br> The Qwiic Openlog module is able to be connected with Wire from different boards to log data on a MicroSD card.
 You can access the MicroSD directly, but you need to use the Sparkfun library that communicates with the board. This filemanager is making use of that library.
 
 ## Usage
@@ -16,7 +16,7 @@ You can access the MicroSD directly, but you need to use the Sparkfun library th
 
 It will show :
 
-<br>QWICC OpenLog filemanager. (V1.3)
+<br>QWIIC OpenLog filemanager. (V1.6)
 <br>Press Enter to continue.
 <br>
 <br>
@@ -64,6 +64,9 @@ The Sketch is depending on the [Sparkfun library]( https://github.com/sparkfun/S
 
 ## Versioning
 
+### Version 1.6  / February 2026
+ * added support for Arduino UNOR4 WiFi
+
 ### Version 1.4  / January 2023
  * added support for ESP32 with SoftWire
 
@@ -78,7 +81,7 @@ The Sketch is depending on the [Sparkfun library]( https://github.com/sparkfun/S
  * Changes applied to make this also work when connected to an ATmega
 
 ### Version 1.0 / March 2022
- * initial version for Qwicc OpenLog
+ * initial version for Qwiic OpenLog
 
 ## Author
  * Paul van Haastrecht (paulvha@hotmail.com)
